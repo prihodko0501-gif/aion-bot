@@ -1,172 +1,195 @@
 import os
 import requests
-from flask import Flask, request
+from flask import Flask, request, jsonify
 
 app = Flask(__name__)
 
-TOKEN = os.getenv("TELEGRAM_TOKEN")
-BASE_URL = f"https://api.telegram.org/bot{TOKEN}"
+TELEGRAM_TOKEN = os.environ.get("TELEGRAM_TOKEN")
+PORT = int(os.environ.get("PORT", 10000))
+
+if not TELEGRAM_TOKEN:
+    print("⚠ TELEGRAM_TOKEN not set")
+
+TELEGRAM_API_URL = f"https://api.telegram.org/bot{TELEGRAM_TOKEN}"
+
+USER_STATE = {}
+
+# =========================
+# TELEGRAM HELPERS
+# =========================
+
+def send_message(chat_id, text, reply_markup=None):
+    payload = {
+        "chat_id": chat_id,
+        "text": text
+    }
+
+    if reply_markup:
+        payload["reply_markup"] = reply_markup
+
+    try:
+        requests.post(
+            f"{TELEGRAM_API_URL}/sendMessage",
+            json=payload,
+            timeout=10
+        )
+    except Exception as e:
+        print("Send message error:", e)
 
 
-# -------------------------
-# AION: Формулы (сегодняшние)
-# -------------------------
-def clamp(x: float, lo: float = 0.0, hi: float = 100.0) -> float:
-    return max(lo, min(hi, x))
+def answer_callback(callback_query_id):
+    try:
+        requests.post(
+            f"{TELEGRAM_API_URL}/answerCallbackQuery",
+            json={"callback_query_id": callback_query_id},
+            timeout=10
+        )
+    except Exception:
+        pass
 
 
-def score_sleep(hours: float) -> float:
-    # Формула дня: базовая оценка сна (идеал 8ч)
-    # 8ч -> 100, 6ч -> 75, 5ч -> 60, 9ч -> 95 (чуть ниже, чем 8)
-    if hours <= 0:
-        return 0
-    if hours <= 8:
-        return clamp(50 + (hours / 8) * 50)  # 0..8 -> 50..100
-    # лёгкий штраф за “пересон”
-    return clamp(100 - (hours - 8) * 5)     # 9 -> 95, 10 -> 90
+# =========================
+# INLINE MENU
+# =========================
+
+def main_menu():
+    return {
+        "inline_keyboard": [
+            [{"text": "🧬 BioTime", "callback_data": "biotime"}],
+            [
+                {"text": "💤 Sleep", "callback_data": "sleep"},
+                {"text": "🧠 CNS", "callback_data": "cns"},
+            ],
+            [
+                {"text": "🔥 Recovery", "callback_data": "recovery"},
+                {"text": "❤️ Pressure", "callback_data": "pressure"},
+            ],
+            [{"text": "ℹ️ Info", "callback_data": "info"}],
+        ]
+    }
 
 
-def score_stress(level_0_10: float) -> float:
-    # Формула дня: стресс 0..10 превращаем в 0..100 (чем меньше стресс — тем лучше)
-    # 0 -> 100, 10 -> 0
-    return clamp(100 - (level_0_10 * 10))
+# =========================
+# ROUTES
+# =========================
 
-
-def score_pressure(sys: float, dia: float) -> float:
-    # Формула дня: давление. Идеал ~120/80.
-    # Чем дальше от идеала — тем ниже балл.
-    ideal_sys, ideal_dia = 120.0, 80.0
-    dist = abs(sys - ideal_sys) + abs(dia - ideal_dia)
-    return clamp(100 - dist)  # грубо: dist 20 -> 80, dist 40 -> 60
-
-
-def aion_recovery(sleep_score: float, stress_score: float, pressure_score: float) -> float:
-    # Формула дня: Recovery (веса можно менять)
-    # Сон 45% / Стресс 35% / Давление 20%
-    return clamp(0.45 * sleep_score + 0.35 * stress_score + 0.20 * pressure_score)
-
-
-def aion_biotime(recovery: float) -> float:
-    # Формула дня: BioTime / WearRate (индикатор “износа”, где выше — лучше)
-    # Здесь просто “витрина”: BioTime = Recovery
-    # (если у тебя есть своя формула BioTime — скажешь, я заменю)
-    return clamp(recovery)
-
-
-# -------------------------
-# Telegram helpers
-# -------------------------
-def send_message(chat_id: int, text: str):
-    r = requests.post(f"{BASE_URL}/sendMessage", json={"chat_id": chat_id, "text": text})
-    print("sendMessage:", r.status_code, r.text)
-
-
-# -------------------------
-# Routes
-# -------------------------
-@app.route("/")
+@app.get("/")
 def home():
-    return "AION is alive 🚀"
+    return "AION is alive 🚀", 200
 
 
-@app.route("/webhook", methods=["POST"])
+@app.post("/webhook")
 def webhook():
-    data = request.get_json(silent=True) or {}
-    message = data.get("message") or data.get("edited_message")
+    update = request.get_json(silent=True) or {}
+
+    # ===== CALLBACK BUTTONS =====
+    if "callback_query" in update:
+        cq = update["callback_query"]
+        data = cq.get("data")
+        chat_id = cq["message"]["chat"]["id"]
+        answer_callback(cq["id"])
+
+        if data == "biotime":
+            USER_STATE[chat_id] = "biotime"
+            send_message(
+                chat_id,
+                "🧬 BioTime расчёт\n\n"
+                "Введи 6 чисел через пробел:\n"
+                "Sleep Stress Recovery PressurePenalty DropPenalty RiskPenalty\n\n"
+                "Пример:\n"
+                "7 6 8 0 0 1"
+            )
+            return jsonify(ok=True)
+
+        if data == "sleep":
+            send_message(chat_id, "💤 Sleep модуль.", reply_markup=main_menu())
+            return jsonify(ok=True)
+
+        if data == "cns":
+            send_message(chat_id, "🧠 CNS модуль.", reply_markup=main_menu())
+            return jsonify(ok=True)
+
+        if data == "recovery":
+            send_message(chat_id, "🔥 Recovery модуль.", reply_markup=main_menu())
+            return jsonify(ok=True)
+
+        if data == "pressure":
+            send_message(chat_id, "❤️ Pressure модуль.", reply_markup=main_menu())
+            return jsonify(ok=True)
+
+        if data == "info":
+            send_message(
+                chat_id,
+                "🧬 AION\n\n"
+                "Система управления скоростью биологического износа.\n\n"
+                "Выберите модуль:",
+                reply_markup=main_menu()
+            )
+            return jsonify(ok=True)
+
+    # ===== TEXT MESSAGES =====
+    message = update.get("message")
     if not message:
-        return "ok"
+        return jsonify(ok=True)
 
     chat_id = message["chat"]["id"]
-    text = (message.get("text") or "").strip()
+    text = message.get("text", "").strip()
 
-    # /start
     if text == "/start":
-        msg = (
-            "🤖 *AION Bot активирован* ✅\n\n"
-            "Команды:\n"
-            "🚀 /aion — быстрый расчёт (сон/стресс/давление)\n"
-            "🧠 /help — помощь\n\n"
-            "Формат для /aion:\n"
-            "`/aion sleep=7.5 stress=3 bp=128/82`\n\n"
-            "⚡️ Готов принимать данные."
+        USER_STATE.pop(chat_id, None)
+        send_message(
+            chat_id,
+            "AION — система управления скоростью биологического износа.\n\nВыберите модуль:",
+            reply_markup=main_menu()
         )
-        # Telegram plain text, без Markdown-парсинга чтобы не ловить ошибки
-        send_message(chat_id, msg.replace("*", "").replace("`", ""))
-        return "ok"
+        return jsonify(ok=True)
 
-    # /help
-    if text == "/help":
-        msg = (
-            "🧠 *AION Help*\n\n"
-            "1) Быстрый ввод:\n"
-            "👉 /aion sleep=7.5 stress=3 bp=128/82\n\n"
-            "2) Что значит:\n"
-            "😴 sleep — часы сна\n"
-            "🔥 stress — стресс 0..10 (0 спокойно, 10 максимум)\n"
-            "🩸 bp — давление SYS/DIA\n\n"
-            "3) Что выдаём:\n"
-            "✅ SleepScore / StressScore / PressureScore\n"
-            "💪 Recovery\n"
-            "🧬 BioTime\n"
-        )
-        send_message(chat_id, msg.replace("*", ""))
-        return "ok"
+    # ===== BIOTIME INPUT =====
+    if USER_STATE.get(chat_id) == "biotime":
+        parts = text.split()
 
-    # /aion sleep=.. stress=.. bp=../..
-    if text.startswith("/aion"):
+        if len(parts) != 6:
+            send_message(chat_id, "Нужно 6 чисел. Пример: 7 6 8 0 0 1")
+            return jsonify(ok=True)
+
         try:
-            # дефолты
-            sleep_h = None
-            stress = None
-            sys = None
-            dia = None
+            sleep, stress, recovery, pressure, drop, risk = map(float, parts)
+        except:
+            send_message(chat_id, "Ошибка формата. Введите числа.")
+            return jsonify(ok=True)
 
-            parts = text.replace("/aion", "").strip().split()
-            for p in parts:
-                if p.startswith("sleep="):
-                    sleep_h = float(p.split("=", 1)[1])
-                elif p.startswith("stress="):
-                    stress = float(p.split("=", 1)[1])
-                elif p.startswith("bp="):
-                    bp = p.split("=", 1)[1]
-                    sys_s, dia_s = bp.split("/", 1)
-                    sys = float(sys_s)
-                    dia = float(dia_s)
+        biotime = round((sleep*1.2 + recovery*1.2 - stress) - pressure - drop - risk, 1)
 
-            if sleep_h is None or stress is None or sys is None or dia is None:
-                send_message(chat_id, "⚠️ Формат неверный. Пример:\n/aion sleep=7.5 stress=3 bp=128/82")
-                return "ok"
+        if biotime < 4:
+            level = "🔴 Высокая нагрузка"
+            advice = "Рекомендуется разгрузка"
+        elif biotime < 8:
+            level = "🟠 Средняя нагрузка"
+            advice = "Снизить объём"
+        elif biotime <= 11:
+            level = "🟡 Норма"
+            advice = "Работать без форсирования"
+        else:
+            level = "🟢 Оптимум"
+            advice = "Можно работать по плану"
 
-            s_sleep = score_sleep(sleep_h)
-            s_stress = score_stress(stress)
-            s_bp = score_pressure(sys, dia)
-            rec = aion_recovery(s_sleep, s_stress, s_bp)
-            bio = aion_biotime(rec)
+        send_message(
+            chat_id,
+            f"🧬 BioTime = {biotime}\n\n{level}\n\nРекомендация: {advice}",
+            reply_markup=main_menu()
+        )
 
-            msg = (
-                "📊 *AION • Расчёт дня* ✅\n\n"
-                f"😴 Сон: {sleep_h} ч → SleepScore: {s_sleep:.1f}\n"
-                f"🔥 Стресс: {stress}/10 → StressScore: {s_stress:.1f}\n"
-                f"🩸 Давление: {int(sys)}/{int(dia)} → PressureScore: {s_bp:.1f}\n\n"
-                f"💪 Recovery: {rec:.1f}\n"
-                f"🧬 BioTime: {bio:.1f}\n\n"
-                "⚡️ Хочешь — добавим ещё: HRV, пульс, шаги, тренировки, питание."
-            )
-            send_message(chat_id, msg.replace("*", ""))
-            return "ok"
+        USER_STATE.pop(chat_id, None)
+        return jsonify(ok=True)
 
-        except Exception as e:
-            print("AION parse error:", e)
-            send_message(chat_id, "❌ Ошибка обработки. Проверь формат:\n/aion sleep=7.5 stress=3 bp=128/82")
-            return "ok"
+    send_message(chat_id, "Выберите модуль:", reply_markup=main_menu())
+    return jsonify(ok=True)
 
-    # default
-    send_message(chat_id, "👋 Напиши /start или /aion sleep=7.5 stress=3 bp=128/82")
-    return "ok"
 
+# =========================
+# RUN
+# =========================
 
 if __name__ == "__main__":
-    # локально
-    app.run(host="0.0.0.0", port=int(os.getenv("PORT", "10000")))
-    
- 
+    app.run(host="0.0.0.0", port=PORT)
+            
