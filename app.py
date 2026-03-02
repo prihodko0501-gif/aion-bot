@@ -31,11 +31,6 @@ CB_PRESSURE = "pressure"
 CB_INFO = "info"
 CB_MENU = "menu"
 
-# ====== BioTime sub-menu ======
-CB_BIOTIME_ENTER = "biotime_enter"
-CB_BIOTIME_EXAMPLE = "biotime_example"
-CB_BIOTIME_NEW = "biotime_new"
-
 
 # ========= UI MARKUP =========
 
@@ -54,25 +49,6 @@ def main_menu_inline():
 
 def back_inline():
     return {"inline_keyboard": [[{"text": "⬅️ В меню", "callback_data": CB_MENU}]]}
-
-
-def biotime_actions_inline():
-    return {
-        "inline_keyboard": [
-            [{"text": "✅ Ввести данные", "callback_data": CB_BIOTIME_ENTER}],
-            [{"text": "⚡️ Пример", "callback_data": CB_BIOTIME_EXAMPLE}],
-            [{"text": "⬅️ В меню", "callback_data": CB_MENU}],
-        ]
-    }
-
-
-def biotime_result_inline():
-    return {
-        "inline_keyboard": [
-            [{"text": "🔄 Новый расчёт", "callback_data": CB_BIOTIME_NEW}],
-            [{"text": "⬅️ В меню", "callback_data": CB_MENU}],
-        ]
-    }
 
 
 # ========= TELEGRAM API HELPERS =========
@@ -147,16 +123,9 @@ def info_text():
     )
 
 
-def biotime_hub_text():
-    return (
-        "🧬 BioTime\n\n"
-        "Выберите действие:"
-    )
-
-
 def biotime_prompt_text():
     return (
-        "🧬 BioTime — ввод данных\n\n"
+        "🧬 BioTime модуль\n\n"
         "Введите 6 чисел через пробел:\n"
         "Sleep Stress Recovery PressurePenalty DropPenalty RiskPenalty\n\n"
         "Пример:\n"
@@ -164,17 +133,8 @@ def biotime_prompt_text():
     )
 
 
-def calc_biotime(parts):
-    sleep = float(parts[0])
-    stress = float(parts[1])
-    recovery = float(parts[2])
-    pressure_penalty = float(parts[3])
-    drop_penalty = float(parts[4])
-    risk_penalty = float(parts[5])
-    return round((sleep * 1.2 + recovery * 1.2 - stress) - pressure_penalty - drop_penalty - risk_penalty, 1)
-
-
 def result_block(biotime: float):
+    # Визуальная шкала под 12
     score = max(0.0, min(12.0, biotime))
     filled = int(round(score))
     bar = "▰" * filled + "▱" * (12 - filled)
@@ -211,6 +171,10 @@ def result_block(biotime: float):
 # ========= LIVE UI (one message) =========
 
 def ensure_ui(chat_id: int):
+    """
+    Гарантируем, что у пользователя есть одно главное сообщение интерфейса.
+    Если уже есть — редактируем его. Если нет — создаём.
+    """
     if chat_id in UI and UI[chat_id].get("message_id"):
         mid = UI[chat_id]["message_id"]
         edit_message(chat_id, mid, start_text(), main_menu_inline())
@@ -222,9 +186,24 @@ def ensure_ui(chat_id: int):
     return mid
 
 
+def set_screen(chat_id: int, text: str, reply_markup=None):
+    """
+    Обновить главное сообщение (если его нет — создать).
+    """
+    mid = UI.get(chat_id, {}).get("message_id")
+    if not mid:
+        mid = ensure_ui(chat_id)
+    if mid:
+        edit_message(chat_id, mid, text, reply_markup)
+    return mid
+
+
 # ========= FAST ANIMATION (safe for webhook) =========
 
 def core_animation(chat_id: int, mid: int):
+    """
+    Очень короткая анимация (< ~1.2 сек), чтобы не ловить 502.
+    """
     steps = [
         "🧬 BioTime\n\nИнициализация...",
         "🧠 Анализ нервной регуляции…\n▰▱▱▱▱",
@@ -232,8 +211,8 @@ def core_animation(chat_id: int, mid: int):
         "🔥 Сбор интеграла…\n▰▰▰▰▰",
     ]
     for s in steps:
-        edit_message(chat_id, mid, s, biotime_result_inline())
-        time.sleep(0.22)
+        edit_message(chat_id, mid, s, back_inline())
+        time.sleep(0.25)  # коротко
 
 
 # ========= ROUTES =========
@@ -266,6 +245,7 @@ def webhook():
         if not chat_id or not message_id:
             return jsonify({"ok": True})
 
+        # запоминаем главное сообщение интерфейса
         UI[chat_id] = {"message_id": message_id}
 
         if data == CB_MENU:
@@ -293,31 +273,9 @@ def webhook():
             edit_message(chat_id, message_id, "🫀 Pressure модуль.", back_inline())
             return jsonify({"ok": True})
 
-        # === BioTime HUB ===
         if data == CB_BIOTIME:
-            USER_STATE.pop(chat_id, None)
-            edit_message(chat_id, message_id, biotime_hub_text(), biotime_actions_inline())
-            return jsonify({"ok": True})
-
-        # === BioTime: Enter data ===
-        if data == CB_BIOTIME_ENTER:
             USER_STATE[chat_id] = {"step": "biotime_input"}
-            edit_message(chat_id, message_id, biotime_prompt_text(), biotime_actions_inline())
-            return jsonify({"ok": True})
-
-        # === BioTime: Example ===
-        if data == CB_BIOTIME_EXAMPLE:
-            example = ["7", "6", "8", "0", "0", "1"]
-            biotime = calc_biotime(example)
-            core_animation(chat_id, message_id)
-            edit_message(chat_id, message_id, result_block(biotime), biotime_result_inline())
-            USER_STATE.pop(chat_id, None)
-            return jsonify({"ok": True})
-
-        # === BioTime: New calc ===
-        if data == CB_BIOTIME_NEW:
-            USER_STATE.pop(chat_id, None)
-            edit_message(chat_id, message_id, biotime_hub_text(), biotime_actions_inline())
+            edit_message(chat_id, message_id, biotime_prompt_text(), back_inline())
             return jsonify({"ok": True})
 
         return jsonify({"ok": True})
@@ -333,8 +291,8 @@ def webhook():
     # /start или /menu — панель убрать полностью + показать один живой интерфейс
     if text in ("/start", "/menu"):
         USER_STATE.pop(chat_id, None)
-        hide_bottom_panel_silently(chat_id)
-        ensure_ui(chat_id)
+        hide_bottom_panel_silently(chat_id)   # <-- серую панель убираем
+        ensure_ui(chat_id)                    # <-- одно главное сообщение
         return jsonify({"ok": True})
 
     # ввод для BioTime
@@ -343,20 +301,28 @@ def webhook():
         mid = UI.get(chat_id, {}).get("message_id") or ensure_ui(chat_id)
 
         if len(parts) != 6:
+            # вместо спама — аккуратно обновим главное сообщение подсказкой
             if mid:
-                edit_message(chat_id, mid, "⚠️ Нужно ровно 6 чисел.\n\nПример:\n7 6 8 0 0 1", biotime_actions_inline())
+                edit_message(chat_id, mid, "⚠️ Нужно ровно 6 чисел.\n\nПример:\n7 6 8 0 0 1", back_inline())
             return jsonify({"ok": True})
 
         try:
-            biotime = calc_biotime(parts)
+            sleep = float(parts[0])
+            stress = float(parts[1])
+            recovery = float(parts[2])
+            pressure_penalty = float(parts[3])
+            drop_penalty = float(parts[4])
+            risk_penalty = float(parts[5])
         except Exception:
             if mid:
-                edit_message(chat_id, mid, "⚠️ Ошибка формата.\n\nПример:\n7 6 8 0 0 1", biotime_actions_inline())
+                edit_message(chat_id, mid, "⚠️ Ошибка формата.\n\nПример:\n7 6 8 0 0 1", back_inline())
             return jsonify({"ok": True})
 
+        biotime = round((sleep * 1.2 + recovery * 1.2 - stress) - pressure_penalty - drop_penalty - risk_penalty, 1)
+
         if mid:
-            core_animation(chat_id, mid)
-            edit_message(chat_id, mid, result_block(biotime), biotime_result_inline())
+            core_animation(chat_id, mid)  # мини-анимация
+            edit_message(chat_id, mid, result_block(biotime), back_inline())
 
         USER_STATE.pop(chat_id, None)
         return jsonify({"ok": True})
