@@ -1,5 +1,6 @@
 import os
 import time
+import threading
 import requests
 from flask import Flask, request, jsonify
 
@@ -102,8 +103,7 @@ def answer_callback(callback_query_id: str):
 
 def hide_bottom_panel_silently(chat_id: int):
     """
-    Скрываем ReplyKeyboard (серую нижнюю панель) и сразу удаляем техническое сообщение,
-    чтобы в чате ничего не осталось.
+    Убираем ReplyKeyboard (серую нижнюю панель) и удаляем тех. сообщение.
     """
     msg_id = send_message(chat_id, "…", reply_markup={"remove_keyboard": True})
     if msg_id:
@@ -201,18 +201,31 @@ def ensure_ui(chat_id: int):
     return mid
 
 
-# ========= FAST ANIMATION (safe for webhook) =========
+# ========= STREAM-LIKE ANIMATION (THREAD) =========
 
-def core_animation(chat_id: int, mid: int):
-    steps = [
-        "🧬 BioTime\n\nИнициализация...",
-        "🧠 Анализ нервной регуляции…\n▰▱▱▱▱",
-        "🫀 Анализ нагрузки…\n▰▰▰▱▱",
-        "🔥 Сбор интеграла…\n▰▰▰▰▰",
-    ]
-    for s in steps:
-        edit_message(chat_id, mid, s, biotime_result_inline())
-        time.sleep(0.22)
+def core_animation_async(chat_id: int, mid: int, biotime: float):
+    """
+    Анимация в отдельном потоке:
+    webhook отвечает сразу, а сообщение редактируется "в реальном времени".
+    """
+    def run():
+        try:
+            steps = [
+                ("🧬 BioTime\n\nИнициализация...", biotime_result_inline()),
+                ("🧠 Анализ нервной регуляции…\n▰▱▱▱▱", biotime_result_inline()),
+                ("🫀 Анализ нагрузки…\n▰▰▰▱▱", biotime_result_inline()),
+                ("🔥 Сбор интеграла…\n▰▰▰▰▰", biotime_result_inline()),
+            ]
+            for txt, mk in steps:
+                edit_message(chat_id, mid, txt, mk)
+                time.sleep(0.25)
+
+            edit_message(chat_id, mid, result_block(biotime), biotime_result_inline())
+        except Exception:
+            # молча, чтобы поток не валил процесс
+            pass
+
+    threading.Thread(target=run, daemon=True).start()
 
 
 # ========= ROUTES =========
@@ -272,13 +285,13 @@ def webhook():
             edit_message(chat_id, message_id, "🫀 Pressure модуль.", back_inline())
             return jsonify({"ok": True})
 
-        # === BioTime: сразу ввод (без двух кнопок) ===
+        # BioTime: сразу ввод (без двух кнопок)
         if data == CB_BIOTIME:
             USER_STATE[chat_id] = {"step": "biotime_input"}
             edit_message(chat_id, message_id, biotime_prompt_text(), back_inline())
             return jsonify({"ok": True})
 
-        # === BioTime: Новый расчёт -> снова на ввод ===
+        # Новый расчёт -> снова на ввод
         if data == CB_BIOTIME_NEW:
             USER_STATE[chat_id] = {"step": "biotime_input"}
             edit_message(chat_id, message_id, biotime_prompt_text(), back_inline())
@@ -318,9 +331,9 @@ def webhook():
                 edit_message(chat_id, mid, "⚠️ Ошибка формата.\n\nПример:\n7 6 8 0 0 1", back_inline())
             return jsonify({"ok": True})
 
+        # ВАЖНО: теперь анимация потоковая — webhook сразу вернёт ok
         if mid:
-            core_animation(chat_id, mid)
-            edit_message(chat_id, mid, result_block(biotime), biotime_result_inline())
+            core_animation_async(chat_id, mid, biotime)
 
         USER_STATE.pop(chat_id, None)
         return jsonify({"ok": True})
