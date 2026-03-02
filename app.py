@@ -5,9 +5,9 @@ from flask import Flask, request, jsonify
 app = Flask(__name__)
 
 TELEGRAM_TOKEN = os.environ.get("TELEGRAM_TOKEN")
-TELEGRAM_API_URL = f"https://api.telegram.org/bot{TELEGRAM_TOKEN}" if TELEGRAM_TOKEN else None
+API_URL = f"https://api.telegram.org/bot{TELEGRAM_TOKEN}" if TELEGRAM_TOKEN else None
 
-# простое состояние: когда ждём ввод 6 чисел для BioTime
+# состояние для BioTime
 USER_STATE = {}  # chat_id -> {"step": "biotime_input"}
 
 # ====== ТЕКСТЫ КНОПОК (как на фото) ======
@@ -15,7 +15,7 @@ BTN_BIOTIME = "🧬 BioTime"
 BTN_SLEEP = "💤 Sleep"
 BTN_CNS = "🧠 CNS"
 BTN_RECOVERY = "🔥 Recovery"
-BTN_PRESSURE = "🫀 Pressure"   # если хочешь именно 🫀 как на фото
+BTN_PRESSURE = "🫀 Pressure"
 BTN_INFO = "ℹ️ Info"
 
 # ====== CALLBACK DATA ======
@@ -28,7 +28,7 @@ CB_INFO = "info"
 
 
 def main_menu_inline():
-    # INLINE keyboard (кнопки под сообщением, НЕ снизу в панели)
+    # INLINE keyboard (кнопки под сообщением)
     return {
         "inline_keyboard": [
             [{"text": BTN_BIOTIME, "callback_data": CB_BIOTIME}],
@@ -42,32 +42,52 @@ def main_menu_inline():
 
 
 def send_message(chat_id: int, text: str, reply_markup=None):
-    if not TELEGRAM_API_URL:
+    if not API_URL:
         return
     payload = {"chat_id": chat_id, "text": text}
-    if reply_markup:
+    if reply_markup is not None:
         payload["reply_markup"] = reply_markup
     try:
-        requests.post(f"{TELEGRAM_API_URL}/sendMessage", json=payload, timeout=10)
+        requests.post(f"{API_URL}/sendMessage", json=payload, timeout=10)
     except Exception:
         pass
 
 
-def answer_callback(callback_query_id: str, text: str = None):
-    if not TELEGRAM_API_URL:
+def remove_bottom_panel(chat_id: int):
+    """
+    Удаляет ReplyKeyboard (серую нижнюю панель), если она когда-то была включена.
+    Делается отдельным сообщением — это самый надёжный способ.
+    """
+    if not API_URL:
         return
-    payload = {"callback_query_id": callback_query_id}
-    if text:
-        payload["text"] = text
-        payload["show_alert"] = False
     try:
-        requests.post(f"{TELEGRAM_API_URL}/answerCallbackQuery", json=payload, timeout=10)
+        requests.post(
+            f"{API_URL}/sendMessage",
+            json={
+                "chat_id": chat_id,
+                "text": "✅ Панель скрыта.",
+                "reply_markup": {"remove_keyboard": True}
+            },
+            timeout=10
+        )
+    except Exception:
+        pass
+
+
+def answer_callback(callback_query_id: str):
+    if not API_URL:
+        return
+    try:
+        requests.post(
+            f"{API_URL}/answerCallbackQuery",
+            json={"callback_query_id": callback_query_id},
+            timeout=10
+        )
     except Exception:
         pass
 
 
 def start_text():
-    # Описание как на твоём скрине (можешь править формулировку)
     return (
         "AION — система управления скоростью\n"
         "биологического износа, основанная на\n"
@@ -77,7 +97,6 @@ def start_text():
 
 
 def info_text():
-    # Блок описания как на фото
     return (
         "ℹ️ AION\n"
         "AION — система управления скоростью\n"
@@ -117,7 +136,6 @@ def webhook():
         if not chat_id:
             return jsonify({"ok": True})
 
-        # BioTime
         if data == CB_BIOTIME:
             USER_STATE[chat_id] = {"step": "biotime_input"}
             send_message(
@@ -125,12 +143,10 @@ def webhook():
                 "🧬 BioTime модуль.\n\n"
                 "Введите 6 чисел. Пример:\n"
                 "7 6 8 0 0 1",
-                # меню можно не прикреплять, но удобно оставить:
                 reply_markup=main_menu_inline()
             )
             return jsonify({"ok": True})
 
-        # Остальные модули — короткие ответы как на скрине
         if data == CB_SLEEP:
             send_message(chat_id, "💤 Sleep модуль.", reply_markup=main_menu_inline())
             return jsonify({"ok": True})
@@ -161,13 +177,14 @@ def webhook():
     if not chat_id:
         return jsonify({"ok": True})
 
-    # /start или /menu — показать меню (inline)
+    # /start или /menu — сначала УДАЛЯЕМ нижнюю панель, затем показываем inline-меню
     if text in ("/start", "/menu"):
         USER_STATE.pop(chat_id, None)
+        remove_bottom_panel(chat_id)               # <-- ВАЖНО: это убьёт серую панель
         send_message(chat_id, start_text(), reply_markup=main_menu_inline())
         return jsonify({"ok": True})
 
-    # Если ждём ввод для BioTime
+    # ждём ввод для BioTime
     if USER_STATE.get(chat_id, {}).get("step") == "biotime_input":
         parts = text.split()
         if len(parts) != 6:
@@ -205,10 +222,11 @@ def webhook():
             f"🧬 BioTime = {biotime}\n{level}\n\nРекомендация: {advice}",
             reply_markup=main_menu_inline()
         )
+
         USER_STATE.pop(chat_id, None)
         return jsonify({"ok": True})
 
-    # Любой другой текст — просто вернём меню
+    # любой другой текст — просто меню inline
     send_message(chat_id, "Выберите модуль:", reply_markup=main_menu_inline())
     return jsonify({"ok": True})
 
@@ -216,6 +234,3 @@ def webhook():
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", "8080"))
     app.run(host="0.0.0.0", port=port)
-        
-   
-
