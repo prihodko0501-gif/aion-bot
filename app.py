@@ -101,6 +101,11 @@ def answer_callback(callback_query_id: str):
     api_post("answerCallbackQuery", {"callback_query_id": callback_query_id})
 
 
+def send_typing(chat_id: int):
+    # эффект "печатает..."
+    api_post("sendChatAction", {"chat_id": chat_id, "action": "typing"})
+
+
 def hide_bottom_panel_silently(chat_id: int):
     """
     Убираем ReplyKeyboard (серую нижнюю панель) и удаляем тех. сообщение.
@@ -205,24 +210,35 @@ def ensure_ui(chat_id: int):
 
 def core_animation_async(chat_id: int, mid: int, biotime: float):
     """
-    Анимация в отдельном потоке:
-    webhook отвечает сразу, а сообщение редактируется "в реальном времени".
+    Потоковая анимация + typing:
+    webhook отвечает сразу, а интерфейс "оживает" после.
     """
     def run():
         try:
+            stop_flag = {"stop": False}
+
+            def typing_loop():
+                while not stop_flag["stop"]:
+                    send_typing(chat_id)
+                    time.sleep(4)  # typing держится ~5 сек
+
+            threading.Thread(target=typing_loop, daemon=True).start()
+
             steps = [
                 ("🧬 BioTime\n\nИнициализация...", biotime_result_inline()),
                 ("🧠 Анализ нервной регуляции…\n▰▱▱▱▱", biotime_result_inline()),
                 ("🫀 Анализ нагрузки…\n▰▰▰▱▱", biotime_result_inline()),
                 ("🔥 Сбор интеграла…\n▰▰▰▰▰", biotime_result_inline()),
             ]
+
             for txt, mk in steps:
                 edit_message(chat_id, mid, txt, mk)
-                time.sleep(0.25)
+                time.sleep(0.35)
 
             edit_message(chat_id, mid, result_block(biotime), biotime_result_inline())
+
+            stop_flag["stop"] = True
         except Exception:
-            # молча, чтобы поток не валил процесс
             pass
 
     threading.Thread(target=run, daemon=True).start()
@@ -285,7 +301,7 @@ def webhook():
             edit_message(chat_id, message_id, "🫀 Pressure модуль.", back_inline())
             return jsonify({"ok": True})
 
-        # BioTime: сразу ввод (без двух кнопок)
+        # BioTime: сразу ввод
         if data == CB_BIOTIME:
             USER_STATE[chat_id] = {"step": "biotime_input"}
             edit_message(chat_id, message_id, biotime_prompt_text(), back_inline())
@@ -307,7 +323,7 @@ def webhook():
     if not chat_id:
         return jsonify({"ok": True})
 
-    # /start или /menu — панель убрать полностью + показать один живой интерфейс
+    # /start или /menu — убрать серую панель + показать интерфейс
     if text in ("/start", "/menu"):
         USER_STATE.pop(chat_id, None)
         hide_bottom_panel_silently(chat_id)
@@ -331,14 +347,14 @@ def webhook():
                 edit_message(chat_id, mid, "⚠️ Ошибка формата.\n\nПример:\n7 6 8 0 0 1", back_inline())
             return jsonify({"ok": True})
 
-        # ВАЖНО: теперь анимация потоковая — webhook сразу вернёт ok
+        # Потоковая анимация: webhook сразу возвращает ok
         if mid:
             core_animation_async(chat_id, mid, biotime)
 
         USER_STATE.pop(chat_id, None)
         return jsonify({"ok": True})
 
-    # любой другой текст — возвращаем интерфейс (без спама)
+    # любой другой текст — просто вернём интерфейс (без спама)
     ensure_ui(chat_id)
     return jsonify({"ok": True})
 
