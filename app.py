@@ -15,7 +15,6 @@ TELEGRAM_TOKEN = os.environ.get("TELEGRAM_TOKEN")
 API_URL = f"https://api.telegram.org/bot{TELEGRAM_TOKEN}" if TELEGRAM_TOKEN else None
 DATABASE_URL = os.environ.get("DATABASE_URL")  # Render Postgres
 
-
 # ====== ТЕКСТЫ КНОПОК ======
 BTN_BIOTIME = "🧬 BioTime"
 BTN_SLEEP = "💤 Sleep"
@@ -44,27 +43,19 @@ def db_conn():
     return psycopg2.connect(DATABASE_URL, sslmode="require")
 
 def db_exec(query, params=None, fetchone=False, fetchall=False):
-    """
-    Безопасный executor: не валит webhook, если БД временно недоступна/таблиц нет.
-    """
     if not db_enabled():
         return None
-    try:
-        with db_conn() as conn:
-            with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
-                cur.execute(query, params or ())
-                if fetchone:
-                    return cur.fetchone()
-                if fetchall:
-                    return cur.fetchall()
-                return None
-    except Exception as e:
-        print("DB ERROR:", repr(e))
-        return None
+    with db_conn() as conn:
+        with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+            cur.execute(query, params or ())
+            if fetchone:
+                return cur.fetchone()
+            if fetchall:
+                return cur.fetchall()
+            return None
 
 def init_db():
     if not db_enabled():
-        print("DB disabled: no DATABASE_URL")
         return
 
     db_exec("""
@@ -106,6 +97,23 @@ def init_db():
     );
     """)
 
+def get_state(telegram_id: int):
+    if not db_enabled():
+        return None
+    return db_exec("SELECT * FROM user_state WHERE telegram_id=%s", (telegram_id,), fetchone=True)
+
+def set_state(telegram_id: int, step: str | None = None, ui_message_id: int | None = None):
+    if not db_enabled():
+        return
+    db_exec("""
+        INSERT INTO user_state (telegram_id, step, ui_message_id, updated_at)
+        VALUES (%s,%s,%s,NOW())
+        ON CONFLICT (telegram_id) DO UPDATE
+        SET step=EXCLUDED.step,
+            ui_message_id=COALESCE(EXCLUDED.ui_message_id, user_state.ui_message_id),
+            updated_at=NOW();
+    """, (telegram_id, step, ui_message_id))
+
 def parse_start_payload(text: str):
     parts = (text or "").strip().split()
     if len(parts) >= 2 and parts[1].startswith("ref_"):
@@ -126,23 +134,6 @@ def get_or_create_user(telegram_id: int, username: str | None, referred_by: str 
         (telegram_id, username, ref_code, referred_by)
     )
     return db_exec("SELECT * FROM users WHERE telegram_id=%s", (telegram_id,), fetchone=True)
-
-def set_state(telegram_id: int, step: str | None = None, ui_message_id: int | None = None):
-    if not db_enabled():
-        return
-    db_exec("""
-        INSERT INTO user_state (telegram_id, step, ui_message_id, updated_at)
-        VALUES (%s,%s,%s,NOW())
-        ON CONFLICT (telegram_id) DO UPDATE
-        SET step=EXCLUDED.step,
-            ui_message_id=COALESCE(EXCLUDED.ui_message_id, user_state.ui_message_id),
-            updated_at=NOW();
-    """, (telegram_id, step, ui_message_id))
-
-def get_state(telegram_id: int):
-    if not db_enabled():
-        return None
-    return db_exec("SELECT * FROM user_state WHERE telegram_id=%s", (telegram_id,), fetchone=True)
 
 
 # ========= UI MARKUP =========
@@ -178,12 +169,9 @@ def api_post(method: str, payload: dict, timeout: int = 10):
         return None
     try:
         r = requests.post(f"{API_URL}/{method}", json=payload, timeout=timeout)
-        if r.status_code == 200:
-            return r.json()
-        print("TG ERROR:", r.status_code, r.text[:300])
-    except Exception as e:
-        print("TG EXC:", repr(e))
-    return None
+        return r.json() if r.content else None
+    except Exception:
+        return None
 
 def send_message(chat_id: int, text: str, reply_markup=None):
     payload = {"chat_id": chat_id, "text": text}
@@ -194,12 +182,26 @@ def send_message(chat_id: int, text: str, reply_markup=None):
         return data["result"]["message_id"]
     return None
 
-def edit_message(chat_id: int, message_id: int, text: str, reply_markup=None) -> bool:
+def edit_message(chat_id: int, message_id: int, text: str, reply_markup=None):
     payload = {"chat_id": chat_id, "message_id": message_id, "text": text}
     if reply_markup is not None:
         payload["reply_markup"] = reply_markup
-    data = api_post("editMessageText", payload)
-    return bool(data and data.get("ok"))
+    return api_post("editMessageText", payload)
+
+def safe_edit_or_send(chat_id: int, message_id: int | None, text: str, reply_markup=None):
+    """
+    Анти-спам: сначала пытаемся отредактировать одно сообщение.
+    Если не получилось — отправляем новое и сохраняем его как UI.
+    """
+    if message_id:
+        res = edit_message(chat_id, message_id, text, reply_markup)
+        if res and res.get("ok"):
+            return message_id
+
+    new_id = send_message(chat_id, text, reply_markup)
+    if new_id and db_enabled():
+        set_state(chat_id, step=None, ui_message_id=new_id)
+    return new_id
 
 def delete_message(chat_id: int, message_id: int):
     api_post("deleteMessage", {"chat_id": chat_id, "message_id": message_id})
@@ -290,28 +292,6 @@ def result_block(biotime: float):
     )
 
 
-# ========= LIVE UI (one message) =========
-
-def ensure_ui(chat_id: int):
-    """
-    Гарантирует ОДНО “живое” сообщение.
-    Если оно есть — редактируем.
-    Если Telegram не даёт редактировать (например, удалено) — создаём новое.
-    """
-    st = get_state(chat_id) if db_enabled() else None
-    mid = st.get("ui_message_id") if st else None
-
-    if mid:
-        ok = edit_message(chat_id, mid, start_text(), main_menu_inline())
-        if ok:
-            return mid
-
-    mid = send_message(chat_id, start_text(), main_menu_inline())
-    if mid and db_enabled():
-        set_state(chat_id, step=None, ui_message_id=mid)
-    return mid
-
-
 # ========= STREAM-LIKE ANIMATION (THREAD) =========
 
 def core_animation_async(chat_id: int, mid: int, biotime: float):
@@ -328,10 +308,18 @@ def core_animation_async(chat_id: int, mid: int, biotime: float):
                 time.sleep(0.25)
 
             edit_message(chat_id, mid, result_block(biotime), biotime_result_inline())
-        except Exception as e:
-            print("ANIM ERROR:", repr(e))
+        except Exception:
+            pass
 
     threading.Thread(target=run, daemon=True).start()
+
+
+# ========= STARTUP: IMPORTANT FOR GUNICORN =========
+# На Render gunicorn НЕ выполняет __main__, поэтому DB init должен быть здесь.
+try:
+    init_db()
+except Exception:
+    pass
 
 
 # ========= ROUTES =========
@@ -364,39 +352,48 @@ def webhook():
         if not chat_id or not message_id:
             return jsonify({"ok": True})
 
+        # фиксируем “живое сообщение” в БД
         if db_enabled():
             set_state(chat_id, step=None, ui_message_id=message_id)
 
         if data == CB_MENU:
-            edit_message(chat_id, message_id, start_text(), main_menu_inline())
-            if db_enabled():
-                set_state(chat_id, step=None, ui_message_id=message_id)
+            safe_edit_or_send(chat_id, message_id, start_text(), main_menu_inline())
+            set_state(chat_id, step=None, ui_message_id=message_id)
             return jsonify({"ok": True})
 
         if data == CB_INFO:
-            edit_message(chat_id, message_id, info_text(), back_inline())
+            safe_edit_or_send(chat_id, message_id, info_text(), back_inline())
+            set_state(chat_id, step=None, ui_message_id=message_id)
             return jsonify({"ok": True})
 
         if data == CB_SLEEP:
-            edit_message(chat_id, message_id, "💤 Sleep модуль.", back_inline())
+            safe_edit_or_send(chat_id, message_id, "💤 Sleep модуль.", back_inline())
+            set_state(chat_id, step=None, ui_message_id=message_id)
             return jsonify({"ok": True})
 
         if data == CB_CNS:
-            edit_message(chat_id, message_id, "🧠 CNS модуль.", back_inline())
+            safe_edit_or_send(chat_id, message_id, "🧠 CNS модуль.", back_inline())
+            set_state(chat_id, step=None, ui_message_id=message_id)
             return jsonify({"ok": True})
 
         if data == CB_RECOVERY:
-            edit_message(chat_id, message_id, "🔥 Recovery модуль.", back_inline())
+            safe_edit_or_send(chat_id, message_id, "🔥 Recovery модуль.", back_inline())
+            set_state(chat_id, step=None, ui_message_id=message_id)
             return jsonify({"ok": True})
 
         if data == CB_PRESSURE:
-            edit_message(chat_id, message_id, "🫀 Pressure модуль.", back_inline())
+            safe_edit_or_send(chat_id, message_id, "🫀 Pressure модуль.", back_inline())
+            set_state(chat_id, step=None, ui_message_id=message_id)
             return jsonify({"ok": True})
 
-        if data in (CB_BIOTIME, CB_BIOTIME_NEW):
-            edit_message(chat_id, message_id, biotime_prompt_text(), back_inline())
-            if db_enabled():
-                set_state(chat_id, step="biotime_input", ui_message_id=message_id)
+        if data == CB_BIOTIME:
+            safe_edit_or_send(chat_id, message_id, biotime_prompt_text(), back_inline())
+            set_state(chat_id, step="biotime_input", ui_message_id=message_id)
+            return jsonify({"ok": True})
+
+        if data == CB_BIOTIME_NEW:
+            safe_edit_or_send(chat_id, message_id, biotime_prompt_text(), back_inline())
+            set_state(chat_id, step="biotime_input", ui_message_id=message_id)
             return jsonify({"ok": True})
 
         return jsonify({"ok": True})
@@ -410,6 +407,10 @@ def webhook():
     if not chat_id:
         return jsonify({"ok": True})
 
+    st = get_state(chat_id) if db_enabled() else None
+    mid = st.get("ui_message_id") if st else None
+
+    # /start или /menu
     if text.startswith("/start") or text == "/menu":
         hide_bottom_panel_silently(chat_id)
 
@@ -417,29 +418,27 @@ def webhook():
             referred_by = parse_start_payload(text) if text.startswith("/start") else None
             get_or_create_user(chat_id, username, referred_by)
 
-        mid = ensure_ui(chat_id)
+        mid = safe_edit_or_send(chat_id, mid, start_text(), main_menu_inline())
         if db_enabled():
             set_state(chat_id, step=None, ui_message_id=mid)
-
         return jsonify({"ok": True})
 
-    st = get_state(chat_id) if db_enabled() else None
+    # ввод для BioTime
     if st and st.get("step") == "biotime_input":
         parts = text.split()
-        mid = st.get("ui_message_id") or ensure_ui(chat_id)
+        mid = st.get("ui_message_id") or mid
 
         if len(parts) != 6:
-            if mid:
-                edit_message(chat_id, mid, "⚠️ Нужно ровно 6 чисел.\n\nПример:\n7 6 8 0 0 1", back_inline())
+            safe_edit_or_send(chat_id, mid, "⚠️ Нужно ровно 6 чисел.\n\nПример:\n7 6 8 0 0 1", back_inline())
             return jsonify({"ok": True})
 
         try:
             biotime = calc_biotime(parts)
         except Exception:
-            if mid:
-                edit_message(chat_id, mid, "⚠️ Ошибка формата.\n\nПример:\n7 6 8 0 0 1", back_inline())
+            safe_edit_or_send(chat_id, mid, "⚠️ Ошибка формата.\n\nПример:\n7 6 8 0 0 1", back_inline())
             return jsonify({"ok": True})
 
+        # сохранить в БД
         if db_enabled():
             try:
                 sleep_i, stress_i, rec_i, ppen, dpen, rpen = map(int, parts)
@@ -454,9 +453,10 @@ def webhook():
                     sleep_i, stress_i, rec_i, ppen, dpen, rpen,
                     biotime, status, level, advice
                 ))
-            except Exception as e:
-                print("INSERT ERROR:", repr(e))
+            except Exception:
+                pass
 
+        # анимация
         if mid:
             core_animation_async(chat_id, mid, biotime)
 
@@ -465,10 +465,8 @@ def webhook():
 
         return jsonify({"ok": True})
 
-    ensure_ui(chat_id)
+    # любой другой текст — просто возвращаем меню в том же UI (без новых сообщений)
+    mid = safe_edit_or_send(chat_id, mid, start_text(), main_menu_inline())
+    if db_enabled():
+        set_state(chat_id, step=None, ui_message_id=mid)
     return jsonify({"ok": True})
-
-
-# ВАЖНО: под gunicorn этот файл импортируется, поэтому БД надо инициализировать здесь
-init_db()
-print("INIT OK. DB enabled =", db_enabled())
