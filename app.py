@@ -7,10 +7,13 @@ app = Flask(__name__)
 TELEGRAM_TOKEN = os.environ.get("TELEGRAM_TOKEN")
 API_URL = f"https://api.telegram.org/bot{TELEGRAM_TOKEN}" if TELEGRAM_TOKEN else None
 
-# состояние для BioTime
-USER_STATE = {}  # chat_id -> {"step": "biotime_input"}
+# chat_id -> {"step": "..."}
+USER_STATE = {}
 
-# ====== ТЕКСТЫ КНОПОК (как на фото) ======
+# chat_id -> {"message_id": int}  (главное сообщение интерфейса)
+UI = {}
+
+# ====== ТЕКСТЫ КНОПОК ======
 BTN_BIOTIME = "🧬 BioTime"
 BTN_SLEEP = "💤 Sleep"
 BTN_CNS = "🧠 CNS"
@@ -25,10 +28,10 @@ CB_CNS = "cns"
 CB_RECOVERY = "recovery"
 CB_PRESSURE = "pressure"
 CB_INFO = "info"
+CB_MENU = "menu"
 
 
 def main_menu_inline():
-    # INLINE keyboard (кнопки под сообщением)
     return {
         "inline_keyboard": [
             [{"text": BTN_BIOTIME, "callback_data": CB_BIOTIME}],
@@ -41,50 +44,59 @@ def main_menu_inline():
     }
 
 
-def send_message(chat_id: int, text: str, reply_markup=None):
+def back_inline():
+    return {"inline_keyboard": [[{"text": "⬅️ В меню", "callback_data": CB_MENU}]]}
+
+
+def api_post(method: str, payload: dict, timeout: int = 10):
     if not API_URL:
-        return
+        return None
+    try:
+        r = requests.post(f"{API_URL}/{method}", json=payload, timeout=timeout)
+        if r.status_code == 200:
+            return r.json()
+    except Exception:
+        pass
+    return None
+
+
+def send_message(chat_id: int, text: str, reply_markup=None):
     payload = {"chat_id": chat_id, "text": text}
     if reply_markup is not None:
         payload["reply_markup"] = reply_markup
-    try:
-        requests.post(f"{API_URL}/sendMessage", json=payload, timeout=10)
-    except Exception:
-        pass
+    data = api_post("sendMessage", payload)
+    if data and data.get("ok"):
+        return data["result"]["message_id"]
+    return None
 
 
-def remove_bottom_panel(chat_id: int):
-    """
-    Удаляет ReplyKeyboard (серую нижнюю панель), если она когда-то была включена.
-    Делается отдельным сообщением — это самый надёжный способ.
-    """
-    if not API_URL:
-        return
-    try:
-        requests.post(
-            f"{API_URL}/sendMessage",
-            json={
-                "chat_id": chat_id,
-                "text": "✅ Панель скрыта.",
-                "reply_markup": {"remove_keyboard": True}
-            },
-            timeout=10
-        )
-    except Exception:
-        pass
+def edit_message(chat_id: int, message_id: int, text: str, reply_markup=None):
+    payload = {"chat_id": chat_id, "message_id": message_id, "text": text}
+    if reply_markup is not None:
+        payload["reply_markup"] = reply_markup
+    api_post("editMessageText", payload)
+
+
+def delete_message(chat_id: int, message_id: int):
+    api_post("deleteMessage", {"chat_id": chat_id, "message_id": message_id})
 
 
 def answer_callback(callback_query_id: str):
-    if not API_URL:
-        return
-    try:
-        requests.post(
-            f"{API_URL}/answerCallbackQuery",
-            json={"callback_query_id": callback_query_id},
-            timeout=10
-        )
-    except Exception:
-        pass
+    api_post("answerCallbackQuery", {"callback_query_id": callback_query_id})
+
+
+def hide_bottom_panel_silently(chat_id: int):
+    """
+    Скрываем ReplyKeyboard (серую панель) и сразу удаляем техническое сообщение,
+    чтобы в чате ничего не осталось.
+    """
+    msg_id = send_message(
+        chat_id,
+        "…",
+        reply_markup={"remove_keyboard": True}
+    )
+    if msg_id:
+        delete_message(chat_id, msg_id)
 
 
 def start_text():
@@ -98,17 +110,30 @@ def start_text():
 
 def info_text():
     return (
-        "ℹ️ AION\n"
-        "AION — система управления скоростью\n"
-        "биологического износа.\n\n"
-        "🧬 BioTime — интегральная оценка\n"
-        "восстановления.\n"
+        "ℹ️ AION\n\n"
+        "🧬 BioTime — интегральная оценка восстановления.\n"
         "🫀 Pressure — давление и пульс.\n"
         "💤 Sleep — сон.\n"
         "🧠 CNS — нервная система.\n"
         "🔥 Recovery — восстановление.\n\n"
         "Выбирай модуль в меню."
     )
+
+
+def ensure_ui(chat_id: int):
+    """
+    Гарантируем, что у пользователя есть одно главное сообщение интерфейса.
+    Если уже есть — редактируем его. Если нет — создаём.
+    """
+    if chat_id in UI and UI[chat_id].get("message_id"):
+        mid = UI[chat_id]["message_id"]
+        edit_message(chat_id, mid, start_text(), main_menu_inline())
+        return mid
+
+    mid = send_message(chat_id, start_text(), main_menu_inline())
+    if mid:
+        UI[chat_id] = {"message_id": mid}
+    return mid
 
 
 @app.get("/")
@@ -123,72 +148,86 @@ def webhook():
 
     update = request.get_json(silent=True) or {}
 
-    # ====== 1) INLINE нажатия ======
+    # ====== INLINE нажатия ======
     if "callback_query" in update:
         cq = update["callback_query"]
         callback_query_id = cq.get("id")
         data = cq.get("data")
-        chat_id = cq.get("message", {}).get("chat", {}).get("id")
+
+        msg = cq.get("message") or {}
+        chat_id = (msg.get("chat") or {}).get("id")
+        message_id = msg.get("message_id")
 
         if callback_query_id:
             answer_callback(callback_query_id)
 
-        if not chat_id:
+        if not chat_id or not message_id:
+            return jsonify({"ok": True})
+
+        # запоминаем главное сообщение интерфейса
+        UI[chat_id] = {"message_id": message_id}
+
+        if data == CB_MENU:
+            USER_STATE.pop(chat_id, None)
+            edit_message(chat_id, message_id, start_text(), main_menu_inline())
+            return jsonify({"ok": True})
+
+        if data == CB_INFO:
+            edit_message(chat_id, message_id, info_text(), back_inline())
+            return jsonify({"ok": True})
+
+        if data == CB_SLEEP:
+            edit_message(chat_id, message_id, "💤 Sleep модуль.", back_inline())
+            return jsonify({"ok": True})
+
+        if data == CB_CNS:
+            edit_message(chat_id, message_id, "🧠 CNS модуль.", back_inline())
+            return jsonify({"ok": True})
+
+        if data == CB_RECOVERY:
+            edit_message(chat_id, message_id, "🔥 Recovery модуль.", back_inline())
+            return jsonify({"ok": True})
+
+        if data == CB_PRESSURE:
+            edit_message(chat_id, message_id, "🫀 Pressure модуль.", back_inline())
             return jsonify({"ok": True})
 
         if data == CB_BIOTIME:
             USER_STATE[chat_id] = {"step": "biotime_input"}
-            send_message(
+            edit_message(
                 chat_id,
+                message_id,
                 "🧬 BioTime модуль.\n\n"
-                "Введите 6 чисел. Пример:\n"
+                "Введите 6 чисел через пробел:\n"
+                "Sleep Stress Recovery PressurePenalty DropPenalty RiskPenalty\n\n"
+                "Пример:\n"
                 "7 6 8 0 0 1",
-                reply_markup=main_menu_inline()
+                back_inline()
             )
-            return jsonify({"ok": True})
-
-        if data == CB_SLEEP:
-            send_message(chat_id, "💤 Sleep модуль.", reply_markup=main_menu_inline())
-            return jsonify({"ok": True})
-
-        if data == CB_CNS:
-            send_message(chat_id, "🧠 CNS модуль.", reply_markup=main_menu_inline())
-            return jsonify({"ok": True})
-
-        if data == CB_RECOVERY:
-            send_message(chat_id, "🔥 Recovery модуль.", reply_markup=main_menu_inline())
-            return jsonify({"ok": True})
-
-        if data == CB_PRESSURE:
-            send_message(chat_id, "🫀 Pressure модуль.", reply_markup=main_menu_inline())
-            return jsonify({"ok": True})
-
-        if data == CB_INFO:
-            send_message(chat_id, info_text(), reply_markup=main_menu_inline())
             return jsonify({"ok": True})
 
         return jsonify({"ok": True})
 
-    # ====== 2) Обычные сообщения ======
+    # ====== обычные сообщения ======
     message = update.get("message") or {}
-    chat_id = message.get("chat", {}).get("id")
+    chat_id = (message.get("chat") or {}).get("id")
     text = (message.get("text") or "").strip()
 
     if not chat_id:
         return jsonify({"ok": True})
 
-    # /start или /menu — сначала УДАЛЯЕМ нижнюю панель, затем показываем inline-меню
+    # /start или /menu — панель убрать полностью + показать один живой интерфейс
     if text in ("/start", "/menu"):
         USER_STATE.pop(chat_id, None)
-        remove_bottom_panel(chat_id)               # <-- ВАЖНО: это убьёт серую панель
-        send_message(chat_id, start_text(), reply_markup=main_menu_inline())
+        hide_bottom_panel_silently(chat_id)   # <-- панель исчезает полностью
+        ensure_ui(chat_id)                    # <-- одно главное сообщение интерфейса
         return jsonify({"ok": True})
 
-    # ждём ввод для BioTime
+    # ввод для BioTime
     if USER_STATE.get(chat_id, {}).get("step") == "biotime_input":
         parts = text.split()
         if len(parts) != 6:
-            send_message(chat_id, "Нужно 6 чисел. Пример:\n7 6 8 0 0 1", reply_markup=main_menu_inline())
+            # не спамим сообщениями — просто игнорим неверный ввод
             return jsonify({"ok": True})
 
         try:
@@ -199,7 +238,6 @@ def webhook():
             drop_penalty = float(parts[4])
             risk_penalty = float(parts[5])
         except Exception:
-            send_message(chat_id, "Ошибка формата. Введи 6 чисел через пробел.", reply_markup=main_menu_inline())
             return jsonify({"ok": True})
 
         biotime = round((sleep * 1.2 + recovery * 1.2 - stress) - pressure_penalty - drop_penalty - risk_penalty, 1)
@@ -217,20 +255,27 @@ def webhook():
             level = "🟢 Оптимум"
             advice = "Работай по плану"
 
-        send_message(
-            chat_id,
-            f"🧬 BioTime = {biotime}\n{level}\n\nРекомендация: {advice}",
-            reply_markup=main_menu_inline()
-        )
+        mid = UI.get(chat_id, {}).get("message_id")
+        if not mid:
+            mid = ensure_ui(chat_id)
+
+        if mid:
+            edit_message(
+                chat_id,
+                mid,
+                f"🧬 BioTime = {biotime}\n{level}\n\nРекомендация: {advice}",
+                back_inline()
+            )
 
         USER_STATE.pop(chat_id, None)
         return jsonify({"ok": True})
 
-    # любой другой текст — просто меню inline
-    send_message(chat_id, "Выберите модуль:", reply_markup=main_menu_inline())
+    # любой другой текст — просто возвращаем интерфейс (без спама)
+    ensure_ui(chat_id)
     return jsonify({"ok": True})
 
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", "8080"))
     app.run(host="0.0.0.0", port=port)
+
