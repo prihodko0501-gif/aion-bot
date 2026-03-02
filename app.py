@@ -7,9 +7,8 @@ app = Flask(__name__)
 TOKEN = os.getenv("TELEGRAM_TOKEN")
 API_URL = f"https://api.telegram.org/bot{TOKEN}" if TOKEN else None
 
-# =========================
-# КНОПКИ (как на фото)
-# =========================
+USER_STATE = {}
+
 BTN_BIOTIME = "🧬 BioTime"
 BTN_SLEEP = "💤 Sleep"
 BTN_CNS = "🧠 CNS"
@@ -17,55 +16,27 @@ BTN_RECOVERY = "🔥 Recovery"
 BTN_PRESSURE = "🫀 Pressure"
 BTN_INFO = "ℹ️ Info"
 
-# состояние пользователя
-USER_STATE = {}
 
-
-# =========================
-# КЛАВИАТУРА
-# =========================
-def main_keyboard():
-    return {
-        "keyboard": [
-            [{"text": BTN_BIOTIME}],
-            [{"text": BTN_SLEEP}, {"text": BTN_CNS}],
-            [{"text": BTN_RECOVERY}, {"text": BTN_PRESSURE}],
-            [{"text": BTN_INFO}],
-        ],
-        "resize_keyboard": True,
-        "is_persistent": True
-    }
-
-
-# =========================
-# ОТПРАВКА СООБЩЕНИЙ
-# =========================
-def send(chat_id, text):
+def send(chat_id, text, remove_keyboard=False):
     if not API_URL:
         return
 
-    requests.post(
-        f"{API_URL}/sendMessage",
-        json={
-            "chat_id": chat_id,
-            "text": text,
-            "reply_markup": main_keyboard()
-        },
-        timeout=10
-    )
+    payload = {
+        "chat_id": chat_id,
+        "text": text
+    }
+
+    if remove_keyboard:
+        payload["reply_markup"] = {"remove_keyboard": True}
+
+    requests.post(f"{API_URL}/sendMessage", json=payload, timeout=10)
 
 
-# =========================
-# HEALTH CHECK
-# =========================
 @app.get("/")
 def home():
     return "AION is alive 🚀", 200
 
 
-# =========================
-# WEBHOOK
-# =========================
 @app.post("/webhook")
 def webhook():
     update = request.get_json()
@@ -76,23 +47,21 @@ def webhook():
     if not chat_id:
         return jsonify({"ok": True})
 
-    # =====================
-    # /start (БЛОКАМИ)
-    # =====================
+    # /start — убираем клавиатуру
     if text == "/start":
         USER_STATE.pop(chat_id, None)
 
         send(chat_id,
              "AION — система управления скоростью\n"
              "биологического износа, основанная на\n"
-             "анализе твоей физиологии.")
+             "анализе твоей физиологии.",
+             remove_keyboard=True)
 
-        send(chat_id, "Выберите модуль:")
+        send(chat_id, "Напишите название модуля:\n"
+                      "BioTime / Sleep / CNS / Recovery / Pressure / Info")
         return jsonify({"ok": True})
 
-    # =====================
-    # BIO TIME ВВОД
-    # =====================
+    # BioTime ввод
     if USER_STATE.get(chat_id) == "biotime":
         parts = text.split()
 
@@ -103,72 +72,52 @@ def webhook():
         try:
             sleep, stress, recovery, p, d, r = map(float, parts)
         except:
-            send(chat_id, "Ошибка формата. Только числа через пробел.")
+            send(chat_id, "Ошибка формата. Только числа.")
             return jsonify({"ok": True})
 
         score = round((sleep*1.2 + recovery*1.2 - stress) - p - d - r, 1)
 
-        if score < 4:
-            status = "🔴 Высокая нагрузка"
-        elif score < 8:
-            status = "🟠 Средняя нагрузка"
-        elif score <= 11:
-            status = "🟡 Норма"
-        else:
-            status = "🟢 Оптимум"
-
-        send(chat_id,
-             f"🧬 BioTime = {score}\n"
-             f"{status}")
-
+        send(chat_id, f"🧬 BioTime = {score}")
         USER_STATE.pop(chat_id, None)
         return jsonify({"ok": True})
 
-    # =====================
-    # КНОПКИ
-    # =====================
-    if text == BTN_BIOTIME:
+    # Текстовая обработка
+    if text.lower() == "biotime":
         USER_STATE[chat_id] = "biotime"
-        send(chat_id,
-             "🧬 BioTime модуль.\n\n"
-             "Введите 6 чисел:\n"
-             "Sleep Stress Recovery Pressure Drop Risk")
+        send(chat_id, "Введите 6 чисел через пробел.")
         return jsonify({"ok": True})
 
-    if text == BTN_SLEEP:
+    if text.lower() == "sleep":
         send(chat_id, "💤 Sleep модуль.")
         return jsonify({"ok": True})
 
-    if text == BTN_CNS:
+    if text.lower() == "cns":
         send(chat_id, "🧠 CNS модуль.")
         return jsonify({"ok": True})
 
-    if text == BTN_RECOVERY:
+    if text.lower() == "recovery":
         send(chat_id, "🔥 Recovery модуль.")
         return jsonify({"ok": True})
 
-    if text == BTN_PRESSURE:
+    if text.lower() == "pressure":
         send(chat_id, "🫀 Pressure модуль.")
         return jsonify({"ok": True})
 
-    if text == BTN_INFO:
+    if text.lower() == "info":
         send(chat_id,
              "ℹ️ AION\n\n"
-             "🧬 BioTime — интегральная оценка восстановления.\n"
-             "🫀 Pressure — давление и пульс.\n"
-             "💤 Sleep — сон.\n"
-             "🧠 CNS — нервная система.\n"
-             "🔥 Recovery — восстановление.\n\n"
-             "Выбирайте модуль.")
+             "🧬 BioTime — оценка восстановления\n"
+             "🫀 Pressure — давление\n"
+             "💤 Sleep — сон\n"
+             "🧠 CNS — нервная система\n"
+             "🔥 Recovery — восстановление")
         return jsonify({"ok": True})
 
-    # если что-то другое
-    send(chat_id, "Выберите модуль:")
+    send(chat_id, "Введите название модуля.")
     return jsonify({"ok": True})
 
 
 if __name__ == "__main__":
     port = int(os.getenv("PORT", 8080))
     app.run(host="0.0.0.0", port=port)
-        
-        
+  
