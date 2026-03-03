@@ -708,6 +708,18 @@ def webhook():
     ensure_ui(chat_id)
     return jsonify({"ok": True}), 200
 
+@app.get("/dbfix")
+def dbfix():
+    if not db_enabled():
+        return "DB disabled", 200
 
+    try:
+        db_exec("""
+        ALTER TABLE biotime_entries
+        ADD COLUMN IF NOT EXISTS payload_json JSONB;
+        """)
+        return "DB FIX OK", 200
+    except Exception as e:
+        return f"DB FIX ERROR: {e}", 500
 # init DB under gunicorn (импортируется один раз при старте воркера)
 init_db()
