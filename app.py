@@ -3,6 +3,7 @@ import time
 import json
 import threading
 from datetime import date
+from typing import Optional, Dict, Any
 
 import requests
 from flask import Flask, request, jsonify
@@ -15,7 +16,7 @@ app = Flask(__name__)
 TELEGRAM_TOKEN = os.environ.get("TELEGRAM_TOKEN")
 API_URL = f"https://api.telegram.org/bot{TELEGRAM_TOKEN}" if TELEGRAM_TOKEN else None
 DATABASE_URL = os.environ.get("DATABASE_URL")  # Render Postgres
-ADMIN_KEY = os.environ.get("ADMIN_KEY", "")
+
 
 # ========= BUTTONS =========
 BTN_BIOTIME = "🧬 BioTime"
@@ -55,7 +56,7 @@ WIZ_ORDER = [
 ]
 
 # ========= MEMORY FALLBACK =========
-MEM_STATE = {}  # chat_id -> {"ui_message_id": int|None, "step": str|None, "payload": dict}
+MEM_STATE: Dict[int, Dict[str, Any]] = {}  # chat_id -> {"ui_message_id": int|None, "step": str|None, "payload": dict}
 
 
 # =========================
@@ -69,7 +70,7 @@ def db_conn():
     return psycopg2.connect(DATABASE_URL, sslmode="require")
 
 
-def db_exec(query, params=None, fetchone=False, fetchall=False):
+def db_exec(query: str, params=None, fetchone=False, fetchall=False):
     if not db_enabled():
         return None
     try:
@@ -91,6 +92,7 @@ def init_db():
         print("DB disabled: DATABASE_URL not set. Using memory.")
         return
 
+    # state table
     db_exec(
         """
         CREATE TABLE IF NOT EXISTS aion_state (
@@ -102,13 +104,15 @@ def init_db():
         );
         """
     )
+
+    # entries table (with payload_json)
     db_exec(
         """
         CREATE TABLE IF NOT EXISTS biotime_entries (
             id BIGSERIAL PRIMARY KEY,
             telegram_id BIGINT NOT NULL,
             entry_date DATE NOT NULL,
-            payload_json JSONB NOT NULL,
+            payload_json JSONB NOT NULL DEFAULT '{}'::jsonb,
             biotime_value NUMERIC NOT NULL,
             status TEXT,
             level TEXT,
@@ -117,10 +121,16 @@ def init_db():
         );
         """
     )
+
+    # harden for old schema (if table existed without payload_json)
+    db_exec("ALTER TABLE biotime_entries ADD COLUMN IF NOT EXISTS payload_json JSONB;")
+    db_exec("ALTER TABLE biotime_entries ALTER COLUMN payload_json SET DEFAULT '{}'::jsonb;")
+    db_exec("UPDATE biotime_entries SET payload_json='{}'::jsonb WHERE payload_json IS NULL;")
+
     print("DB init ok")
 
 
-def get_state(chat_id: int):
+def get_state(chat_id: int) -> Dict[str, Any]:
     if db_enabled():
         row = db_exec("SELECT * FROM aion_state WHERE telegram_id=%s", (chat_id,), fetchone=True)
         if row:
@@ -173,7 +183,7 @@ def set_state(chat_id: int, ui_message_id=None, step=None, payload=None):
     )
 
 
-def clear_wizard(chat_id: int, keep_ui=True):
+def clear_wizard(chat_id: int, keep_ui: bool = True):
     st = get_state(chat_id)
     ui_mid = st.get("ui_message_id") if keep_ui else None
 
@@ -221,36 +231,48 @@ def api_post(method: str, payload: dict, timeout: int = 12):
     try:
         r = requests.post(f"{API_URL}/{method}", json=payload, timeout=timeout)
         data = r.json() if r.content else None
+
         if r.status_code == 200:
             return data
-        print("TG ERROR", r.status_code, data or r.text)
+
+        # suppress noisy "message is not modified"
+        desc = ""
+        try:
+            desc = (data.get("description") or "").lower() if isinstance(data, dict) else ""
+        except Exception:
+            desc = ""
+
+        if r.status_code == 400 and "message is not modified" in desc:
+            return data
+
+        print("TG ERROR", r.status_code, data if isinstance(data, dict) else (r.text or "")[:500])
         return data
     except Exception as e:
         print("TG EXC", repr(e))
         return None
 
 
-def send_message(chat_id: int, text: str, reply_markup=None):
+def send_message(chat_id: int, text: str, reply_markup=None) -> Optional[int]:
     payload = {"chat_id": chat_id, "text": text}
     if reply_markup is not None:
         payload["reply_markup"] = reply_markup
     data = api_post("sendMessage", payload)
-    if data and data.get("ok"):
+    if data and isinstance(data, dict) and data.get("ok"):
         return data["result"]["message_id"]
     return None
 
 
 def edit_message(chat_id: int, message_id: int, text: str, reply_markup=None) -> bool:
     """
-    True  = edit успешен или TG 400 "message is not modified" (считаем ок)
-    False = сообщение не найдено/нельзя редактировать/прочие ошибки
+    True if edit OK (including 'message is not modified').
+    False if message not found / can't be edited (so we create new UI message).
     """
     payload = {"chat_id": chat_id, "message_id": message_id, "text": text}
     if reply_markup is not None:
         payload["reply_markup"] = reply_markup
     data = api_post("editMessageText", payload)
 
-    if not data:
+    if not data or not isinstance(data, dict):
         return False
 
     if data.get("ok"):
@@ -269,7 +291,7 @@ def delete_message(chat_id: int, message_id: int):
     api_post("deleteMessage", {"chat_id": chat_id, "message_id": message_id})
 
 
-def try_delete_user_message(chat_id: int, message_id):
+def try_delete_user_message(chat_id: int, message_id: Optional[int]):
     if not message_id:
         return
     try:
@@ -364,11 +386,11 @@ def clamp(x, a, b):
     return max(a, min(b, x))
 
 
-def parse_float(text: str):
+def parse_float(text: str) -> float:
     return float((text or "").strip().replace(",", "."))
 
 
-def parse_int(text: str):
+def parse_int(text: str) -> int:
     return int(float((text or "").strip().replace(",", ".")))
 
 
@@ -400,7 +422,7 @@ def parse_pressure(text: str):
     return {"sys": sys, "dia": dia, "pulse": pulse}
 
 
-def compute_biotime_from_payload(p: dict):
+def compute_biotime_from_payload(p: dict) -> float:
     sleep_h = float(p["sleep_hours"])
     latency = int(p["latency_min"])
     awaken = int(p["awakenings"])
@@ -446,9 +468,8 @@ def compute_biotime_from_payload(p: dict):
         drop_penalty += 0.5
 
     biotime = round(
-        (sleep_score * 0.6 + recovery * 0.8 - stress * 0.7) + 6.0
-        - pressure_penalty - drop_penalty - risk_penalty,
-        1
+        (sleep_score * 0.6 + recovery * 0.8 - stress * 0.7) + 6.0 - pressure_penalty - drop_penalty - risk_penalty,
+        1,
     )
     return clamp(biotime, 0.0, 12.0)
 
@@ -473,7 +494,7 @@ def classify_biotime(biotime: float):
     return status, level, advice
 
 
-def result_block(biotime: float):
+def result_block(biotime: float) -> str:
     filled = int(round(biotime))
     bar = "▰" * filled + "▱" * (12 - filled)
     status, level, advice = classify_biotime(biotime)
@@ -489,31 +510,32 @@ def result_block(biotime: float):
     )
 
 
-# ===== APRO FORMULA (фикс) =====
-def calc_biotime_pro(parts):
+# ===== APRO formula фиксируем как рабочую =====
+def calc_biotime_pro(parts) -> float:
     sleep = float(parts[0])
     stress = float(parts[1])
     recovery = float(parts[2])
     pressure_penalty = float(parts[3])
     drop_penalty = float(parts[4])
     risk_penalty = float(parts[5])
-    # BioTime = round((Sleep*1.2 + Recovery*1.2 - Stress) - PressurePenalty - DropPenalty - RiskPenalty, 1), clamp 0–12
-    return round((sleep * 1.2 + recovery * 1.2 - stress) - pressure_penalty - drop_penalty - risk_penalty, 1)
+
+    biotime = round((sleep * 1.2 + recovery * 1.2 - stress) - pressure_penalty - drop_penalty - risk_penalty, 1)
+    return clamp(biotime, 0.0, 12.0)
 
 
-def ensure_ui(chat_id: int):
+def ensure_ui(chat_id: int) -> Optional[int]:
     """
-    Single UI-message:
-    - если ui_message_id есть → пытаемся edit
-    - если edit не удалось → отправляем новое и сохраняем id
+    Single UI message:
+    - if ui_message_id exists, try edit
+    - if edit fails (deleted/not found), send new + save id
     """
     st = get_state(chat_id)
     mid = st.get("ui_message_id")
 
     if mid:
-        ok = edit_message(chat_id, mid, start_text(), main_menu_inline())
+        ok = edit_message(chat_id, int(mid), start_text(), main_menu_inline())
         if ok:
-            return mid
+            return int(mid)
 
     new_mid = send_message(chat_id, start_text(), main_menu_inline())
     if new_mid:
@@ -540,7 +562,7 @@ def core_animation_async(chat_id: int, mid: int, biotime: float):
     threading.Thread(target=run, daemon=True).start()
 
 
-def next_step(step: str):
+def next_step(step: str) -> Optional[str]:
     try:
         i = WIZ_ORDER.index(step)
         return WIZ_ORDER[i + 1] if i + 1 < len(WIZ_ORDER) else None
@@ -563,88 +585,21 @@ def home():
 
 @app.get("/dbfix")
 def dbfix():
-    """
-    Чинит старую таблицу, если она была создана ранее без payload_json.
-    Запускаешь 1 раз после деплоя:
-      https://<service>.onrender.com/dbfix?key=ADMIN_KEY
-    """
-    key = request.args.get("key", "")
-    if not ADMIN_KEY or key != ADMIN_KEY:
-        return jsonify({"ok": False, "error": "unauthorized"}), 401
-
+    # no keys, no auth, simple fix for schema drift
     if not db_enabled():
-        return jsonify({"ok": False, "error": "DB disabled"}), 200
-
+        return "DB disabled", 200
     try:
-        # 1) гарантируем колонку payload_json
         db_exec("ALTER TABLE biotime_entries ADD COLUMN IF NOT EXISTS payload_json JSONB;")
         db_exec("ALTER TABLE biotime_entries ALTER COLUMN payload_json SET DEFAULT '{}'::jsonb;")
-
-        # 2) если вдруг раньше была колонка payload (или payload_text), пробуем перелить
-        db_exec(
-            """
-            DO $$
-            BEGIN
-              IF EXISTS (
-                SELECT 1 FROM information_schema.columns
-                WHERE table_name='biotime_entries' AND column_name='payload'
-              ) THEN
-                EXECUTE 'UPDATE biotime_entries SET payload_json = COALESCE(payload_json, payload::jsonb) WHERE payload_json IS NULL';
-              END IF;
-
-              IF EXISTS (
-                SELECT 1 FROM information_schema.columns
-                WHERE table_name='biotime_entries' AND column_name='payload_text'
-              ) THEN
-                EXECUTE 'UPDATE biotime_entries SET payload_json = COALESCE(payload_json, payload_text::jsonb) WHERE payload_json IS NULL';
-              END IF;
-            END $$;
-            """
-        )
-
-        # 3) если колонка стала NULL у старых строк — зафиксируем пустым json
         db_exec("UPDATE biotime_entries SET payload_json='{}'::jsonb WHERE payload_json IS NULL;")
-
         return "DB FIX OK", 200
     except Exception as e:
         return f"DB FIX ERROR: {e}", 500
 
 
-@app.get("/entries")
-def entries():
-    """
-    Просмотр последних 20 записей по telegram_id:
-      https://<service>.onrender.com/entries?key=ADMIN_KEY&telegram_id=123
-    """
-    key = request.args.get("key", "")
-    if not ADMIN_KEY or key != ADMIN_KEY:
-        return jsonify({"ok": False, "error": "unauthorized"}), 401
-
-    if not db_enabled():
-        return jsonify({"ok": False, "error": "DB disabled"}), 200
-
-    telegram_id = request.args.get("telegram_id", type=int)
-    if not telegram_id:
-        return jsonify({"ok": False, "error": "telegram_id required"}), 400
-
-    rows = db_exec(
-        """
-        SELECT id, telegram_id, entry_date, biotime_value, status, level, recommendation, payload_json, created_at
-        FROM biotime_entries
-        WHERE telegram_id=%s
-        ORDER BY id DESC
-        LIMIT 20
-        """,
-        (telegram_id,),
-        fetchall=True,
-    ) or []
-
-    return jsonify({"ok": True, "count": len(rows), "rows": rows}), 200
-
-
 @app.post("/webhook")
 def webhook():
-    # ВСЕГДА 200, чтобы не было ретраев/спама от Telegram
+    # ВСЕГДА 200, чтобы не было ретраев/спама
     try:
         if not TELEGRAM_TOKEN:
             return jsonify({"ok": True, "error": "No TELEGRAM_TOKEN"}), 200
@@ -667,36 +622,36 @@ def webhook():
             if not chat_id or not message_id:
                 return jsonify({"ok": True}), 200
 
-            # фиксируем текущее UI сообщение
-            set_state(chat_id, ui_message_id=message_id, step=None, payload=None)
+            # UI message is always the message where inline keyboard is
+            set_state(int(chat_id), ui_message_id=int(message_id), step=None, payload=None)
 
             if data == CB_MENU:
-                clear_wizard(chat_id, keep_ui=True)
-                edit_message(chat_id, message_id, start_text(), main_menu_inline())
+                clear_wizard(int(chat_id), keep_ui=True)
+                edit_message(int(chat_id), int(message_id), start_text(), main_menu_inline())
                 return jsonify({"ok": True}), 200
 
             if data == CB_INFO:
-                edit_message(chat_id, message_id, info_text(), back_inline())
+                edit_message(int(chat_id), int(message_id), info_text(), back_inline())
                 return jsonify({"ok": True}), 200
 
             if data == CB_SLEEP:
-                edit_message(chat_id, message_id, "💤 Sleep модуль (скоро).", back_inline())
+                edit_message(int(chat_id), int(message_id), "💤 Sleep модуль (скоро).", back_inline())
                 return jsonify({"ok": True}), 200
 
             if data == CB_CNS:
-                edit_message(chat_id, message_id, "🧠 CNS модуль (скоро).", back_inline())
+                edit_message(int(chat_id), int(message_id), "🧠 CNS модуль (скоро).", back_inline())
                 return jsonify({"ok": True}), 200
 
             if data == CB_RECOVERY:
-                edit_message(chat_id, message_id, "🔥 Recovery модуль (скоро).", back_inline())
+                edit_message(int(chat_id), int(message_id), "🔥 Recovery модуль (скоро).", back_inline())
                 return jsonify({"ok": True}), 200
 
             if data == CB_PRESSURE:
-                edit_message(chat_id, message_id, "🫀 Pressure модуль (скоро).", back_inline())
+                edit_message(int(chat_id), int(message_id), "🫀 Pressure модуль (скоро).", back_inline())
                 return jsonify({"ok": True}), 200
 
             if data in (CB_BIOTIME, CB_BIOTIME_NEW):
-                start_biotime_wizard(chat_id, message_id)
+                start_biotime_wizard(int(chat_id), int(message_id))
                 return jsonify({"ok": True}), 200
 
             return jsonify({"ok": True}), 200
@@ -710,33 +665,35 @@ def webhook():
         if not chat_id:
             return jsonify({"ok": True}), 200
 
-        # лог для быстрого поиска telegram_id в Render logs
-        print("CHAT_ID:", chat_id, "TEXT:", text[:60])
+        chat_id = int(chat_id)
 
-        # /start /menu — НЕ удаляем сообщение пользователя, просто показываем меню
+        # /start /menu (НЕ удаляем сообщение пользователя)
         if text.startswith("/start") or text == "/menu":
             clear_wizard(chat_id, keep_ui=True)
             ensure_ui(chat_id)
             return jsonify({"ok": True}), 200
 
-        # /pro fast mode — удаляем сообщение пользователя (чтобы не мусорить)
+        # /pro fast mode (можно удалять, но если бесит — закомментируй)
         if text.startswith("/pro"):
             try_delete_user_message(chat_id, incoming_message_id)
 
             parts = text.split()
             mid = get_state(chat_id).get("ui_message_id") or ensure_ui(chat_id)
 
+            if not mid:
+                return jsonify({"ok": True}), 200
+
             if len(parts) != 7:
-                edit_message(chat_id, mid, "⚠️ Формат:\n/pro 7 6 8 0 0 1\n\n" + pro_hint_text(), back_inline())
+                edit_message(chat_id, int(mid), "⚠️ Формат:\n/pro 7 6 8 0 0 1\n\n" + pro_hint_text(), back_inline())
                 return jsonify({"ok": True}), 200
 
             try:
-                biotime = clamp(calc_biotime_pro(parts[1:]), 0.0, 12.0)
+                biotime = calc_biotime_pro(parts[1:])
             except Exception:
-                edit_message(chat_id, mid, "⚠️ Ошибка формата.\n\n" + pro_hint_text(), back_inline())
+                edit_message(chat_id, int(mid), "⚠️ Ошибка формата.\n\n" + pro_hint_text(), back_inline())
                 return jsonify({"ok": True}), 200
 
-            core_animation_async(chat_id, mid, biotime)
+            core_animation_async(chat_id, int(mid), float(biotime))
             return jsonify({"ok": True}), 200
 
         # Wizard input
@@ -745,7 +702,11 @@ def webhook():
         payload = st.get("payload") or {}
         mid = st.get("ui_message_id") or ensure_ui(chat_id)
 
+        if not mid:
+            return jsonify({"ok": True}), 200
+
         if step:
+            # удаляем только ответы внутри визарда (чтобы чат был чистый)
             try_delete_user_message(chat_id, incoming_message_id)
 
             try:
@@ -794,13 +755,13 @@ def webhook():
                     return jsonify({"ok": True}), 200
 
             except Exception:
-                edit_message(chat_id, mid, "⚠️ Не понял значение.\n\n" + prompt(step), back_inline())
+                edit_message(chat_id, int(mid), "⚠️ Не понял значение.\n\n" + prompt(step), back_inline())
                 return jsonify({"ok": True}), 200
 
             nxt = next_step(step)
             if nxt:
-                set_state(chat_id, ui_message_id=mid, step=nxt, payload=payload)
-                edit_message(chat_id, mid, prompt(nxt), back_inline())
+                set_state(chat_id, ui_message_id=int(mid), step=nxt, payload=payload)
+                edit_message(chat_id, int(mid), prompt(nxt), back_inline())
                 return jsonify({"ok": True}), 200
 
             # FINALIZE
@@ -808,22 +769,22 @@ def webhook():
                 biotime = compute_biotime_from_payload(payload)
                 status, level, advice = classify_biotime(biotime)
                 save_biotime_entry(chat_id, payload, biotime, status, level, advice)
-                core_animation_async(chat_id, mid, biotime)
+                core_animation_async(chat_id, int(mid), biotime)
             except Exception as e:
                 print("FINALIZE ERROR:", repr(e))
-                edit_message(chat_id, mid, "⚠️ Ошибка расчёта. Нажми «Новый расчёт».", biotime_result_inline())
+                edit_message(chat_id, int(mid), "⚠️ Ошибка расчёта. Нажми «Новый расчёт».", biotime_result_inline())
 
             clear_wizard(chat_id, keep_ui=True)
             return jsonify({"ok": True}), 200
 
-        # любой другой текст: просто гарантируем UI (не спамим меню каждый раз)
+        # любой другой текст: не спамим, но UI гарантируем
         ensure_ui(chat_id)
         return jsonify({"ok": True}), 200
 
     except Exception as e:
-        print("WEBHOOK FATAL:", repr(e))
+        print("WEBHOOK ERROR:", repr(e))
         return jsonify({"ok": True}), 200
 
 
-# init DB under gunicorn (импортируется один раз на воркер)
+# init DB under gunicorn (импортируется один раз)
 init_db()
