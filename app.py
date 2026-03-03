@@ -20,6 +20,25 @@ DATABASE_URL = os.environ.get("DATABASE_URL")  # Render Postgres (optional)
 MEM_STATE = {}   # chat_id -> {"step": str|None, "payload": dict}
 MEM_UI = {}      # chat_id -> {"ui_message_id": int|None}
 
+# ====== anti-spam (dedup updates) ======
+PROCESSED_UPDATES = {}
+PROCESSED_TTL = 300  # seconds
+PROCESSED_LOCK = threading.Lock()
+
+def seen_update(update_id):
+    if update_id is None:
+        return False
+    now = time.time()
+    with PROCESSED_LOCK:
+        old = [k for k, ts in PROCESSED_UPDATES.items() if now - ts > PROCESSED_TTL]
+        for k in old:
+            PROCESSED_UPDATES.pop(k, None)
+        if update_id in PROCESSED_UPDATES:
+            return True
+        PROCESSED_UPDATES[update_id] = now
+        return False
+
+
 # ====== BUTTONS ======
 BTN_BIOTIME = "🧬 BioTime"
 BTN_SLEEP = "💤 Sleep"
@@ -56,6 +75,10 @@ WIZ_ORDER = [
     STEP_BT_ENERGY,
     STEP_BT_PRESSURE,
 ]
+
+def is_wizard_step(step: str | None) -> bool:
+    return step in WIZ_ORDER
+
 
 # =========================
 # DB LAYER (safe)
@@ -138,19 +161,27 @@ def get_or_create_user(telegram_id: int, username: str | None, referred_by: str 
         (telegram_id, username, ref_code, referred_by)
     )
 
+def _mem_state(chat_id: int):
+    step = MEM_STATE.get(chat_id, {}).get("step")
+    payload = MEM_STATE.get(chat_id, {}).get("payload", {})
+    ui_mid = MEM_UI.get(chat_id, {}).get("ui_message_id")
+    return {"telegram_id": chat_id, "step": step, "payload_json": payload, "ui_message_id": ui_mid}
+
 def get_state(chat_id: int):
+    """
+    Источник истины: БД, если доступна.
+    Если БД не отвечает — memory fallback.
+    """
     if db_enabled():
         row = db_exec("SELECT * FROM user_state WHERE telegram_id=%s", (chat_id,), fetchone=True)
         if row is not None:
+            # нормализуем
+            row["payload_json"] = row.get("payload_json") or {}
             return row
-    return {
-        "telegram_id": chat_id,
-        "step": MEM_STATE.get(chat_id, {}).get("step"),
-        "ui_message_id": MEM_UI.get(chat_id, {}).get("ui_message_id"),
-        "payload_json": MEM_STATE.get(chat_id, {}).get("payload", {}),
-    }
+    return _mem_state(chat_id)
 
 def set_state(chat_id: int, step=None, ui_message_id=None, payload=None):
+    # memory always
     if chat_id not in MEM_STATE:
         MEM_STATE[chat_id] = {"step": None, "payload": {}}
     if chat_id not in MEM_UI:
@@ -163,10 +194,10 @@ def set_state(chat_id: int, step=None, ui_message_id=None, payload=None):
     if ui_message_id is not None:
         MEM_UI[chat_id]["ui_message_id"] = ui_message_id
 
+    # db best-effort
     if not db_enabled():
         return
 
-    # IMPORTANT: если step/payload=None, не перетираем ими БД (COALESCE)
     step_db = step if step is not None else None
     payload_db = psycopg2.extras.Json(payload) if payload is not None else None
 
@@ -181,9 +212,9 @@ def set_state(chat_id: int, step=None, ui_message_id=None, payload=None):
     """, (chat_id, step_db, ui_message_id, payload_db))
 
 def clear_state(chat_id: int, keep_ui: bool = True):
-    """Сбрасываем step/payload, но оставляем ui_message_id, чтобы не плодить спам."""
     st = get_state(chat_id)
     ui_mid = st.get("ui_message_id") if keep_ui else None
+
     MEM_STATE[chat_id] = {"step": None, "payload": {}}
     if keep_ui:
         MEM_UI[chat_id] = {"ui_message_id": ui_mid}
@@ -196,13 +227,13 @@ def clear_state(chat_id: int, keep_ui: bool = True):
     if keep_ui:
         db_exec("""
             INSERT INTO user_state (telegram_id, step, ui_message_id, payload_json, updated_at)
-            VALUES (%s,%s,%s,%s,NOW())
+            VALUES (%s,NULL,%s,'{}'::jsonb,NOW())
             ON CONFLICT (telegram_id) DO UPDATE
             SET step=NULL,
                 payload_json='{}'::jsonb,
                 ui_message_id=COALESCE(EXCLUDED.ui_message_id, user_state.ui_message_id),
                 updated_at=NOW();
-        """, (chat_id, None, ui_mid, psycopg2.extras.Json({})))
+        """, (chat_id, ui_mid))
     else:
         db_exec("DELETE FROM user_state WHERE telegram_id=%s", (chat_id,))
 
@@ -465,18 +496,13 @@ def calc_biotime_pro(parts):
     risk_penalty = float(parts[5])
     return round((sleep * 1.2 + recovery * 1.2 - stress) - pressure_penalty - drop_penalty - risk_penalty, 1)
 
-def ensure_ui(chat_id: int):
-    st = get_state(chat_id)
-    mid = st.get("ui_message_id")
-    if mid:
-        edit_message(chat_id, mid, start_text(), main_menu_inline())
-        return mid
-
-    mid = send_message(chat_id, start_text(), main_menu_inline())
-    if mid:
-        # сохраняем только ui, не трогаем step/payload
-        set_state(chat_id, step=None, ui_message_id=mid, payload=None)
-    return mid
+def biotime_result_inline():
+    return {
+        "inline_keyboard": [
+            [{"text": "🔄 Новый расчёт", "callback_data": CB_BIOTIME_NEW}],
+            [{"text": "⬅️ В меню", "callback_data": CB_MENU}],
+        ]
+    }
 
 def core_animation_async(chat_id: int, mid: int, biotime: float):
     def run():
@@ -502,6 +528,36 @@ def next_step(step: str):
     except Exception:
         return None
 
+# ---------- ключевой фикс ----------
+def ensure_ui(chat_id: int):
+    """
+    Если user в визарде — НЕ показываем меню.
+    Если user не в визарде — показываем меню.
+    """
+    st = get_state(chat_id)
+    mid = st.get("ui_message_id")
+    step = st.get("step")
+
+    if mid:
+        if is_wizard_step(step):
+            # держим экран визарда (не трогаем меню)
+            edit_message(chat_id, mid, prompt(step), back_inline())
+        else:
+            edit_message(chat_id, mid, start_text(), main_menu_inline())
+        return mid
+
+    # нет ui_message_id -> создаём
+    if is_wizard_step(step):
+        mid = send_message(chat_id, prompt(step), back_inline())
+        if mid:
+            set_state(chat_id, ui_message_id=mid)
+        return mid
+
+    mid = send_message(chat_id, start_text(), main_menu_inline())
+    if mid:
+        set_state(chat_id, ui_message_id=mid)
+    return mid
+
 def start_biotime_wizard(chat_id: int, message_id: int):
     set_state(chat_id, step=STEP_BT_SLEEP_HOURS, ui_message_id=message_id, payload={})
     edit_message(chat_id, message_id, prompt(STEP_BT_SLEEP_HOURS), back_inline())
@@ -520,6 +576,8 @@ def webhook():
         return jsonify({"error": "No TELEGRAM_TOKEN"}), 500
 
     update = request.get_json(silent=True) or {}
+    if seen_update(update.get("update_id")):
+        return jsonify({"ok": True})
 
     # ==== CALLBACKS ====
     if "callback_query" in update:
@@ -537,8 +595,9 @@ def webhook():
         if not chat_id or not message_id:
             return jsonify({"ok": True})
 
+        # remember UI message id (do not overwrite step/payload)
         st = get_state(chat_id)
-        set_state(chat_id, step=st.get("step"), ui_message_id=message_id, payload=st.get("payload_json") or {})
+        set_state(chat_id, ui_message_id=message_id, step=st.get("step"), payload=st.get("payload_json") or {})
 
         if data == CB_MENU:
             clear_state(chat_id, keep_ui=True)
@@ -590,6 +649,7 @@ def webhook():
             referred_by = parse_start_payload(text) if text.startswith("/start") else None
             get_or_create_user(chat_id, username, referred_by)
 
+        clear_state(chat_id, keep_ui=True)
         ensure_ui(chat_id)
         return jsonify({"ok": True})
 
@@ -616,8 +676,8 @@ def webhook():
     payload = st.get("payload_json") or {}
     mid = st.get("ui_message_id") or ensure_ui(chat_id)
 
-    if step:
-        # ✅ убираем введённые пользователем цифры/строку
+    if is_wizard_step(step):
+        # удаляем ввод пользователя (чтобы цифры не висели)
         try_delete_user_message(chat_id, incoming_message_id)
 
         try:
@@ -660,16 +720,10 @@ def webhook():
             elif step == STEP_BT_PRESSURE:
                 payload["pressure"] = parse_pressure(text)
 
-            else:
-                clear_state(chat_id, keep_ui=True)
-                edit_message(chat_id, mid, start_text(), main_menu_inline())
-                return jsonify({"ok": True})
-
         except Exception:
             edit_message(chat_id, mid, "⚠️ Не понял значение.\n\n" + prompt(step), back_inline())
             return jsonify({"ok": True})
 
-        # persist + next
         nxt = next_step(step)
         if nxt:
             set_state(chat_id, step=nxt, ui_message_id=mid, payload=payload)
@@ -689,7 +743,7 @@ def webhook():
         clear_state(chat_id, keep_ui=True)
         return jsonify({"ok": True})
 
-    # default: не сбрасываем визард (его нет), просто показываем меню
+    # default: не в визарде -> показываем меню
     ensure_ui(chat_id)
     return jsonify({"ok": True})
 
