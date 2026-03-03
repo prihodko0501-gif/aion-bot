@@ -1,6 +1,4 @@
-flask 
+flask
 gunicorn
-requests 
+requests
 psycopg2-binary
-gspread
-google-auth
