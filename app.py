@@ -634,14 +634,11 @@ def webhook():
         return jsonify({"ok": True}), 200
 
     # /start /menu
-    if text.startswith("/start") or text == "/menu":
-        # удаляем /start (чтобы было чисто), но даже если не получится — ок
-        try_delete_user_message(chat_id, incoming_message_id)
-        hide_bottom_panel_silently(chat_id)
-
-        clear_wizard(chat_id, keep_ui=True)
-        ensure_ui(chat_id)
-        return jsonify({"ok": True}), 200
+   if text.startswith("/start") or text == "/menu":
+    # НЕ удаляем сообщение пользователя и НЕ шлём "…"
+    clear_wizard(chat_id, keep_ui=True)
+    ensure_ui(chat_id)
+    return jsonify({"ok": True}), 200
 
     # /pro fast mode
     if text.startswith("/pro"):
