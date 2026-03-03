@@ -13,16 +13,13 @@ app = Flask(__name__)
 
 TELEGRAM_TOKEN = os.environ.get("TELEGRAM_TOKEN")
 API_URL = f"https://api.telegram.org/bot{TELEGRAM_TOKEN}" if TELEGRAM_TOKEN else None
-DATABASE_URL = os.environ.get("DATABASE_URL")  # Render Postgres (optional)
 
-# =========================
-# MEMORY FALLBACK
-# =========================
-MEM = {}  # chat_id -> {"step": str|None, "payload": dict, "ui_message_id": int|None}
+DATABASE_URL = os.environ.get("DATABASE_URL")  # MUST be set in Render Web Service env
 
-# =========================
-# BUTTONS / CALLBACKS
-# =========================
+# ====== In-memory fallback (only if DB missing/down) ======
+MEM_STATE = {}  # chat_id -> {"step": str|None, "payload": dict, "ui_message_id": int|None}
+
+# ====== BUTTONS / CALLBACKS ======
 BTN_BIOTIME = "🧬 BioTime"
 BTN_SLEEP = "💤 Sleep"
 BTN_CNS = "🧠 CNS"
@@ -39,9 +36,7 @@ CB_INFO = "info"
 CB_MENU = "menu"
 CB_BIOTIME_NEW = "biotime_new"
 
-# =========================
-# BioTime wizard steps
-# =========================
+# ====== BioTime wizard steps ======
 STEP_BT_SLEEP_HOURS = "bt_sleep_hours"
 STEP_BT_LATENCY_MIN = "bt_latency_min"
 STEP_BT_AWAKENINGS = "bt_awakenings"
@@ -60,14 +55,18 @@ WIZ_ORDER = [
     STEP_BT_PRESSURE,
 ]
 
+
 # =========================
-# DB helpers
+# DB
 # =========================
 def db_enabled() -> bool:
     return bool(DATABASE_URL)
 
+
 def db_conn():
+    # sslmode=require works for Render Postgres
     return psycopg2.connect(DATABASE_URL, sslmode="require")
+
 
 def db_exec(query, params=None, fetchone=False, fetchall=False):
     if not db_enabled():
@@ -85,131 +84,152 @@ def db_exec(query, params=None, fetchone=False, fetchall=False):
         print("DB ERROR:", repr(e))
         return None
 
+
 def init_db():
     if not db_enabled():
-        print("DB disabled: DATABASE_URL not set. Using memory.")
+        print("DB disabled: DATABASE_URL not set. Using memory fallback only.")
         return
 
-    db_exec("""
-    CREATE TABLE IF NOT EXISTS user_state (
-        telegram_id BIGINT PRIMARY KEY,
-        step TEXT,
-        ui_message_id BIGINT,
-        payload_json JSONB,
-        updated_at TIMESTAMP NOT NULL DEFAULT NOW()
-    );
-    """)
-    db_exec("""
-    CREATE TABLE IF NOT EXISTS biotime_entries (
-        id SERIAL PRIMARY KEY,
-        telegram_id BIGINT NOT NULL,
-        entry_date DATE NOT NULL,
-        payload_json JSONB,
-        biotime_value NUMERIC NOT NULL,
-        status TEXT,
-        level TEXT,
-        recommendation TEXT,
-        created_at TIMESTAMP NOT NULL DEFAULT NOW()
-    );
-    """)
+    db_exec(
+        """
+        CREATE TABLE IF NOT EXISTS user_state (
+            telegram_id BIGINT PRIMARY KEY,
+            step TEXT,
+            ui_message_id BIGINT,
+            payload_json JSONB NOT NULL DEFAULT '{}'::jsonb,
+            updated_at TIMESTAMP NOT NULL DEFAULT NOW()
+        );
+        """
+    )
+
+    db_exec(
+        """
+        CREATE TABLE IF NOT EXISTS biotime_entries (
+            id BIGSERIAL PRIMARY KEY,
+            telegram_id BIGINT NOT NULL,
+            entry_date DATE NOT NULL,
+            payload_json JSONB NOT NULL,
+            biotime_value NUMERIC NOT NULL,
+            status TEXT,
+            level TEXT,
+            recommendation TEXT,
+            created_at TIMESTAMP NOT NULL DEFAULT NOW()
+        );
+        """
+    )
     print("DB init ok")
 
-def mem_get(chat_id: int):
-    if chat_id not in MEM:
-        MEM[chat_id] = {"step": None, "payload": {}, "ui_message_id": None}
-    return MEM[chat_id]
 
-def get_state(chat_id: int):
-    # DB first
+def get_state(chat_id: int) -> dict:
     if db_enabled():
         row = db_exec("SELECT * FROM user_state WHERE telegram_id=%s", (chat_id,), fetchone=True)
         if row:
             return {
+                "telegram_id": chat_id,
                 "step": row.get("step"),
                 "ui_message_id": row.get("ui_message_id"),
-                "payload": row.get("payload_json") or {},
+                "payload_json": row.get("payload_json") or {},
             }
+
     # memory fallback
-    m = mem_get(chat_id)
-    return {"step": m["step"], "ui_message_id": m["ui_message_id"], "payload": m["payload"]}
+    st = MEM_STATE.get(chat_id) or {}
+    return {
+        "telegram_id": chat_id,
+        "step": st.get("step"),
+        "ui_message_id": st.get("ui_message_id"),
+        "payload_json": st.get("payload") or {},
+    }
 
-def set_state(chat_id: int, step=None, ui_message_id=None, payload=None):
-    # memory always
-    m = mem_get(chat_id)
+
+def set_state(chat_id: int, *, step=None, ui_message_id=None, payload=None):
+    # memory always (fallback)
+    if chat_id not in MEM_STATE:
+        MEM_STATE[chat_id] = {"step": None, "payload": {}, "ui_message_id": None}
+
     if step is not None:
-        m["step"] = step
-    if ui_message_id is not None:
-        m["ui_message_id"] = ui_message_id
+        MEM_STATE[chat_id]["step"] = step
     if payload is not None:
-        m["payload"] = payload
+        MEM_STATE[chat_id]["payload"] = payload
+    if ui_message_id is not None:
+        MEM_STATE[chat_id]["ui_message_id"] = ui_message_id
 
+    # db best-effort
     if not db_enabled():
         return
 
-    # IMPORTANT: не перетирать NULL-ами
-    db_exec("""
+    db_exec(
+        """
         INSERT INTO user_state (telegram_id, step, ui_message_id, payload_json, updated_at)
-        VALUES (%s,%s,%s,%s,NOW())
+        VALUES (%s, %s, %s, %s, NOW())
         ON CONFLICT (telegram_id) DO UPDATE
         SET step = COALESCE(EXCLUDED.step, user_state.step),
             ui_message_id = COALESCE(EXCLUDED.ui_message_id, user_state.ui_message_id),
             payload_json = COALESCE(EXCLUDED.payload_json, user_state.payload_json),
             updated_at = NOW();
-    """, (
-        chat_id,
-        step,
-        ui_message_id,
-        psycopg2.extras.Json(payload) if payload is not None else None
-    ))
+        """,
+        (
+            chat_id,
+            step,
+            ui_message_id,
+            psycopg2.extras.Json(payload) if payload is not None else None,
+        ),
+    )
 
-def clear_wizard(chat_id: int, keep_ui=True):
+
+def clear_state(chat_id: int, *, keep_ui=True):
     st = get_state(chat_id)
     ui_mid = st.get("ui_message_id") if keep_ui else None
-    # memory
-    m = mem_get(chat_id)
-    m["step"] = None
-    m["payload"] = {}
-    m["ui_message_id"] = ui_mid
+
+    MEM_STATE[chat_id] = {"step": None, "payload": {}, "ui_message_id": ui_mid}
 
     if not db_enabled():
         return
 
     if keep_ui:
-        db_exec("""
+        db_exec(
+            """
             INSERT INTO user_state (telegram_id, step, ui_message_id, payload_json, updated_at)
-            VALUES (%s,NULL,%s,'{}'::jsonb,NOW())
+            VALUES (%s, NULL, %s, '{}'::jsonb, NOW())
             ON CONFLICT (telegram_id) DO UPDATE
-            SET step=NULL,
-                payload_json='{}'::jsonb,
-                ui_message_id=COALESCE(EXCLUDED.ui_message_id, user_state.ui_message_id),
-                updated_at=NOW();
-        """, (chat_id, ui_mid))
+            SET step = NULL,
+                payload_json = '{}'::jsonb,
+                ui_message_id = COALESCE(EXCLUDED.ui_message_id, user_state.ui_message_id),
+                updated_at = NOW();
+            """,
+            (chat_id, ui_mid),
+        )
     else:
         db_exec("DELETE FROM user_state WHERE telegram_id=%s", (chat_id,))
+
 
 def save_biotime_entry(chat_id: int, payload: dict, biotime: float, status: str, level: str, advice: str):
     if not db_enabled():
         return
-    db_exec("""
+    db_exec(
+        """
         INSERT INTO biotime_entries
         (telegram_id, entry_date, payload_json, biotime_value, status, level, recommendation)
         VALUES (%s,%s,%s,%s,%s,%s,%s)
-    """, (chat_id, date.today(), psycopg2.extras.Json(payload), biotime, status, level, advice))
+        """,
+        (chat_id, date.today(), psycopg2.extras.Json(payload), biotime, status, level, advice),
+    )
+
 
 # =========================
-# Telegram API
+# Telegram helpers
 # =========================
-def api_post(method: str, payload: dict, timeout: int = 10):
+def api_post(method: str, payload: dict, timeout: int = 12):
     if not API_URL:
         return None
     try:
         r = requests.post(f"{API_URL}/{method}", json=payload, timeout=timeout)
         if r.status_code == 200:
             return r.json()
-        print("TG ERROR", r.status_code, r.text[:200])
+        print("TG ERROR", r.status_code, r.text[:300])
     except Exception as e:
         print("TG EXC", repr(e))
     return None
+
 
 def send_message(chat_id: int, text: str, reply_markup=None):
     payload = {"chat_id": chat_id, "text": text}
@@ -220,26 +240,41 @@ def send_message(chat_id: int, text: str, reply_markup=None):
         return data["result"]["message_id"]
     return None
 
+
 def edit_message(chat_id: int, message_id: int, text: str, reply_markup=None):
     payload = {"chat_id": chat_id, "message_id": message_id, "text": text}
     if reply_markup is not None:
         payload["reply_markup"] = reply_markup
     api_post("editMessageText", payload)
 
+
 def delete_message(chat_id: int, message_id: int):
     api_post("deleteMessage", {"chat_id": chat_id, "message_id": message_id})
+
 
 def answer_callback(callback_query_id: str):
     api_post("answerCallbackQuery", {"callback_query_id": callback_query_id})
 
+
+def try_delete_user_message(chat_id: int, message_id: int | None):
+    # NOTE: bot can delete user messages in private chat usually OK.
+    if not message_id:
+        return
+    try:
+        delete_message(chat_id, message_id)
+    except Exception:
+        pass
+
+
 def hide_bottom_panel_silently(chat_id: int):
-    # убираем reply keyboard (если где-то было)
+    # Removes ReplyKeyboard (not inline keyboard)
     msg_id = send_message(chat_id, "…", reply_markup={"remove_keyboard": True})
     if msg_id:
         delete_message(chat_id, msg_id)
 
+
 # =========================
-# UI markup
+# UI Markup
 # =========================
 def main_menu_inline():
     return {
@@ -253,8 +288,10 @@ def main_menu_inline():
         ]
     }
 
+
 def back_inline():
     return {"inline_keyboard": [[{"text": "⬅️ В меню", "callback_data": CB_MENU}]]}
+
 
 def biotime_result_inline():
     return {
@@ -264,8 +301,9 @@ def biotime_result_inline():
         ]
     }
 
+
 # =========================
-# Texts / Logic
+# Texts / logic
 # =========================
 def start_text():
     return (
@@ -274,6 +312,7 @@ def start_text():
         "анализе твоей физиологии.\n\n"
         "Выберите модуль:"
     )
+
 
 def info_text():
     return (
@@ -285,6 +324,7 @@ def info_text():
         "🔥 Recovery — восстановление.\n\n"
         "Выбирай модуль в меню."
     )
+
 
 def prompt(step: str):
     if step == STEP_BT_SLEEP_HOURS:
@@ -303,21 +343,34 @@ def prompt(step: str):
         return "7) Давление утром SYS/DIA и пульс (например: 120/80 62)\nили напиши: пропусти"
     return "…"
 
+
+def pro_hint_text():
+    return (
+        "⚙️ Быстрый режим (для своих):\n"
+        "/pro Sleep Stress Recovery PressurePenalty DropPenalty RiskPenalty\n"
+        "Пример:\n"
+        "/pro 7 6 8 0 0 1"
+    )
+
+
 def clamp(x, a, b):
     return max(a, min(b, x))
+
 
 def parse_float(text: str):
     return float((text or "").strip().replace(",", "."))
 
+
 def parse_int(text: str):
     return int(float((text or "").strip().replace(",", ".")))
+
 
 def parse_pressure(text: str):
     t = (text or "").strip().lower()
     if t in ("skip", "пропусти", "пропуск", "-", "нет"):
         return None
     parts = t.split()
-    bp = parts[0]
+    bp = parts[0] if parts else ""
     pulse = None
     if len(parts) >= 2:
         try:
@@ -333,6 +386,7 @@ def parse_pressure(text: str):
     except Exception:
         return None
     return {"sys": sys, "dia": dia, "pulse": pulse}
+
 
 def compute_biotime_from_payload(p: dict):
     sleep_h = float(p["sleep_hours"])
@@ -379,8 +433,13 @@ def compute_biotime_from_payload(p: dict):
     if awaken >= 3:
         drop_penalty += 0.5
 
-    biotime = round((sleep_score * 0.6 + recovery * 0.8 - stress * 0.7) + 6.0 - pressure_penalty - drop_penalty - risk_penalty, 1)
+    biotime = round(
+        (sleep_score * 0.6 + recovery * 0.8 - stress * 0.7) + 6.0
+        - pressure_penalty - drop_penalty - risk_penalty,
+        1
+    )
     return clamp(biotime, 0.0, 12.0)
+
 
 def classify_biotime(biotime: float):
     if biotime < 4:
@@ -401,6 +460,7 @@ def classify_biotime(biotime: float):
         status = "OPTIMAL"
     return status, level, advice
 
+
 def result_block(biotime: float):
     filled = int(round(biotime))
     bar = "▰" * filled + "▱" * (12 - filled)
@@ -416,41 +476,46 @@ def result_block(biotime: float):
         "━━━━━━━━━━━━━━━━━━"
     )
 
-def next_step(step: str):
-    try:
-        i = WIZ_ORDER.index(step)
-        return WIZ_ORDER[i + 1] if i + 1 < len(WIZ_ORDER) else None
-    except Exception:
-        return None
+
+def calc_biotime_pro(parts):
+    sleep = float(parts[0])
+    stress = float(parts[1])
+    recovery = float(parts[2])
+    pressure_penalty = float(parts[3])
+    drop_penalty = float(parts[4])
+    risk_penalty = float(parts[5])
+    return round((sleep * 1.2 + recovery * 1.2 - stress) - pressure_penalty - drop_penalty - risk_penalty, 1)
+
 
 # =========================
-# ONE UI MESSAGE STRATEGY
+# UI message management
 # =========================
-def ensure_ui_exists(chat_id: int):
+def ensure_ui(chat_id: int, *, force_menu: bool = False):
     """
-    ВАЖНО: НЕ редактируем сообщение в меню “просто так”.
-    Только создаём UI если его нет.
+    Creates UI message if missing.
+    If force_menu=True, redraw menu.
+    If wizard is active and force_menu=False -> do NOT redraw menu (prevents spam & resets).
     """
     st = get_state(chat_id)
     mid = st.get("ui_message_id")
-    if mid:
+    step = st.get("step")
+
+    if not mid:
+        mid = send_message(chat_id, start_text(), main_menu_inline())
+        if mid:
+            set_state(chat_id, ui_message_id=mid, step=step, payload=st.get("payload_json") or {})
         return mid
-    mid = send_message(chat_id, start_text(), main_menu_inline())
-    if mid:
-        set_state(chat_id, ui_message_id=mid, step=None, payload={})
+
+    if force_menu:
+        edit_message(chat_id, mid, start_text(), main_menu_inline())
+    else:
+        # If no wizard step -> keep menu "alive" without spamming
+        if not step:
+            # do nothing (or could refresh menu rarely)
+            pass
+
     return mid
 
-def show_menu(chat_id: int):
-    mid = ensure_ui_exists(chat_id)
-    clear_wizard(chat_id, keep_ui=True)
-    edit_message(chat_id, mid, start_text(), main_menu_inline())
-    return mid
-
-def start_biotime_wizard(chat_id: int):
-    mid = ensure_ui_exists(chat_id)
-    set_state(chat_id, step=STEP_BT_SLEEP_HOURS, payload={}, ui_message_id=mid)
-    edit_message(chat_id, mid, prompt(STEP_BT_SLEEP_HOURS), back_inline())
-    return mid
 
 def core_animation_async(chat_id: int, mid: int, biotime: float):
     def run():
@@ -469,12 +534,27 @@ def core_animation_async(chat_id: int, mid: int, biotime: float):
             print("ANIM ERROR:", repr(e))
     threading.Thread(target=run, daemon=True).start()
 
+
+def next_step(step: str):
+    try:
+        i = WIZ_ORDER.index(step)
+        return WIZ_ORDER[i + 1] if i + 1 < len(WIZ_ORDER) else None
+    except Exception:
+        return None
+
+
+def start_biotime_wizard(chat_id: int, ui_mid: int):
+    set_state(chat_id, step=STEP_BT_SLEEP_HOURS, ui_message_id=ui_mid, payload={})
+    edit_message(chat_id, ui_mid, prompt(STEP_BT_SLEEP_HOURS), back_inline())
+
+
 # =========================
 # Routes
 # =========================
 @app.get("/")
 def home():
     return "AION is alive 🚀", 200
+
 
 @app.post("/webhook")
 def webhook():
@@ -499,65 +579,89 @@ def webhook():
         if not chat_id or not message_id:
             return jsonify({"ok": True})
 
-        # зафиксируем ui_message_id (на всякий)
-        set_state(chat_id, ui_message_id=message_id)
+        # Always remember ui_message_id = pressed message
+        st = get_state(chat_id)
+        set_state(chat_id, ui_message_id=message_id, step=st.get("step"), payload=st.get("payload_json") or {})
 
         if data == CB_MENU:
-            show_menu(chat_id)
+            clear_state(chat_id, keep_ui=True)
+            edit_message(chat_id, message_id, start_text(), main_menu_inline())
             return jsonify({"ok": True})
 
         if data == CB_INFO:
-            mid = ensure_ui_exists(chat_id)
-            edit_message(chat_id, mid, info_text(), back_inline())
+            edit_message(chat_id, message_id, info_text(), back_inline())
             return jsonify({"ok": True})
 
         if data == CB_SLEEP:
-            mid = ensure_ui_exists(chat_id)
-            edit_message(chat_id, mid, "💤 Sleep модуль (скоро).", back_inline())
+            edit_message(chat_id, message_id, "💤 Sleep модуль (скоро).", back_inline())
             return jsonify({"ok": True})
 
         if data == CB_CNS:
-            mid = ensure_ui_exists(chat_id)
-            edit_message(chat_id, mid, "🧠 CNS модуль (скоро).", back_inline())
+            edit_message(chat_id, message_id, "🧠 CNS модуль (скоро).", back_inline())
             return jsonify({"ok": True})
 
         if data == CB_RECOVERY:
-            mid = ensure_ui_exists(chat_id)
-            edit_message(chat_id, mid, "🔥 Recovery модуль (скоро).", back_inline())
+            edit_message(chat_id, message_id, "🔥 Recovery модуль (скоро).", back_inline())
             return jsonify({"ok": True})
 
         if data == CB_PRESSURE:
-            mid = ensure_ui_exists(chat_id)
-            edit_message(chat_id, mid, "🫀 Pressure модуль (скоро).", back_inline())
+            edit_message(chat_id, message_id, "🫀 Pressure модуль (скоро).", back_inline())
             return jsonify({"ok": True})
 
         if data in (CB_BIOTIME, CB_BIOTIME_NEW):
-            start_biotime_wizard(chat_id)
+            start_biotime_wizard(chat_id, message_id)
             return jsonify({"ok": True})
 
         return jsonify({"ok": True})
 
-    # ===== TEXT MESSAGES =====
+    # ===== TEXT =====
     message = update.get("message") or {}
     chat_id = (message.get("chat") or {}).get("id")
+    incoming_message_id = message.get("message_id")
     text = (message.get("text") or "").strip()
 
     if not chat_id:
         return jsonify({"ok": True})
 
-    # /start or /menu
+    # /start /menu
     if text.startswith("/start") or text == "/menu":
+        try_delete_user_message(chat_id, incoming_message_id)
         hide_bottom_panel_silently(chat_id)
-        show_menu(chat_id)
+        # show menu explicitly
+        ensure_ui(chat_id, force_menu=True)
         return jsonify({"ok": True})
 
+    # /pro fast mode (for own use)
+    if text.startswith("/pro"):
+        try_delete_user_message(chat_id, incoming_message_id)
+
+        st = get_state(chat_id)
+        mid = st.get("ui_message_id") or ensure_ui(chat_id, force_menu=True)
+
+        parts = text.split()
+        if len(parts) != 7:
+            edit_message(chat_id, mid, "⚠️ Формат:\n/pro 7 6 8 0 0 1\n\n" + pro_hint_text(), back_inline())
+            return jsonify({"ok": True})
+
+        try:
+            biotime = clamp(calc_biotime_pro(parts[1:]), 0.0, 12.0)
+        except Exception:
+            edit_message(chat_id, mid, "⚠️ Ошибка формата.\n\n" + pro_hint_text(), back_inline())
+            return jsonify({"ok": True})
+
+        core_animation_async(chat_id, mid, biotime)
+        return jsonify({"ok": True})
+
+    # Wizard flow
     st = get_state(chat_id)
     step = st.get("step")
-    payload = st.get("payload") or {}
-    mid = ensure_ui_exists(chat_id)
+    payload = st.get("payload_json") or {}
+    ui_mid = st.get("ui_message_id") or ensure_ui(chat_id, force_menu=True)
 
-    # Если визард активен — обрабатываем ввод и НЕ рисуем меню
     if step:
+        # delete user's input message (so цифры пропадают)
+        try_delete_user_message(chat_id, incoming_message_id)
+
         try:
             if step == STEP_BT_SLEEP_HOURS:
                 v = parse_float(text)
@@ -599,38 +703,40 @@ def webhook():
                 payload["pressure"] = parse_pressure(text)
 
             else:
-                # неизвестный step — сброс
-                show_menu(chat_id)
+                clear_state(chat_id, keep_ui=True)
+                edit_message(chat_id, ui_mid, start_text(), main_menu_inline())
                 return jsonify({"ok": True})
 
         except Exception:
-            edit_message(chat_id, mid, "⚠️ Не понял значение.\n\n" + prompt(step), back_inline())
-            set_state(chat_id, step=step, payload=payload, ui_message_id=mid)
+            # keep the same step, re-ask
+            set_state(chat_id, step=step, ui_message_id=ui_mid, payload=payload)
+            edit_message(chat_id, ui_mid, "⚠️ Не понял значение.\n\n" + prompt(step), back_inline())
             return jsonify({"ok": True})
 
+        # move next
         nxt = next_step(step)
         if nxt:
-            set_state(chat_id, step=nxt, payload=payload, ui_message_id=mid)
-            edit_message(chat_id, mid, prompt(nxt), back_inline())
+            set_state(chat_id, step=nxt, ui_message_id=ui_mid, payload=payload)
+            edit_message(chat_id, ui_mid, prompt(nxt), back_inline())
             return jsonify({"ok": True})
 
-        # FINALIZE
+        # finalize
         try:
             biotime = compute_biotime_from_payload(payload)
             status, level, advice = classify_biotime(biotime)
             save_biotime_entry(chat_id, payload, biotime, status, level, advice)
-            core_animation_async(chat_id, mid, biotime)
+            core_animation_async(chat_id, ui_mid, biotime)
         except Exception as e:
             print("FINALIZE ERROR:", repr(e))
-            edit_message(chat_id, mid, "⚠️ Ошибка расчёта. Нажми «Новый расчёт».", biotime_result_inline())
+            edit_message(chat_id, ui_mid, "⚠️ Ошибка расчёта. Нажми «Новый расчёт».", biotime_result_inline())
 
-        clear_wizard(chat_id, keep_ui=True)
+        clear_state(chat_id, keep_ui=True)
         return jsonify({"ok": True})
 
-    # Если визарда нет — НЕ спамим меню, просто молча держим UI как есть
-    # (можно по желанию показывать подсказку, но лучше не надо)
+    # default: if no wizard step -> just ensure UI exists (НЕ перерисовывать постоянно)
+    ensure_ui(chat_id, force_menu=False)
     return jsonify({"ok": True})
 
 
-# init db at import (gunicorn)
+# init db at import time (gunicorn too)
 init_db()
