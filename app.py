@@ -2,7 +2,6 @@ import os
 import time
 import threading
 import requests
-import secrets
 from datetime import date
 
 from flask import Flask, request, jsonify
@@ -13,14 +12,17 @@ import psycopg2.extras
 app = Flask(__name__)
 
 TELEGRAM_TOKEN = os.environ.get("TELEGRAM_TOKEN")
-DATABASE_URL = os.environ.get("DATABASE_URL")  # Render Postgres
 API_URL = f"https://api.telegram.org/bot{TELEGRAM_TOKEN}" if TELEGRAM_TOKEN else None
+DATABASE_URL = os.environ.get("DATABASE_URL")  # Render Postgres (optional)
 
-# ====== MEMORY FALLBACK (если БД упала/не настроена) ======
-MEM_STATE = {}  # chat_id -> {"step": str|None, "payload": dict}
-MEM_UI = {}     # chat_id -> {"ui_message_id": int|None}
+# =========================
+# MEMORY FALLBACK
+# =========================
+MEM = {}  # chat_id -> {"step": str|None, "payload": dict, "ui_message_id": int|None}
 
-# ====== BUTTONS ======
+# =========================
+# BUTTONS / CALLBACKS
+# =========================
 BTN_BIOTIME = "🧬 BioTime"
 BTN_SLEEP = "💤 Sleep"
 BTN_CNS = "🧠 CNS"
@@ -28,7 +30,6 @@ BTN_RECOVERY = "🔥 Recovery"
 BTN_PRESSURE = "🫀 Pressure"
 BTN_INFO = "ℹ️ Info"
 
-# ====== CALLBACKS ======
 CB_BIOTIME = "biotime"
 CB_SLEEP = "sleep"
 CB_CNS = "cns"
@@ -38,7 +39,9 @@ CB_INFO = "info"
 CB_MENU = "menu"
 CB_BIOTIME_NEW = "biotime_new"
 
-# ====== BioTime wizard steps ======
+# =========================
+# BioTime wizard steps
+# =========================
 STEP_BT_SLEEP_HOURS = "bt_sleep_hours"
 STEP_BT_LATENCY_MIN = "bt_latency_min"
 STEP_BT_AWAKENINGS = "bt_awakenings"
@@ -57,19 +60,16 @@ WIZ_ORDER = [
     STEP_BT_PRESSURE,
 ]
 
-
 # =========================
-# DB LAYER (safe)
+# DB helpers
 # =========================
 def db_enabled() -> bool:
     return bool(DATABASE_URL)
 
 def db_conn():
-    # sslmode=require — безопасно и подходит для managed Postgres (Render)
     return psycopg2.connect(DATABASE_URL, sslmode="require")
 
 def db_exec(query, params=None, fetchone=False, fetchall=False):
-    """SAFE db_exec: никогда не роняет webhook."""
     if not db_enabled():
         return None
     try:
@@ -90,23 +90,21 @@ def init_db():
         print("DB disabled: DATABASE_URL not set. Using memory.")
         return
 
-    # Одна таблица для step/ui/payload — чтобы ничего не рассинхронивалось
     db_exec("""
     CREATE TABLE IF NOT EXISTS user_state (
         telegram_id BIGINT PRIMARY KEY,
         step TEXT,
         ui_message_id BIGINT,
-        payload_json JSONB NOT NULL DEFAULT '{}'::jsonb,
+        payload_json JSONB,
         updated_at TIMESTAMP NOT NULL DEFAULT NOW()
     );
     """)
-
     db_exec("""
     CREATE TABLE IF NOT EXISTS biotime_entries (
         id SERIAL PRIMARY KEY,
         telegram_id BIGINT NOT NULL,
         entry_date DATE NOT NULL,
-        payload_json JSONB NOT NULL,
+        payload_json JSONB,
         biotime_value NUMERIC NOT NULL,
         status TEXT,
         level TEXT,
@@ -116,47 +114,44 @@ def init_db():
     """)
     print("DB init ok")
 
-def get_state(chat_id: int) -> dict:
-    # DB -> memory fallback
+def mem_get(chat_id: int):
+    if chat_id not in MEM:
+        MEM[chat_id] = {"step": None, "payload": {}, "ui_message_id": None}
+    return MEM[chat_id]
+
+def get_state(chat_id: int):
+    # DB first
     if db_enabled():
         row = db_exec("SELECT * FROM user_state WHERE telegram_id=%s", (chat_id,), fetchone=True)
-        if row is not None:
-            # гарантируем ключи
-            row["payload_json"] = row.get("payload_json") or {}
-            return row
+        if row:
+            return {
+                "step": row.get("step"),
+                "ui_message_id": row.get("ui_message_id"),
+                "payload": row.get("payload_json") or {},
+            }
+    # memory fallback
+    m = mem_get(chat_id)
+    return {"step": m["step"], "ui_message_id": m["ui_message_id"], "payload": m["payload"]}
 
-    # memory
-    return {
-        "telegram_id": chat_id,
-        "step": MEM_STATE.get(chat_id, {}).get("step"),
-        "ui_message_id": MEM_UI.get(chat_id, {}).get("ui_message_id"),
-        "payload_json": MEM_STATE.get(chat_id, {}).get("payload", {}),
-    }
-
-def set_state(chat_id: int, *, step=_ := None, ui_message_id=_ := None, payload=_ := None):
+def set_state(chat_id: int, step=None, ui_message_id=None, payload=None):
     # memory always
-    if chat_id not in MEM_STATE:
-        MEM_STATE[chat_id] = {"step": None, "payload": {}}
-    if chat_id not in MEM_UI:
-        MEM_UI[chat_id] = {"ui_message_id": None}
-
+    m = mem_get(chat_id)
     if step is not None:
-        MEM_STATE[chat_id]["step"] = step
-    if payload is not None:
-        MEM_STATE[chat_id]["payload"] = payload
+        m["step"] = step
     if ui_message_id is not None:
-        MEM_UI[chat_id]["ui_message_id"] = ui_message_id
+        m["ui_message_id"] = ui_message_id
+    if payload is not None:
+        m["payload"] = payload
 
-    # db best-effort
     if not db_enabled():
         return
 
+    # IMPORTANT: не перетирать NULL-ами
     db_exec("""
         INSERT INTO user_state (telegram_id, step, ui_message_id, payload_json, updated_at)
         VALUES (%s,%s,%s,%s,NOW())
         ON CONFLICT (telegram_id) DO UPDATE
-        SET
-            step = COALESCE(EXCLUDED.step, user_state.step),
+        SET step = COALESCE(EXCLUDED.step, user_state.step),
             ui_message_id = COALESCE(EXCLUDED.ui_message_id, user_state.ui_message_id),
             payload_json = COALESCE(EXCLUDED.payload_json, user_state.payload_json),
             updated_at = NOW();
@@ -167,15 +162,14 @@ def set_state(chat_id: int, *, step=_ := None, ui_message_id=_ := None, payload=
         psycopg2.extras.Json(payload) if payload is not None else None
     ))
 
-def clear_wizard(chat_id: int, keep_ui: bool = True):
+def clear_wizard(chat_id: int, keep_ui=True):
     st = get_state(chat_id)
     ui_mid = st.get("ui_message_id") if keep_ui else None
-
-    MEM_STATE[chat_id] = {"step": None, "payload": {}}
-    if keep_ui:
-        MEM_UI[chat_id] = {"ui_message_id": ui_mid}
-    else:
-        MEM_UI.pop(chat_id, None)
+    # memory
+    m = mem_get(chat_id)
+    m["step"] = None
+    m["payload"] = {}
+    m["ui_message_id"] = ui_mid
 
     if not db_enabled():
         return
@@ -185,7 +179,8 @@ def clear_wizard(chat_id: int, keep_ui: bool = True):
             INSERT INTO user_state (telegram_id, step, ui_message_id, payload_json, updated_at)
             VALUES (%s,NULL,%s,'{}'::jsonb,NOW())
             ON CONFLICT (telegram_id) DO UPDATE
-            SET step=NULL, payload_json='{}'::jsonb,
+            SET step=NULL,
+                payload_json='{}'::jsonb,
                 ui_message_id=COALESCE(EXCLUDED.ui_message_id, user_state.ui_message_id),
                 updated_at=NOW();
         """, (chat_id, ui_mid))
@@ -201,9 +196,8 @@ def save_biotime_entry(chat_id: int, payload: dict, biotime: float, status: str,
         VALUES (%s,%s,%s,%s,%s,%s,%s)
     """, (chat_id, date.today(), psycopg2.extras.Json(payload), biotime, status, level, advice))
 
-
 # =========================
-# TELEGRAM HELPERS
+# Telegram API
 # =========================
 def api_post(method: str, payload: dict, timeout: int = 10):
     if not API_URL:
@@ -235,27 +229,17 @@ def edit_message(chat_id: int, message_id: int, text: str, reply_markup=None):
 def delete_message(chat_id: int, message_id: int):
     api_post("deleteMessage", {"chat_id": chat_id, "message_id": message_id})
 
-def try_delete_user_message(chat_id: int, message_id: int | None):
-    # Чтобы цифры после ввода не оставались в чате
-    if not message_id:
-        return
-    try:
-        delete_message(chat_id, message_id)
-    except Exception:
-        pass
-
 def answer_callback(callback_query_id: str):
     api_post("answerCallbackQuery", {"callback_query_id": callback_query_id})
 
 def hide_bottom_panel_silently(chat_id: int):
-    # убираем ReplyKeyboard (серую панель)
+    # убираем reply keyboard (если где-то было)
     msg_id = send_message(chat_id, "…", reply_markup={"remove_keyboard": True})
     if msg_id:
         delete_message(chat_id, msg_id)
 
-
 # =========================
-# UI MARKUP
+# UI markup
 # =========================
 def main_menu_inline():
     return {
@@ -280,9 +264,8 @@ def biotime_result_inline():
         ]
     }
 
-
 # =========================
-# TEXTS / BioTime LOGIC
+# Texts / Logic
 # =========================
 def start_text():
     return (
@@ -300,8 +283,7 @@ def info_text():
         "💤 Sleep — сон.\n"
         "🧠 CNS — нервная система.\n"
         "🔥 Recovery — восстановление.\n\n"
-        "Быстрый режим:\n"
-        "/pro 7 6 8 0 0 1"
+        "Выбирай модуль в меню."
     )
 
 def prompt(step: str):
@@ -361,7 +343,6 @@ def compute_biotime_from_payload(p: dict):
     energy = float(p["energy"])
     pressure = p.get("pressure")
 
-    # простая MVP-модель: 0..12
     sleep_score = clamp((sleep_h / 8.0) * 10.0, 0, 10)
 
     stress = 0.0
@@ -387,4 +368,269 @@ def compute_biotime_from_payload(p: dict):
         if sys >= 140 or dia >= 90:
             pressure_penalty += 2.0
             risk_penalty += 1.0
-        elif
+        elif sys >= 130 or dia >= 85:
+            pressure_penalty += 1.0
+        elif sys < 100 or dia < 65:
+            pressure_penalty += 0.7
+
+    drop_penalty = 0.0
+    if sleep_h < 6:
+        drop_penalty += 1.0
+    if awaken >= 3:
+        drop_penalty += 0.5
+
+    biotime = round((sleep_score * 0.6 + recovery * 0.8 - stress * 0.7) + 6.0 - pressure_penalty - drop_penalty - risk_penalty, 1)
+    return clamp(biotime, 0.0, 12.0)
+
+def classify_biotime(biotime: float):
+    if biotime < 4:
+        level = "🔴 Высокая"
+        advice = "Разгрузка / восстановление"
+        status = "ALERT MODE"
+    elif biotime < 8:
+        level = "🟠 Средняя"
+        advice = "Снизить объём"
+        status = "CAUTION"
+    elif biotime <= 11:
+        level = "🟡 Норма"
+        advice = "Без форсирования"
+        status = "NORMAL"
+    else:
+        level = "🟢 Оптимум"
+        advice = "Работай по плану"
+        status = "OPTIMAL"
+    return status, level, advice
+
+def result_block(biotime: float):
+    filled = int(round(biotime))
+    bar = "▰" * filled + "▱" * (12 - filled)
+    status, level, advice = classify_biotime(biotime)
+    return (
+        "━━━━━━━━━━━━━━━━━━\n"
+        "🧬 BioTime\n\n"
+        f"Индекс: {biotime} / 12\n"
+        f"{bar}\n\n"
+        f"Статус: {status}\n"
+        f"Уровень: {level}\n\n"
+        f"Что делать сегодня: {advice}\n"
+        "━━━━━━━━━━━━━━━━━━"
+    )
+
+def next_step(step: str):
+    try:
+        i = WIZ_ORDER.index(step)
+        return WIZ_ORDER[i + 1] if i + 1 < len(WIZ_ORDER) else None
+    except Exception:
+        return None
+
+# =========================
+# ONE UI MESSAGE STRATEGY
+# =========================
+def ensure_ui_exists(chat_id: int):
+    """
+    ВАЖНО: НЕ редактируем сообщение в меню “просто так”.
+    Только создаём UI если его нет.
+    """
+    st = get_state(chat_id)
+    mid = st.get("ui_message_id")
+    if mid:
+        return mid
+    mid = send_message(chat_id, start_text(), main_menu_inline())
+    if mid:
+        set_state(chat_id, ui_message_id=mid, step=None, payload={})
+    return mid
+
+def show_menu(chat_id: int):
+    mid = ensure_ui_exists(chat_id)
+    clear_wizard(chat_id, keep_ui=True)
+    edit_message(chat_id, mid, start_text(), main_menu_inline())
+    return mid
+
+def start_biotime_wizard(chat_id: int):
+    mid = ensure_ui_exists(chat_id)
+    set_state(chat_id, step=STEP_BT_SLEEP_HOURS, payload={}, ui_message_id=mid)
+    edit_message(chat_id, mid, prompt(STEP_BT_SLEEP_HOURS), back_inline())
+    return mid
+
+def core_animation_async(chat_id: int, mid: int, biotime: float):
+    def run():
+        try:
+            steps = [
+                ("🧬 BioTime\n\nИнициализация...", biotime_result_inline()),
+                ("🧠 Анализ данных…\n▰▱▱▱▱", biotime_result_inline()),
+                ("🫀 Оценка нагрузки…\n▰▰▰▱▱", biotime_result_inline()),
+                ("🔥 Сбор интеграла…\n▰▰▰▰▰", biotime_result_inline()),
+            ]
+            for txt, mk in steps:
+                edit_message(chat_id, mid, txt, mk)
+                time.sleep(0.25)
+            edit_message(chat_id, mid, result_block(biotime), biotime_result_inline())
+        except Exception as e:
+            print("ANIM ERROR:", repr(e))
+    threading.Thread(target=run, daemon=True).start()
+
+# =========================
+# Routes
+# =========================
+@app.get("/")
+def home():
+    return "AION is alive 🚀", 200
+
+@app.post("/webhook")
+def webhook():
+    if not TELEGRAM_TOKEN:
+        return jsonify({"error": "No TELEGRAM_TOKEN"}), 500
+
+    update = request.get_json(silent=True) or {}
+
+    # ===== CALLBACKS =====
+    if "callback_query" in update:
+        cq = update["callback_query"]
+        callback_query_id = cq.get("id")
+        data = cq.get("data")
+
+        msg = cq.get("message") or {}
+        chat_id = (msg.get("chat") or {}).get("id")
+        message_id = msg.get("message_id")
+
+        if callback_query_id:
+            answer_callback(callback_query_id)
+
+        if not chat_id or not message_id:
+            return jsonify({"ok": True})
+
+        # зафиксируем ui_message_id (на всякий)
+        set_state(chat_id, ui_message_id=message_id)
+
+        if data == CB_MENU:
+            show_menu(chat_id)
+            return jsonify({"ok": True})
+
+        if data == CB_INFO:
+            mid = ensure_ui_exists(chat_id)
+            edit_message(chat_id, mid, info_text(), back_inline())
+            return jsonify({"ok": True})
+
+        if data == CB_SLEEP:
+            mid = ensure_ui_exists(chat_id)
+            edit_message(chat_id, mid, "💤 Sleep модуль (скоро).", back_inline())
+            return jsonify({"ok": True})
+
+        if data == CB_CNS:
+            mid = ensure_ui_exists(chat_id)
+            edit_message(chat_id, mid, "🧠 CNS модуль (скоро).", back_inline())
+            return jsonify({"ok": True})
+
+        if data == CB_RECOVERY:
+            mid = ensure_ui_exists(chat_id)
+            edit_message(chat_id, mid, "🔥 Recovery модуль (скоро).", back_inline())
+            return jsonify({"ok": True})
+
+        if data == CB_PRESSURE:
+            mid = ensure_ui_exists(chat_id)
+            edit_message(chat_id, mid, "🫀 Pressure модуль (скоро).", back_inline())
+            return jsonify({"ok": True})
+
+        if data in (CB_BIOTIME, CB_BIOTIME_NEW):
+            start_biotime_wizard(chat_id)
+            return jsonify({"ok": True})
+
+        return jsonify({"ok": True})
+
+    # ===== TEXT MESSAGES =====
+    message = update.get("message") or {}
+    chat_id = (message.get("chat") or {}).get("id")
+    text = (message.get("text") or "").strip()
+
+    if not chat_id:
+        return jsonify({"ok": True})
+
+    # /start or /menu
+    if text.startswith("/start") or text == "/menu":
+        hide_bottom_panel_silently(chat_id)
+        show_menu(chat_id)
+        return jsonify({"ok": True})
+
+    st = get_state(chat_id)
+    step = st.get("step")
+    payload = st.get("payload") or {}
+    mid = ensure_ui_exists(chat_id)
+
+    # Если визард активен — обрабатываем ввод и НЕ рисуем меню
+    if step:
+        try:
+            if step == STEP_BT_SLEEP_HOURS:
+                v = parse_float(text)
+                if v <= 0 or v > 14:
+                    raise ValueError()
+                payload["sleep_hours"] = v
+
+            elif step == STEP_BT_LATENCY_MIN:
+                v = parse_int(text)
+                if v < 0 or v > 240:
+                    raise ValueError()
+                payload["latency_min"] = v
+
+            elif step == STEP_BT_AWAKENINGS:
+                v = parse_int(text)
+                if v < 0 or v > 20:
+                    raise ValueError()
+                payload["awakenings"] = v
+
+            elif step == STEP_BT_MORNING_FEEL:
+                v = parse_float(text)
+                if v < 0 or v > 10:
+                    raise ValueError()
+                payload["morning_feel"] = v
+
+            elif step == STEP_BT_RHR:
+                v = parse_int(text)
+                if v < 30 or v > 140:
+                    raise ValueError()
+                payload["rhr"] = v
+
+            elif step == STEP_BT_ENERGY:
+                v = parse_float(text)
+                if v < 0 or v > 10:
+                    raise ValueError()
+                payload["energy"] = v
+
+            elif step == STEP_BT_PRESSURE:
+                payload["pressure"] = parse_pressure(text)
+
+            else:
+                # неизвестный step — сброс
+                show_menu(chat_id)
+                return jsonify({"ok": True})
+
+        except Exception:
+            edit_message(chat_id, mid, "⚠️ Не понял значение.\n\n" + prompt(step), back_inline())
+            set_state(chat_id, step=step, payload=payload, ui_message_id=mid)
+            return jsonify({"ok": True})
+
+        nxt = next_step(step)
+        if nxt:
+            set_state(chat_id, step=nxt, payload=payload, ui_message_id=mid)
+            edit_message(chat_id, mid, prompt(nxt), back_inline())
+            return jsonify({"ok": True})
+
+        # FINALIZE
+        try:
+            biotime = compute_biotime_from_payload(payload)
+            status, level, advice = classify_biotime(biotime)
+            save_biotime_entry(chat_id, payload, biotime, status, level, advice)
+            core_animation_async(chat_id, mid, biotime)
+        except Exception as e:
+            print("FINALIZE ERROR:", repr(e))
+            edit_message(chat_id, mid, "⚠️ Ошибка расчёта. Нажми «Новый расчёт».", biotime_result_inline())
+
+        clear_wizard(chat_id, keep_ui=True)
+        return jsonify({"ok": True})
+
+    # Если визарда нет — НЕ спамим меню, просто молча держим UI как есть
+    # (можно по желанию показывать подсказку, но лучше не надо)
+    return jsonify({"ok": True})
+
+
+# init db at import (gunicorn)
+init_db()
