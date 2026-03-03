@@ -1,106 +1,122 @@
 import os
 import logging
-from flask import Flask, request
 import requests
+from flask import Flask, request
 
 TOKEN = os.getenv("BOT_TOKEN")
-URL = f"https://api.telegram.org/bot{TOKEN}"
+if not TOKEN:
+    raise RuntimeError("BOT_TOKEN env var is missing")
+
+TG_API = f"https://api.telegram.org/bot{TOKEN}"
 
 app = Flask(__name__)
-logging.basicConfig(level=logging.INFO)
 
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s %(levelname)s %(message)s"
+)
 
-# ========================
-# SEND MESSAGE
-# ========================
-def send_message(chat_id, text, keyboard=None):
-    payload = {
-        "chat_id": chat_id,
-        "text": text,
-        "parse_mode": "HTML"
-    }
+def tg(method: str, payload: dict):
+    r = requests.post(f"{TG_API}/{method}", json=payload, timeout=20)
+    try:
+        j = r.json()
+    except Exception:
+        j = {"ok": False, "raw": r.text}
+    if not r.ok or not j.get("ok"):
+        logging.error("TG %s failed: status=%s resp=%s payload=%s", method, r.status_code, j, payload)
+    return j
 
-    if keyboard:
-        payload["reply_markup"] = keyboard
-
-    requests.post(f"{URL}/sendMessage", json=payload)
-
-
-# ========================
-# MAIN MENU
-# ========================
-def main_menu():
+def menu_keyboard():
     return {
         "inline_keyboard": [
-            [{"text": "🧬 BioTime", "callback_data": "biotime"}],
+            [{"text": "🧬 BioTime", "callback_data": "module:biotime"}],
             [
-                {"text": "💤 Sleep", "callback_data": "sleep"},
-                {"text": "🧠 CNS", "callback_data": "cns"}
+                {"text": "💤 Sleep", "callback_data": "module:sleep"},
+                {"text": "🧠 CNS", "callback_data": "module:cns"},
             ],
             [
-                {"text": "🔥 Recovery", "callback_data": "recovery"},
-                {"text": "❤️ Pressure", "callback_data": "pressure"}
+                {"text": "🔥 Recovery", "callback_data": "module:recovery"},
+                {"text": "❤️ Pressure", "callback_data": "module:pressure"},
             ],
-            [{"text": "ℹ️ Info", "callback_data": "info"}]
+            [{"text": "ℹ️ Info", "callback_data": "info"}],
         ]
     }
 
+def send_menu(chat_id: int):
+    tg("sendMessage", {
+        "chat_id": chat_id,
+        "text": "AION — система управления скоростью биологического износа.\n\nВыберите модуль:",
+        "reply_markup": menu_keyboard()
+    })
 
-# ========================
-# START
-# ========================
-@app.route("/", methods=["POST"])
-def webhook():
-    data = request.json
-
-    # ----------------------
-    # MESSAGE
-    # ----------------------
-    if "message" in data:
-        chat_id = data["message"]["chat"]["id"]
-
-        if data["message"].get("text") == "/start":
-            send_message(
-                chat_id,
-                "AION — система управления биологическим возрастом.\n\nВыберите модуль:",
-                main_menu()
-            )
-
-    # ----------------------
-    # CALLBACK
-    # ----------------------
-    if "callback_query" in data:
-        callback = data["callback_query"]
-        chat_id = callback["message"]["chat"]["id"]
-        data_value = callback["data"]
-
-        # обязательно отвечаем Telegram
-        requests.post(
-            f"{URL}/answerCallbackQuery",
-            json={"callback_query_id": callback["id"]}
-        )
-
-        # ====== ROUTING ======
-        if data_value == "biotime":
-            send_message(chat_id, "🧬 Модуль BioTime активирован.\nРасчёт скоро будет доступен.")
-
-        elif data_value == "sleep":
-            send_message(chat_id, "💤 Sleep — модуль в разработке.")
-
-        elif data_value == "cns":
-            send_message(chat_id, "🧠 CNS — модуль в разработке.")
-
-        elif data_value == "recovery":
-            send_message(chat_id, "🔥 Recovery — модуль в разработке.")
-
-        elif data_value == "pressure":
-            send_message(chat_id, "❤️ Pressure — модуль в разработке.")
-
-        elif data_value == "info":
-            send_message(chat_id, "ℹ️ AION — Biological Upgrade System.")
-
+@app.route("/", methods=["GET"])
+def health():
     return "ok", 200
 
+@app.route("/", methods=["POST"])
+def webhook():
+    update = request.get_json(force=True, silent=False)
 
-if __name__ == "__main__":
-    app.run()
+    # Логируем тип апдейта
+    logging.info("UPDATE keys=%s", list(update.keys()))
+
+    # 1) обычные сообщения
+    if "message" in update:
+        msg = update["message"]
+        chat_id = msg["chat"]["id"]
+        text = msg.get("text", "")
+
+        logging.info("MESSAGE chat_id=%s text=%r", chat_id, text)
+
+        if text == "/start":
+            send_menu(chat_id)
+        else:
+            tg("sendMessage", {
+                "chat_id": chat_id,
+                "text": "Напиши /start чтобы открыть меню."
+            })
+
+        return "ok", 200
+
+    # 2) нажатия кнопок (callback_query)
+    if "callback_query" in update:
+        cb = update["callback_query"]
+        cb_id = cb["id"]
+        data = cb.get("data", "")
+        chat_id = cb["message"]["chat"]["id"]
+
+        logging.info("CALLBACK chat_id=%s data=%r", chat_id, data)
+
+        # ВАЖНО: всегда отвечаем на callback, иначе телега “крутит”
+        tg("answerCallbackQuery", {
+            "callback_query_id": cb_id
+        })
+
+        # Роутинг по data
+        if data.startswith("module:"):
+            module = data.split(":", 1)[1]
+
+            if module == "biotime":
+                tg("sendMessage", {"chat_id": chat_id, "text": "🧬 BioTime открыт. Отправь: возраст, рост, вес (пример: 36, 182, 86)."})
+            elif module == "sleep":
+                tg("sendMessage", {"chat_id": chat_id, "text": "💤 Sleep — пока пусто."})
+            elif module == "cns":
+                tg("sendMessage", {"chat_id": chat_id, "text": "🧠 CNS — пока пусто."})
+            elif module == "recovery":
+                tg("sendMessage", {"chat_id": chat_id, "text": "🔥 Recovery — пока пусто."})
+            elif module == "pressure":
+                tg("sendMessage", {"chat_id": chat_id, "text": "❤️ Pressure — пока пусто."})
+            else:
+                tg("sendMessage", {"chat_id": chat_id, "text": f"Неизвестный модуль: {module}"})
+
+        elif data == "info":
+            tg("sendMessage", {"chat_id": chat_id, "text": "ℹ️ AION — Biological Upgrade System."})
+
+        else:
+            tg("sendMessage", {"chat_id": chat_id, "text": f"Нераспознанная кнопка: {data}"})
+
+        return "ok", 200
+
+    # если прилетело что-то иное
+    logging.warning("UNKNOWN UPDATE: %s", update)
+    return "ok", 200
