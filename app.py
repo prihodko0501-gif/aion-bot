@@ -7,7 +7,6 @@ from datetime import date
 
 from flask import Flask, request, jsonify
 
-# Postgres optional
 import psycopg2
 import psycopg2.extras
 
@@ -17,7 +16,7 @@ TELEGRAM_TOKEN = os.environ.get("TELEGRAM_TOKEN")
 API_URL = f"https://api.telegram.org/bot{TELEGRAM_TOKEN}" if TELEGRAM_TOKEN else None
 DATABASE_URL = os.environ.get("DATABASE_URL")  # Render Postgres (optional)
 
-# ====== MEMORY FALLBACK (если БД упала/не настроена) ======
+# ====== MEMORY FALLBACK ======
 MEM_STATE = {}   # chat_id -> {"step": str|None, "payload": dict}
 MEM_UI = {}      # chat_id -> {"ui_message_id": int|None}
 
@@ -68,7 +67,6 @@ def db_conn():
     return psycopg2.connect(DATABASE_URL, sslmode="require")
 
 def db_exec(query, params=None, fetchone=False, fetchall=False):
-    """SAFE db_exec: никогда не роняет webhook."""
     if not db_enabled():
         return None
     try:
@@ -81,7 +79,6 @@ def db_exec(query, params=None, fetchone=False, fetchall=False):
                     return cur.fetchall()
                 return None
     except Exception as e:
-        # fallback to memory silently (лог в Render)
         print("DB ERROR:", repr(e))
         return None
 
@@ -89,7 +86,6 @@ def init_db():
     if not db_enabled():
         print("DB disabled: DATABASE_URL not set. Using memory.")
         return
-    # Важно: если тут ошибка — webhook всё равно должен жить.
     db_exec("""
     CREATE TABLE IF NOT EXISTS users (
         id SERIAL PRIMARY KEY,
@@ -143,12 +139,10 @@ def get_or_create_user(telegram_id: int, username: str | None, referred_by: str 
     )
 
 def get_state(chat_id: int):
-    # db -> memory fallback
     if db_enabled():
         row = db_exec("SELECT * FROM user_state WHERE telegram_id=%s", (chat_id,), fetchone=True)
         if row is not None:
             return row
-    # memory
     return {
         "telegram_id": chat_id,
         "step": MEM_STATE.get(chat_id, {}).get("step"),
@@ -157,7 +151,6 @@ def get_state(chat_id: int):
     }
 
 def set_state(chat_id: int, step=None, ui_message_id=None, payload=None):
-    # memory always
     if chat_id not in MEM_STATE:
         MEM_STATE[chat_id] = {"step": None, "payload": {}}
     if chat_id not in MEM_UI:
@@ -170,23 +163,48 @@ def set_state(chat_id: int, step=None, ui_message_id=None, payload=None):
     if ui_message_id is not None:
         MEM_UI[chat_id]["ui_message_id"] = ui_message_id
 
-    # db best-effort
     if not db_enabled():
         return
+
+    # IMPORTANT: если step/payload=None, не перетираем ими БД (COALESCE)
+    step_db = step if step is not None else None
+    payload_db = psycopg2.extras.Json(payload) if payload is not None else None
+
     db_exec("""
         INSERT INTO user_state (telegram_id, step, ui_message_id, payload_json, updated_at)
         VALUES (%s,%s,%s,%s,NOW())
         ON CONFLICT (telegram_id) DO UPDATE
-        SET step=EXCLUDED.step,
+        SET step=COALESCE(EXCLUDED.step, user_state.step),
             ui_message_id=COALESCE(EXCLUDED.ui_message_id, user_state.ui_message_id),
             payload_json=COALESCE(EXCLUDED.payload_json, user_state.payload_json),
             updated_at=NOW();
-    """, (
-        chat_id,
-        step,
-        ui_message_id,
-        psycopg2.extras.Json(payload) if payload is not None else None
-    ))
+    """, (chat_id, step_db, ui_message_id, payload_db))
+
+def clear_state(chat_id: int, keep_ui: bool = True):
+    """Сбрасываем step/payload, но оставляем ui_message_id, чтобы не плодить спам."""
+    st = get_state(chat_id)
+    ui_mid = st.get("ui_message_id") if keep_ui else None
+    MEM_STATE[chat_id] = {"step": None, "payload": {}}
+    if keep_ui:
+        MEM_UI[chat_id] = {"ui_message_id": ui_mid}
+    else:
+        MEM_UI.pop(chat_id, None)
+
+    if not db_enabled():
+        return
+
+    if keep_ui:
+        db_exec("""
+            INSERT INTO user_state (telegram_id, step, ui_message_id, payload_json, updated_at)
+            VALUES (%s,%s,%s,%s,NOW())
+            ON CONFLICT (telegram_id) DO UPDATE
+            SET step=NULL,
+                payload_json='{}'::jsonb,
+                ui_message_id=COALESCE(EXCLUDED.ui_message_id, user_state.ui_message_id),
+                updated_at=NOW();
+        """, (chat_id, None, ui_mid, psycopg2.extras.Json({})))
+    else:
+        db_exec("DELETE FROM user_state WHERE telegram_id=%s", (chat_id,))
 
 def save_biotime_entry(chat_id: int, payload: dict, biotime: float, status: str, level: str, advice: str):
     if not db_enabled():
@@ -230,6 +248,14 @@ def edit_message(chat_id: int, message_id: int, text: str, reply_markup=None):
 
 def delete_message(chat_id: int, message_id: int):
     api_post("deleteMessage", {"chat_id": chat_id, "message_id": message_id})
+
+def try_delete_user_message(chat_id: int, message_id: int | None):
+    if not message_id:
+        return
+    try:
+        delete_message(chat_id, message_id)
+    except Exception:
+        pass
 
 def answer_callback(callback_query_id: str):
     api_post("answerCallbackQuery", {"callback_query_id": callback_query_id})
@@ -445,9 +471,11 @@ def ensure_ui(chat_id: int):
     if mid:
         edit_message(chat_id, mid, start_text(), main_menu_inline())
         return mid
+
     mid = send_message(chat_id, start_text(), main_menu_inline())
     if mid:
-        set_state(chat_id, step=None, ui_message_id=mid, payload={})
+        # сохраняем только ui, не трогаем step/payload
+        set_state(chat_id, step=None, ui_message_id=mid, payload=None)
     return mid
 
 def core_animation_async(chat_id: int, mid: int, biotime: float):
@@ -509,12 +537,11 @@ def webhook():
         if not chat_id or not message_id:
             return jsonify({"ok": True})
 
-        # remember main ui message id
         st = get_state(chat_id)
         set_state(chat_id, step=st.get("step"), ui_message_id=message_id, payload=st.get("payload_json") or {})
 
         if data == CB_MENU:
-            set_state(chat_id, step=None, ui_message_id=message_id, payload={})
+            clear_state(chat_id, keep_ui=True)
             edit_message(chat_id, message_id, start_text(), main_menu_inline())
             return jsonify({"ok": True})
 
@@ -547,6 +574,7 @@ def webhook():
     # ==== TEXT ====
     message = update.get("message") or {}
     chat_id = (message.get("chat") or {}).get("id")
+    incoming_message_id = message.get("message_id")
     text = (message.get("text") or "").strip()
     username = (message.get("from") or {}).get("username")
 
@@ -555,15 +583,19 @@ def webhook():
 
     # /start /menu
     if text.startswith("/start") or text == "/menu":
+        try_delete_user_message(chat_id, incoming_message_id)
         hide_bottom_panel_silently(chat_id)
+
         if db_enabled():
             referred_by = parse_start_payload(text) if text.startswith("/start") else None
             get_or_create_user(chat_id, username, referred_by)
+
         ensure_ui(chat_id)
         return jsonify({"ok": True})
 
     # /pro fast mode
     if text.startswith("/pro"):
+        try_delete_user_message(chat_id, incoming_message_id)
         st = get_state(chat_id)
         mid = st.get("ui_message_id") or ensure_ui(chat_id)
         parts = text.split()
@@ -581,10 +613,13 @@ def webhook():
     # Wizard
     st = get_state(chat_id)
     step = st.get("step")
-    mid = st.get("ui_message_id") or ensure_ui(chat_id)
     payload = st.get("payload_json") or {}
+    mid = st.get("ui_message_id") or ensure_ui(chat_id)
 
     if step:
+        # ✅ убираем введённые пользователем цифры/строку
+        try_delete_user_message(chat_id, incoming_message_id)
+
         try:
             if step == STEP_BT_SLEEP_HOURS:
                 v = parse_float(text)
@@ -626,17 +661,15 @@ def webhook():
                 payload["pressure"] = parse_pressure(text)
 
             else:
-                set_state(chat_id, step=None, ui_message_id=mid, payload={})
-                ensure_ui(chat_id)
+                clear_state(chat_id, keep_ui=True)
+                edit_message(chat_id, mid, start_text(), main_menu_inline())
                 return jsonify({"ok": True})
 
         except Exception:
             edit_message(chat_id, mid, "⚠️ Не понял значение.\n\n" + prompt(step), back_inline())
             return jsonify({"ok": True})
 
-        # persist
-        set_state(chat_id, step=step, ui_message_id=mid, payload=payload)
-
+        # persist + next
         nxt = next_step(step)
         if nxt:
             set_state(chat_id, step=nxt, ui_message_id=mid, payload=payload)
@@ -653,10 +686,10 @@ def webhook():
             print("FINALIZE ERROR:", repr(e))
             edit_message(chat_id, mid, "⚠️ Ошибка расчёта. Нажми «Новый расчёт».", biotime_result_inline())
 
-        set_state(chat_id, step=None, ui_message_id=mid, payload={})
+        clear_state(chat_id, keep_ui=True)
         return jsonify({"ok": True})
 
-    # default: keep menu (no spam)
+    # default: не сбрасываем визард (его нет), просто показываем меню
     ensure_ui(chat_id)
     return jsonify({"ok": True})
 
