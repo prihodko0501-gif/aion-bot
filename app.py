@@ -19,6 +19,29 @@ def health():
     return "AION bot running", 200
 TELEGRAM_TOKEN = os.environ.get("TELEGRAM_TOKEN")
 API_URL = f"https://api.telegram.org/bot{TELEGRAM_TOKEN}" if TELEGRAM_TOKEN else None
+def tg_call(method: str, payload: dict):
+    r = requests.post(f"{API_URL}/{method}", json=payload, timeout=15)
+    data = r.json()
+
+    if not data.get("ok"):
+        desc = data.get("description", "")
+
+        # игнорируем ошибку Telegram
+        if "message is not modified" in desc:
+            return {"ok": True}
+
+        print("TG ERROR", data)
+
+    return data
+
+
+def answer_cb(callback_id: str, text: str = "", show_alert: bool = False):
+    return tg_call("answerCallbackQuery", {
+        "callback_query_id": callback_id,
+        "text": text,
+        "show_alert": show_alert
+    })
+API_URL = f"https://api.telegram.org/bot{TELEGRAM_TOKEN}" if TELEGRAM_TOKEN else None
 DATABASE_URL = os.environ.get("DATABASE_URL")  # Render Postgres (optional)
 
 # ========= MENU BUTTONS =========
