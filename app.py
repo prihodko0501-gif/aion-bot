@@ -1,7 +1,11 @@
 import os
 import time
+import io
+import csv
+import math
 import threading
-from datetime import date
+import statistics
+from datetime import date, datetime
 
 import requests
 from flask import Flask, request, jsonify
@@ -16,21 +20,27 @@ API_URL = f"https://api.telegram.org/bot{TELEGRAM_TOKEN}" if TELEGRAM_TOKEN else
 DATABASE_URL = os.environ.get("DATABASE_URL")  # Render Postgres (optional)
 
 # ========= MENU BUTTONS =========
-BTN_NAV = "🧭 Навигация (сегодня)"
+BTN_NAV = "🧭 Навигация"
 BTN_NEW = "🧬 Новый расчёт"
 BTN_HISTORY = "📚 История"
-BTN_ASSIST = "💬 Помощник AION"
+BTN_DYNAMICS = "📊 Динамика"
+BTN_PROFILE = "🧠 Профиль"
 BTN_SETTINGS = "⚙️ Настройки"
 BTN_INFO = "ℹ️ О системе"
 
 # ========= CALLBACKS =========
-CB_NAV = "nav_today"
+CB_NAV = "nav"
 CB_NEW = "calc_new"
 CB_HISTORY = "history"
-CB_ASSIST = "assist"
+CB_DYNAMICS = "dynamics"
+CB_PROFILE = "profile"
 CB_SETTINGS = "settings"
 CB_INFO = "info"
 CB_MENU = "menu"
+
+CB_H7 = "hist_7"
+CB_H14 = "hist_14"
+CB_CSV = "hist_csv"
 
 # ========= BioTime wizard steps =========
 STEP_BT_SLEEP_HOURS = "bt_sleep_hours"
@@ -52,7 +62,7 @@ WIZ_ORDER = [
 ]
 
 # ========= MEMORY FALLBACK =========
-# chat_id -> {"ui_message_id": int|None, "step": str|None, "payload": dict, "mode": str|None}
+# chat_id -> {"ui_message_id": int|None, "step": str|None, "payload": dict}
 MEM_STATE = {}
 
 
@@ -197,7 +207,7 @@ def clear_wizard(chat_id: int, keep_ui=True):
         db_exec("DELETE FROM aion_state WHERE telegram_id=%s", (chat_id,))
 
 
-def save_biotime_entry(chat_id: int, payload: dict, biotime: float, status: str, level: str, recommendation: str):
+def save_biotime_entry(chat_id: int, payload: dict, biotime: float, status: str, level: str, advice: str):
     if not db_enabled():
         return
     db_exec(
@@ -206,7 +216,7 @@ def save_biotime_entry(chat_id: int, payload: dict, biotime: float, status: str,
         (telegram_id, entry_date, payload_json, biotime_value, status, level, recommendation)
         VALUES (%s,%s,%s,%s,%s,%s,%s)
         """,
-        (chat_id, date.today(), psycopg2.extras.Json(payload), biotime, status, level, recommendation),
+        (chat_id, date.today(), psycopg2.extras.Json(payload), biotime, status, level, advice),
     )
 
 
@@ -226,7 +236,7 @@ def fetch_last_entry(chat_id: int):
     )
 
 
-def fetch_last_two(chat_id: int):
+def fetch_history(chat_id: int, limit: int = 14):
     if not db_enabled():
         return []
     rows = db_exec(
@@ -235,20 +245,21 @@ def fetch_last_two(chat_id: int):
         FROM biotime_entries
         WHERE telegram_id=%s
         ORDER BY created_at DESC
-        LIMIT 2
+        LIMIT %s
         """,
-        (chat_id,),
+        (chat_id, limit),
         fetchall=True,
     )
     return rows or []
 
 
-def fetch_history(chat_id: int, limit: int = 14):
+def fetch_series(chat_id: int, limit: int = 90):
+    """Возвращает список (created_at, biotime_value) по убыванию, limit штук."""
     if not db_enabled():
         return []
     rows = db_exec(
         """
-        SELECT created_at, biotime_value, status, level, recommendation
+        SELECT created_at, biotime_value
         FROM biotime_entries
         WHERE telegram_id=%s
         ORDER BY created_at DESC
@@ -275,6 +286,18 @@ def api_post(method: str, payload: dict, timeout: int = 12):
         return data
     except Exception as e:
         print("TG EXC", repr(e))
+        return None
+
+
+def api_post_multipart(method: str, data: dict, files: dict, timeout: int = 30):
+    """Для sendDocument."""
+    if not API_URL:
+        return None
+    try:
+        r = requests.post(f"{API_URL}/{method}", data=data, files=files, timeout=timeout)
+        return r.json() if r.content else None
+    except Exception as e:
+        print("TG MULTIPART EXC", repr(e))
         return None
 
 
@@ -334,7 +357,8 @@ def main_menu_inline():
             [{"text": BTN_NAV, "callback_data": CB_NAV}],
             [{"text": BTN_NEW, "callback_data": CB_NEW}],
             [{"text": BTN_HISTORY, "callback_data": CB_HISTORY}],
-            [{"text": BTN_ASSIST, "callback_data": CB_ASSIST}],
+            [{"text": BTN_DYNAMICS, "callback_data": CB_DYNAMICS}],
+            [{"text": BTN_PROFILE, "callback_data": CB_PROFILE}],
             [{"text": BTN_SETTINGS, "callback_data": CB_SETTINGS}],
             [{"text": BTN_INFO, "callback_data": CB_INFO}],
         ]
@@ -349,9 +373,19 @@ def after_calc_inline():
     return {
         "inline_keyboard": [
             [{"text": "🔄 Новый расчёт", "callback_data": CB_NEW}],
-            [{"text": "🧭 Навигация (сегодня)", "callback_data": CB_NAV}],
+            [{"text": "🧭 Навигация", "callback_data": CB_NAV}],
             [{"text": "📚 История", "callback_data": CB_HISTORY}],
-            [{"text": "💬 Помощник AION", "callback_data": CB_ASSIST}],
+            [{"text": "⬅️ В меню", "callback_data": CB_MENU}],
+        ]
+    }
+
+
+def history_inline():
+    return {
+        "inline_keyboard": [
+            [{"text": "Показать 7 дней", "callback_data": CB_H7}],
+            [{"text": "Показать 14 дней", "callback_data": CB_H14}],
+            [{"text": "Экспорт CSV", "callback_data": CB_CSV}],
             [{"text": "⬅️ В меню", "callback_data": CB_MENU}],
         ]
     }
@@ -363,8 +397,8 @@ def after_calc_inline():
 def start_text():
     return (
         "AION — система управления скоростью\n"
-        "биологического износа, основанная на\n"
-        "анализе твоей физиологии.\n\n"
+        "биологического износа на основе анализа\n"
+        "твоей физиологии.\n\n"
         "Выбери действие:"
     )
 
@@ -372,42 +406,37 @@ def start_text():
 def info_text():
     return (
         "ℹ️ О системе AION\n\n"
-        "AION превращает физиологию в навигацию:\n"
-        "— индекс (0–1000)\n"
-        "— вектор\n"
-        "— накопление/буфер\n"
-        "— риск\n"
-        "— режим на сегодня\n\n"
-        "Чтобы начать — сделай «🧬 Новый расчёт»."
+        "AION — это биологическая навигация:\n"
+        "1) Где ты сейчас?\n"
+        "2) Куда ты движешься?\n"
+        "3) Что будет, если ничего не менять?\n\n"
+        "Модули MVP:\n"
+        "🧬 Новый расчёт → BioTime\n"
+        "🧭 Навигация → индекс/вектор/риск\n"
+        "📚 История → записи + экспорт\n"
+        "📊 Динамика → 30–90 дней\n"
+        "🧠 Профиль → архитектура человека (MVP)\n"
     )
 
 
 def settings_text():
     return (
         "⚙️ Настройки (MVP)\n\n"
-        "Скоро здесь будет:\n"
+        "Скоро:\n"
         "— язык RU/EN\n"
         "— цели (сушка/масса/выносливость)\n"
-        "— уведомления\n\n"
-        "Пока заглушка."
+        "— уведомления\n"
     )
 
 
-def assistant_stub_text(has_data: bool):
-    if not has_data:
-        return (
-            "💬 Помощник AION\n\n"
-            "Я отвечаю свободно, но всегда через\n"
-            "логику AION.\n"
-            "Сейчас у тебя нет данных.\n\n"
-            "Сделай «🧬 Новый расчёт», и тогда я\n"
-            "смогу давать точные рекомендации."
-        )
+def profile_text():
     return (
-        "💬 Помощник AION\n\n"
-        "Задай любой вопрос.\n"
-        "Я отвечу через логику AION и учитывая\n"
-        "твой последний расчёт."
+        "🧠 Профиль (MVP)\n\n"
+        "Здесь будет архитектура человека:\n"
+        "— тип нервной системы\n"
+        "— толерантность к нагрузке\n"
+        "— адаптационная ёмкость\n\n"
+        "Пока MVP: профиль заполняем позже."
     )
 
 
@@ -431,8 +460,7 @@ def prompt(step: str):
 
 def pro_hint_text():
     return (
-        "AION PRO\n\n"
-        "⚙️ Быстрый режим (для своих):\n"
+        "⚙️ AION PRO (для своих):\n"
         "/pro Sleep Stress Recovery PressurePenalty DropPenalty RiskPenalty\n"
         "Пример:\n"
         "/pro 7 6 8 0 0 1"
@@ -524,19 +552,15 @@ def compute_biotime_from_payload(p: dict):
     if awaken >= 3:
         drop_penalty += 0.5
 
-    biotime = round(
-        (sleep_score * 0.6 + recovery * 0.8 - stress * 0.7) + 6.0
-        - pressure_penalty - drop_penalty - risk_penalty,
-        1
-    )
+    biotime = round((sleep_score * 0.6 + recovery * 0.8 - stress * 0.7) + 6.0 - pressure_penalty - drop_penalty - risk_penalty, 1)
     return clamp(biotime, 0.0, 12.0)
 
 
 def classify_biotime(biotime: float):
     if biotime < 4:
-        level = "🔴 Высокая"
+        level = "🔴 Низкая"
         advice = "Разгрузка / восстановление"
-        status = "ALERT MODE"
+        status = "ALERT"
     elif biotime < 8:
         level = "🟠 Средняя"
         advice = "Снизить объём"
@@ -552,75 +576,22 @@ def classify_biotime(biotime: float):
     return status, level, advice
 
 
-# =========================
-# AION 1 (0–1000)
-# =========================
-def biotime_to_index(biotime: float) -> int:
-    # линейная шкала 0–12 -> 0–1000
-    return int(round(clamp(biotime / 12.0, 0.0, 1.0) * 1000))
-
-
-def index_bar(index_0_1000: int, width: int = 16) -> str:
-    filled = int(round((clamp(index_0_1000, 0, 1000) / 1000.0) * width))
-    return "[" + ("█" * filled) + ("░" * (width - filled)) + "]"
-
-
-def risk_from_index(index_0_1000: int) -> int:
-    # под твой пример 742 -> ~41%
-    r = int(round(100 - (index_0_1000 * 0.08)))
-    return int(clamp(r, 0, 100))
-
-
-def mode_from_index(index_0_1000: int) -> str:
-    if index_0_1000 >= 860:
-        return "ОПТИМАЛЬНАЯ НАГРУЗКА"
-    if index_0_1000 >= 700:
-        return "КОНТРОЛИРУЕМАЯ НАГРУЗКА"
-    if index_0_1000 >= 520:
-        return "СНИЖЕНИЕ ОБЪЁМА"
-    return "ВОССТАНОВЛЕНИЕ"
-
-
-def buffer_days(index_0_1000: int) -> int:
-    # простая, но стабильная логика
-    if index_0_1000 >= 850:
-        return 4
-    if index_0_1000 >= 700:
-        return 3
-    if index_0_1000 >= 550:
-        return 2
-    return 1
-
-
-def accumulation_days(index_0_1000: int, prev_index: int | None) -> int:
-    # MVP: “накопление” считается если индекс держится в зоне 700+
-    if index_0_1000 < 700:
-        return 0
-    if prev_index is None or prev_index < 700:
-        return 1
-    return 2  # пока фиксируем упрощённо
-
-
-def aion1_block(index_0_1000: int, vector: int, acc_days: int, buf_days: int, risk_pct: int, mode: str) -> str:
-    sign = "−" if vector < 0 else "+"
-    v = f"{sign}{abs(vector)}"
+def result_block(biotime: float):
+    filled = int(round(biotime))
+    bar = "▰" * filled + "▱" * (12 - filled)
+    status, level, advice = classify_biotime(biotime)
     return (
-        "━━━━━━━━━━━━━━━━━\n"
-        "AION 1\n\n"
-        f"Индекс: {index_0_1000} / 1000\n\n"
-        f"{index_bar(index_0_1000)}\n\n"
-        f"Вектор: {v}\n"
-        f"Накопление: {acc_days} дня\n"
-        f"Буфер: {buf_days} дня\n"
-        f"Риск: {risk_pct}%\n\n"
-        f"Режим: {mode}\n"
+        "━━━━━━━━━━━━━━━━━━\n"
+        "🧬 BioTime\n\n"
+        f"Индекс: {biotime} / 12\n"
+        f"{bar}\n\n"
+        f"Статус: {status}\n"
+        f"Зона: {level}\n\n"
+        f"Что делать сегодня: {advice}\n"
         "━━━━━━━━━━━━━━━━━━"
     )
 
 
-# =========================
-# /pro (AION PRO)
-# =========================
 def calc_biotime_pro(parts):
     sleep = float(parts[0])
     stress = float(parts[1])
@@ -628,8 +599,214 @@ def calc_biotime_pro(parts):
     pressure_penalty = float(parts[3])
     drop_penalty = float(parts[4])
     risk_penalty = float(parts[5])
-    # ФОРМУЛА ЗАФИКСИРОВАНА (последняя)
     return round((sleep * 1.2 + recovery * 1.2 - stress) - pressure_penalty - drop_penalty - risk_penalty, 1)
+
+
+# =========================
+# NAVIGATION / DYNAMICS ENGINE
+# =========================
+def _mean(xs):
+    return sum(xs) / len(xs) if xs else 0.0
+
+
+def _std(xs):
+    if not xs or len(xs) < 2:
+        return 0.0
+    return float(statistics.pstdev(xs))
+
+
+def _linreg_slope(xs):
+    """
+    xs: значения во времени (старое -> новое)
+    Возвращает наклон (примерно 'скорость изменения' на шаг).
+    """
+    n = len(xs)
+    if n < 2:
+        return 0.0
+    x = list(range(n))
+    x_mean = (n - 1) / 2.0
+    y_mean = _mean(xs)
+    num = sum((x[i] - x_mean) * (xs[i] - y_mean) for i in range(n))
+    den = sum((x[i] - x_mean) ** 2 for i in range(n))
+    return num / den if den else 0.0
+
+
+def compute_navigation(chat_id: int):
+    """
+    Считает:
+    - AION Index (0-1000) по последнему BioTime
+    - Вектор (7д vs 14д)
+    - Накопление (подряд дней < 10)
+    - Буфер (дней >= 10 за 7)
+    - Риск 30 дней (0-100%)
+    - Стабильность (12 - std14)
+    """
+    last = fetch_last_entry(chat_id) if db_enabled() else None
+    if not last:
+        return None
+
+    last_bt = float(last.get("biotime_value") or 0.0)
+    aion_index = int(round(clamp(last_bt / 12.0, 0.0, 1.0) * 1000))
+
+    series = fetch_series(chat_id, limit=60) if db_enabled() else []
+    # series: newest -> oldest; нам нужно старое -> новое
+    bts_newest = [float(r["biotime_value"]) for r in series if r.get("biotime_value") is not None]
+    bts = list(reversed(bts_newest))  # old -> new
+
+    last7 = bts[-7:] if len(bts) >= 7 else bts[:]
+    last14 = bts[-14:] if len(bts) >= 14 else bts[:]
+
+    avg7 = _mean(last7) if last7 else last_bt
+    avg14 = _mean(last14) if last14 else last_bt
+
+    delta = round(avg7 - avg14, 2)
+    if delta > 0.15:
+        vector = "↑"
+    elif delta < -0.15:
+        vector = "↓"
+    else:
+        vector = "→"
+
+    # накопление: подряд дней < 10 (от сегодняшнего назад)
+    accumulation = 0
+    for v in reversed(bts):  # newest backwards
+        if v < 10:
+            accumulation += 1
+        else:
+            break
+
+    # буфер: дней >= 10 за 7
+    buffer_days = sum(1 for v in last7 if v >= 10)
+
+    # стабильность: 12 - std14 (std по 0..12 шкале)
+    std14 = _std(last14)
+    stability = round(clamp(12.0 - std14, 0.0, 12.0), 1)
+
+    # перегруз: дней < 8 за 14
+    overload_days = sum(1 for v in last14 if v < 8)
+
+    # риск 30д: простая модель
+    # - база от overload_days (0..14) -> 0..70
+    # - + от нестабильности (std14) -> 0..30
+    risk = (overload_days / 14.0) * 70.0 + clamp(std14 / 2.5, 0.0, 1.0) * 30.0
+    risk = int(round(clamp(risk, 0.0, 100.0)))
+
+    return {
+        "created_at": last.get("created_at"),
+        "biotime": round(last_bt, 1),
+        "aion_index": aion_index,
+        "vector": vector,
+        "delta": delta,
+        "accumulation": accumulation,
+        "buffer_days": buffer_days,
+        "stability": stability,
+        "risk": risk,
+    }
+
+
+def nav_block(nav: dict | None):
+    if not nav:
+        return (
+            "🧭 Навигация\n\n"
+            "Пока нет данных.\n"
+            "Сделай «🧬 Новый расчёт»."
+        )
+
+    idx = nav["aion_index"]
+    # полоска 0-1000 -> 20 сегментов
+    filled = int(round((idx / 1000.0) * 20))
+    bar = "█" * filled + "░" * (20 - filled)
+
+    return (
+        "━━━━━━━━━━━━━━━━━━\n"
+        "AION 1\n\n"
+        f"Индекс: {idx} / 1000\n"
+        f"[{bar}]\n\n"
+        f"Вектор: {nav['vector']}  ({nav['delta']:+})\n"
+        f"Накопление: {nav['accumulation']} дн.\n"
+        f"Буфер: {nav['buffer_days']} дн.\n"
+        f"Стабильность: {nav['stability']} / 12\n"
+        f"Риск 30 дней: {nav['risk']}%\n"
+        "━━━━━━━━━━━━━━━━━━"
+    )
+
+
+def dynamics_block(chat_id: int):
+    if not db_enabled():
+        return "📊 Динамика\n\nБаза данных отключена. Нет истории."
+
+    series = fetch_series(chat_id, limit=90)
+    if not series:
+        return "📊 Динамика\n\nПока нет данных. Сделай «🧬 Новый расчёт»."
+
+    bts_newest = [float(r["biotime_value"]) for r in series if r.get("biotime_value") is not None]
+    bts = list(reversed(bts_newest))  # old -> new
+
+    last30 = bts[-30:] if len(bts) >= 30 else bts
+    last90 = bts[-90:] if len(bts) >= 90 else bts
+
+    avg30 = round(_mean(last30), 2) if last30 else 0.0
+    avg90 = round(_mean(last90), 2) if last90 else 0.0
+    slope30 = _linreg_slope(last30)  # на 1 запись
+    slope30 = round(slope30, 3)
+
+    # скорость износа: если slope отрицательный -> износ растёт
+    # переводим в "баллы в месяц" примерно: slope * 30
+    wear_speed = round(-slope30 * 30.0, 2)  # чем больше, тем хуже
+    if wear_speed < 0:
+        wear_label = "улучшение"
+    elif wear_speed < 0.3:
+        wear_label = "стабильно"
+    elif wear_speed < 0.8:
+        wear_label = "умеренный износ"
+    else:
+        wear_label = "ускоренный износ"
+
+    return (
+        "📊 Динамика (30–90 дней)\n\n"
+        f"Среднее 30д: {avg30}\n"
+        f"Среднее 90д: {avg90}\n"
+        f"Тренд 30д: {slope30:+} (на запись)\n"
+        f"Скорость износа: {wear_speed} / мес — {wear_label}\n\n"
+        "Подсказка:\n"
+        "— если тренд ↓ и износ растёт → нужен сброс нагрузки\n"
+        "— если тренд ↑ → система восстанавливается\n"
+    )
+
+
+def history_block(rows: list[dict]):
+    if not rows:
+        return (
+            "📚 История\n\n"
+            "Пока нет записей.\n"
+            "Сделай «🧬 Новый расчёт»."
+        )
+
+    lines = ["📚 История (последние записи)\n"]
+    for r in rows:
+        ts = r.get("created_at")
+        bt = r.get("biotime_value")
+        lvl = r.get("level") or "-"
+        rec = r.get("recommendation") or "-"
+        lines.append(f"• {ts} — {bt}/12 — {lvl} — {rec}")
+    return "\n".join(lines)
+
+
+def export_csv(chat_id: int, limit: int = 60):
+    """Готовит CSV bytes для отправки."""
+    rows = fetch_history(chat_id, limit=limit) if db_enabled() else []
+    output = io.StringIO()
+    w = csv.writer(output)
+    w.writerow(["created_at", "biotime_value", "status", "level", "recommendation"])
+    for r in rows:
+        w.writerow([
+            str(r.get("created_at")),
+            str(r.get("biotime_value")),
+            str(r.get("status")),
+            str(r.get("level")),
+            str(r.get("recommendation")),
+        ])
+    return output.getvalue().encode("utf-8")
 
 
 # =========================
@@ -650,6 +827,25 @@ def ensure_ui(chat_id: int):
     return new_mid
 
 
+def core_animation_async(chat_id: int, mid: int, biotime: float):
+    def run():
+        try:
+            steps = [
+                ("🧬 BioTime\n\nИнициализация...", after_calc_inline()),
+                ("🧠 Анализ данных…\n▰▱▱▱▱", after_calc_inline()),
+                ("🫀 Оценка нагрузки…\n▰▰▰▱▱", after_calc_inline()),
+                ("🔥 Сбор интеграла…\n▰▰▰▰▰", after_calc_inline()),
+            ]
+            for txt, mk in steps:
+                edit_message(chat_id, mid, txt, mk)
+                time.sleep(0.25)
+            edit_message(chat_id, mid, result_block(biotime), after_calc_inline())
+        except Exception as e:
+            print("ANIM ERROR:", repr(e))
+
+    threading.Thread(target=run, daemon=True).start()
+
+
 def next_step(step: str):
     try:
         i = WIZ_ORDER.index(step)
@@ -663,74 +859,6 @@ def start_biotime_wizard(chat_id: int, ui_mid: int):
     edit_message(chat_id, ui_mid, prompt(STEP_BT_SLEEP_HOURS), back_inline())
 
 
-def core_animation_async(chat_id: int, mid: int, final_text: str):
-    def run():
-        try:
-            steps = [
-                ("AION 1\n\nИнициализация...", after_calc_inline()),
-                ("AION 1\n\n🧠 Анализ данных…\n▰▱▱▱▱", after_calc_inline()),
-                ("AION 1\n\n🫀 Оценка нагрузки…\n▰▰▰▱▱", after_calc_inline()),
-                ("AION 1\n\n🔥 Сбор интеграла…\n▰▰▰▰▰", after_calc_inline()),
-            ]
-            for txt, mk in steps:
-                edit_message(chat_id, mid, txt, mk)
-                time.sleep(0.25)
-            edit_message(chat_id, mid, final_text, after_calc_inline())
-        except Exception as e:
-            print("ANIM ERROR:", repr(e))
-
-    threading.Thread(target=run, daemon=True).start()
-
-
-# =========================
-# NAV / HISTORY BLOCKS
-# =========================
-def nav_block_from_last(last_two_rows: list[dict]):
-    if not last_two_rows:
-        return (
-            "🧭 Навигация (сегодня)\n\n"
-            "Пока нет данных.\n"
-            "Сделай «🧬 Новый расчёт»."
-        )
-
-    last = last_two_rows[0]
-    prev = last_two_rows[1] if len(last_two_rows) > 1 else None
-
-    bt = float(last.get("biotime_value"))
-    idx = biotime_to_index(bt)
-
-    prev_idx = biotime_to_index(float(prev.get("biotime_value"))) if prev else None
-    vector = (idx - prev_idx) if prev_idx is not None else 0
-
-    acc = accumulation_days(idx, prev_idx)
-    buf = buffer_days(idx)
-    risk = risk_from_index(idx)
-    mode = mode_from_index(idx)
-
-    created_at = last.get("created_at")
-    block = aion1_block(idx, vector, acc, buf, risk, mode)
-    return f"🧭 Навигация (сегодня)\n\nПоследний расчёт: {created_at}\n\n{block}"
-
-
-def history_block(rows: list[dict]):
-    if not rows:
-        return (
-            "📚 История\n\n"
-            "Пока нет записей.\n"
-            "Сделай «🧬 Новый расчёт»."
-        )
-
-    lines = ["📚 История (последние записи)\n"]
-    for r in rows:
-        ts = r.get("created_at")
-        bt = float(r.get("biotime_value"))
-        idx = biotime_to_index(bt)
-        mode = mode_from_index(idx)
-        risk = risk_from_index(idx)
-        lines.append(f"• {ts} — {idx}/1000 — риск {risk}% — {mode}")
-    return "\n".join(lines)
-
-
 # =========================
 # ROUTES
 # =========================
@@ -742,241 +870,210 @@ def home():
 @app.post("/webhook")
 def webhook():
     # всегда 200, чтобы Telegram не делал ретраи
-    try:
-        if not TELEGRAM_TOKEN:
-            return jsonify({"ok": True, "error": "No TELEGRAM_TOKEN"}), 200
+    if not TELEGRAM_TOKEN:
+        return jsonify({"ok": True, "error": "No TELEGRAM_TOKEN"}), 200
 
-        update = request.get_json(silent=True) or {}
+    update = request.get_json(silent=True) or {}
 
-        # ==== CALLBACKS ====
-        if "callback_query" in update:
-            cq = update["callback_query"]
-            callback_query_id = cq.get("id")
-            data = cq.get("data")
+    # ==== CALLBACKS ====
+    if "callback_query" in update:
+        cq = update["callback_query"]
+        callback_query_id = cq.get("id")
+        data = cq.get("data")
 
-            msg = cq.get("message") or {}
-            chat_id = (msg.get("chat") or {}).get("id")
-            message_id = msg.get("message_id")
+        msg = cq.get("message") or {}
+        chat_id = (msg.get("chat") or {}).get("id")
+        message_id = msg.get("message_id")
 
-            if callback_query_id:
-                answer_callback(callback_query_id)
+        if callback_query_id:
+            answer_callback(callback_query_id)
 
-            if not chat_id or not message_id:
-                return jsonify({"ok": True}), 200
-
-            # фиксируем ui_message_id (текущее сообщение интерфейса)
-            set_state(chat_id, ui_message_id=message_id, step=None, payload=None)
-
-            if data == CB_MENU:
-                clear_wizard(chat_id, keep_ui=True)
-                edit_message(chat_id, message_id, start_text(), main_menu_inline())
-                return jsonify({"ok": True}), 200
-
-            if data == CB_INFO:
-                edit_message(chat_id, message_id, info_text(), back_inline())
-                return jsonify({"ok": True}), 200
-
-            if data == CB_SETTINGS:
-                edit_message(chat_id, message_id, settings_text(), back_inline())
-                return jsonify({"ok": True}), 200
-
-            if data == CB_ASSIST:
-                last = fetch_last_entry(chat_id) if db_enabled() else None
-                edit_message(chat_id, message_id, assistant_stub_text(bool(last)), back_inline())
-                return jsonify({"ok": True}), 200
-
-            if data == CB_NAV:
-                last_two = fetch_last_two(chat_id) if db_enabled() else []
-                edit_message(chat_id, message_id, nav_block_from_last(last_two), back_inline())
-                return jsonify({"ok": True}), 200
-
-            if data == CB_HISTORY:
-                rows = fetch_history(chat_id, limit=14) if db_enabled() else []
-                edit_message(chat_id, message_id, history_block(rows), back_inline())
-                return jsonify({"ok": True}), 200
-
-            if data == CB_NEW:
-                start_biotime_wizard(chat_id, message_id)
-                return jsonify({"ok": True}), 200
-
+        if not chat_id or not message_id:
             return jsonify({"ok": True}), 200
 
-        # ==== TEXT ====
-        message = update.get("message") or {}
-        chat_id = (message.get("chat") or {}).get("id")
-        incoming_message_id = message.get("message_id")
-        text = (message.get("text") or "").strip()
+        # фиксируем ui_message_id (текущее сообщение интерфейса)
+        set_state(chat_id, ui_message_id=message_id, step=None, payload=None)
 
-        if not chat_id:
-            return jsonify({"ok": True}), 200
-
-        # /start /menu
-        if text.startswith("/start") or text == "/menu" or text.lower() in ("start", "старт"):
-            # НЕ удаляем сообщение пользователя
+        if data == CB_MENU:
             clear_wizard(chat_id, keep_ui=True)
-            ensure_ui(chat_id)
+            edit_message(chat_id, message_id, start_text(), main_menu_inline())
             return jsonify({"ok": True}), 200
 
-        # /pro fast mode (AION PRO)
-        if text.startswith("/pro"):
-            try_delete_user_message(chat_id, incoming_message_id)
-
-            parts = text.split()
-            mid = get_state(chat_id).get("ui_message_id") or ensure_ui(chat_id)
-
-            if len(parts) != 7:
-                edit_message(chat_id, mid, "AION PRO\n\n⚠️ Формат:\n/pro 7 6 8 0 0 1\n\n" + pro_hint_text(), back_inline())
-                return jsonify({"ok": True}), 200
-
-            try:
-                biotime = clamp(calc_biotime_pro(parts[1:]), 0.0, 12.0)
-            except Exception:
-                edit_message(chat_id, mid, "AION PRO\n\n⚠️ Ошибка формата.\n\n" + pro_hint_text(), back_inline())
-                return jsonify({"ok": True}), 200
-
-            # AION 1 блок из PRO
-            prev = fetch_last_entry(chat_id) if db_enabled() else None
-            prev_idx = biotime_to_index(float(prev.get("biotime_value"))) if prev else None
-
-            idx = biotime_to_index(biotime)
-            vector = (idx - prev_idx) if prev_idx is not None else 0
-            acc = accumulation_days(idx, prev_idx)
-            buf = buffer_days(idx)
-            risk = risk_from_index(idx)
-            mode = mode_from_index(idx)
-
-            # сохраняем (если есть БД)
-            status, level, _advice = classify_biotime(biotime)
-            save_biotime_entry(chat_id, {"pro": True}, biotime, status, level, mode)
-
-            core_animation_async(chat_id, mid, aion1_block(idx, vector, acc, buf, risk, mode))
+        if data == CB_INFO:
+            edit_message(chat_id, message_id, info_text(), back_inline())
             return jsonify({"ok": True}), 200
 
-        # Wizard input
-        st = get_state(chat_id)
-        step = st.get("step")
-        payload = st.get("payload") or {}
-        mid = st.get("ui_message_id") or ensure_ui(chat_id)
-
-        if step:
-            # скрываем “5”, “7.5” и т.п. чтобы не засорять чат
-            try_delete_user_message(chat_id, incoming_message_id)
-
-            try:
-                if step == STEP_BT_SLEEP_HOURS:
-                    v = parse_float(text)
-                    if v <= 0 or v > 14:
-                        raise ValueError()
-                    payload["sleep_hours"] = v
-
-                elif step == STEP_BT_LATENCY_MIN:
-                    v = parse_int(text)
-                    if v < 0 or v > 240:
-                        raise ValueError()
-                    payload["latency_min"] = v
-
-                elif step == STEP_BT_AWAKENINGS:
-                    v = parse_int(text)
-                    if v < 0 or v > 20:
-                        raise ValueError()
-                    payload["awakenings"] = v
-
-                elif step == STEP_BT_MORNING_FEEL:
-                    v = parse_float(text)
-                    if v < 0 or v > 10:
-                        raise ValueError()
-                    payload["morning_feel"] = v
-
-                elif step == STEP_BT_RHR:
-                    v = parse_int(text)
-                    if v < 30 or v > 140:
-                        raise ValueError()
-                    payload["rhr"] = v
-
-                elif step == STEP_BT_ENERGY:
-                    v = parse_float(text)
-                    if v < 0 or v > 10:
-                        raise ValueError()
-                    payload["energy"] = v
-
-                elif step == STEP_BT_PRESSURE:
-                    payload["pressure"] = parse_pressure(text)
-
-                else:
-                    clear_wizard(chat_id, keep_ui=True)
-                    ensure_ui(chat_id)
-                    return jsonify({"ok": True}), 200
-
-            except Exception:
-                edit_message(chat_id, mid, "⚠️ Не понял значение.\n\n" + prompt(step), back_inline())
-                return jsonify({"ok": True}), 200
-
-            nxt = next_step(step)
-            if nxt:
-                set_state(chat_id, ui_message_id=mid, step=nxt, payload=payload)
-                edit_message(chat_id, mid, prompt(nxt), back_inline())
-                return jsonify({"ok": True}), 200
-
-            # FINALIZE
-            try:
-                prev = fetch_last_entry(chat_id) if db_enabled() else None
-                prev_idx = biotime_to_index(float(prev.get("biotime_value"))) if prev else None
-
-                biotime = compute_biotime_from_payload(payload)
-                idx = biotime_to_index(biotime)
-                vector = (idx - prev_idx) if prev_idx is not None else 0
-                acc = accumulation_days(idx, prev_idx)
-                buf = buffer_days(idx)
-                risk = risk_from_index(idx)
-                mode = mode_from_index(idx)
-
-                status, level, _advice = classify_biotime(biotime)
-
-                # сохраняем в БД (если есть)
-                save_biotime_entry(chat_id, payload, biotime, status, level, mode)
-
-                core_animation_async(chat_id, mid, aion1_block(idx, vector, acc, buf, risk, mode))
-
-            except Exception as e:
-                print("FINALIZE ERROR:", repr(e))
-                edit_message(chat_id, mid, "⚠️ Ошибка расчёта. Нажми «🧬 Новый расчёт».", after_calc_inline())
-
-            clear_wizard(chat_id, keep_ui=True)
+        if data == CB_SETTINGS:
+            edit_message(chat_id, message_id, settings_text(), back_inline())
             return jsonify({"ok": True}), 200
 
-        # Любой другой текст:
-        # Если есть данные — отвечаем “через логику AION” заглушкой (MVP).
-        # Если данных нет — просим сделать расчёт.
-        if text:
-            last = fetch_last_entry(chat_id) if db_enabled() else None
-            if last:
-                bt = float(last.get("biotime_value"))
-                idx = biotime_to_index(bt)
-                mode = mode_from_index(idx)
-                risk = risk_from_index(idx)
-                reply = (
-                    "💬 Помощник AION\n\n"
-                    "Вопрос принят.\n"
-                    "Отвечаю через логику AION:\n\n"
-                    f"Твой текущий индекс: {idx}/1000\n"
-                    f"Риск: {risk}%\n"
-                    f"Режим: {mode}\n\n"
-                    "Если хочешь точнее — сделай новый расчёт сегодня."
-                )
-                # не мусорим: отвечаем в UI
-                edit_message(chat_id, mid, reply, back_inline())
-                return jsonify({"ok": True}), 200
-            else:
-                edit_message(chat_id, mid, assistant_stub_text(False), back_inline())
+        if data == CB_PROFILE:
+            edit_message(chat_id, message_id, profile_text(), back_inline())
+            return jsonify({"ok": True}), 200
+
+        if data == CB_NAV:
+            nav = compute_navigation(chat_id) if db_enabled() else None
+            edit_message(chat_id, message_id, nav_block(nav), back_inline())
+            return jsonify({"ok": True}), 200
+
+        if data == CB_DYNAMICS:
+            edit_message(chat_id, message_id, dynamics_block(chat_id), back_inline())
+            return jsonify({"ok": True}), 200
+
+        if data == CB_HISTORY:
+            rows = fetch_history(chat_id, limit=14) if db_enabled() else []
+            edit_message(chat_id, message_id, history_block(rows), history_inline())
+            return jsonify({"ok": True}), 200
+
+        if data == CB_H7:
+            rows = fetch_history(chat_id, limit=7) if db_enabled() else []
+            edit_message(chat_id, message_id, history_block(rows), history_inline())
+            return jsonify({"ok": True}), 200
+
+        if data == CB_H14:
+            rows = fetch_history(chat_id, limit=14) if db_enabled() else []
+            edit_message(chat_id, message_id, history_block(rows), history_inline())
+            return jsonify({"ok": True}), 200
+
+        if data == CB_CSV:
+            if not db_enabled():
+                edit_message(chat_id, message_id, "📄 Экспорт CSV недоступен без базы данных.", history_inline())
                 return jsonify({"ok": True}), 200
 
+            # отправляем файл в чат (не редактируем UI этим)
+            content = export_csv(chat_id, limit=60)
+            filename = f"aion_history_{chat_id}.csv"
+            api_post_multipart(
+                "sendDocument",
+                data={"chat_id": str(chat_id), "caption": "📄 История AION (CSV)"},
+                files={"document": (filename, content, "text/csv")},
+            )
+            return jsonify({"ok": True}), 200
+
+        if data == CB_NEW:
+            start_biotime_wizard(chat_id, message_id)
+            return jsonify({"ok": True}), 200
+
+        return jsonify({"ok": True}), 200
+
+    # ==== TEXT ====
+    message = update.get("message") or {}
+    chat_id = (message.get("chat") or {}).get("id")
+    incoming_message_id = message.get("message_id")
+    text = (message.get("text") or "").strip()
+
+    if not chat_id:
+        return jsonify({"ok": True}), 200
+
+    t_low = (text or "").strip().lower()
+
+    # /start /menu + поддержка "старт"/"start"
+    if text.startswith("/start") or text == "/menu" or t_low in ("старт", "start"):
+        clear_wizard(chat_id, keep_ui=True)
         ensure_ui(chat_id)
         return jsonify({"ok": True}), 200
 
-    except Exception as e:
-        # Главное: не отдаём 500 Telegram, чтобы не было ретраев/спама
-        print("WEBHOOK TOP ERROR:", repr(e))
+    # AION PRO fast mode
+    if text.startswith("/pro"):
+        try_delete_user_message(chat_id, incoming_message_id)
+
+        parts = text.split()
+        mid = get_state(chat_id).get("ui_message_id") or ensure_ui(chat_id)
+
+        if len(parts) != 7:
+            edit_message(chat_id, mid, "⚠️ Формат:\n/pro 7 6 8 0 0 1\n\n" + pro_hint_text(), back_inline())
+            return jsonify({"ok": True}), 200
+
+        try:
+            biotime = clamp(calc_biotime_pro(parts[1:]), 0.0, 12.0)
+        except Exception:
+            edit_message(chat_id, mid, "⚠️ Ошибка формата.\n\n" + pro_hint_text(), back_inline())
+            return jsonify({"ok": True}), 200
+
+        core_animation_async(chat_id, mid, biotime)
         return jsonify({"ok": True}), 200
+
+    # Wizard input
+    st = get_state(chat_id)
+    step = st.get("step")
+    payload = st.get("payload") or {}
+    mid = st.get("ui_message_id") or ensure_ui(chat_id)
+
+    if step:
+        # скрываем ввод пользователя (цифры), чтобы не засорять чат
+        try_delete_user_message(chat_id, incoming_message_id)
+
+        try:
+            if step == STEP_BT_SLEEP_HOURS:
+                v = parse_float(text)
+                if v <= 0 or v > 14:
+                    raise ValueError()
+                payload["sleep_hours"] = v
+
+            elif step == STEP_BT_LATENCY_MIN:
+                v = parse_int(text)
+                if v < 0 or v > 240:
+                    raise ValueError()
+                payload["latency_min"] = v
+
+            elif step == STEP_BT_AWAKENINGS:
+                v = parse_int(text)
+                if v < 0 or v > 20:
+                    raise ValueError()
+                payload["awakenings"] = v
+
+            elif step == STEP_BT_MORNING_FEEL:
+                v = parse_float(text)
+                if v < 0 or v > 10:
+                    raise ValueError()
+                payload["morning_feel"] = v
+
+            elif step == STEP_BT_RHR:
+                v = parse_int(text)
+                if v < 30 or v > 140:
+                    raise ValueError()
+                payload["rhr"] = v
+
+            elif step == STEP_BT_ENERGY:
+                v = parse_float(text)
+                if v < 0 or v > 10:
+                    raise ValueError()
+                payload["energy"] = v
+
+            elif step == STEP_BT_PRESSURE:
+                payload["pressure"] = parse_pressure(text)
+
+            else:
+                clear_wizard(chat_id, keep_ui=True)
+                ensure_ui(chat_id)
+                return jsonify({"ok": True}), 200
+
+        except Exception:
+            edit_message(chat_id, mid, "⚠️ Не понял значение.\n\n" + prompt(step), back_inline())
+            return jsonify({"ok": True}), 200
+
+        nxt = next_step(step)
+        if nxt:
+            set_state(chat_id, ui_message_id=mid, step=nxt, payload=payload)
+            edit_message(chat_id, mid, prompt(nxt), back_inline())
+            return jsonify({"ok": True}), 200
+
+        # FINALIZE
+        try:
+            biotime = compute_biotime_from_payload(payload)
+            status, level, advice = classify_biotime(biotime)
+            save_biotime_entry(chat_id, payload, biotime, status, level, advice)
+            core_animation_async(chat_id, mid, biotime)
+        except Exception as e:
+            print("FINALIZE ERROR:", repr(e))
+            edit_message(chat_id, mid, "⚠️ Ошибка расчёта. Нажми «🧬 Новый расчёт».", after_calc_inline())
+
+        clear_wizard(chat_id, keep_ui=True)
+        return jsonify({"ok": True}), 200
+
+    # любой другой текст — просто гарантируем, что UI жив
+    ensure_ui(chat_id)
+    return jsonify({"ok": True}), 200
 
 
 # init DB under gunicorn
