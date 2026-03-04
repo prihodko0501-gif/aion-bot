@@ -14,7 +14,9 @@ import psycopg2
 import psycopg2.extras
 
 app = Flask(__name__)
-
+@app.route("/")
+def health():
+    return "AION bot running", 200
 TELEGRAM_TOKEN = os.environ.get("TELEGRAM_TOKEN")
 API_URL = f"https://api.telegram.org/bot{TELEGRAM_TOKEN}" if TELEGRAM_TOKEN else None
 DATABASE_URL = os.environ.get("DATABASE_URL")  # Render Postgres (optional)
