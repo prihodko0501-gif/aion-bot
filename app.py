@@ -156,8 +156,9 @@ def set_state(chat_id: int, ui_message_id=None, step=None, payload=None):
         MEM_STATE[chat_id]["ui_message_id"] = ui_message_id
     if step is not None:
         MEM_STATE[chat_id]["step"] = step
-    if payload is not None:
-        MEM_STATE[chat_id]["payload"] = payload
+    if payload is None:
+    payload = {}
+MEM_STATE[chat_id]["payload"] = payload
 
     if not db_enabled():
         return
