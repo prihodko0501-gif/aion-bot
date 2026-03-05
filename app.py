@@ -78,7 +78,7 @@ WIZ_ORDER = [
 MEM_STATE = {}
 
 # =========================
-# DB LAYER
+# DB LAYER (AUTO MIGRATION + RETRY)
 # =========================
 def db_enabled() -> bool:
     return bool(DATABASE_URL)
@@ -89,7 +89,49 @@ def db_conn():
     return psycopg2.connect(DATABASE_URL, sslmode="require")
 
 
-def db_exec(query, params=None, fetchone=False, fetchall=False):
+def migrate_db_schema():
+    """
+    Принудительно добавляет недостающие колонки в уже существующие таблицы.
+    Это фиксит кейс: column "mode" does not exist, и любые будущие несовпадения схемы.
+    """
+    if not db_enabled():
+        return
+
+    stmts = [
+        # aion_state
+        'ALTER TABLE aion_state ADD COLUMN IF NOT EXISTS ui_message_id BIGINT;',
+        'ALTER TABLE aion_state ADD COLUMN IF NOT EXISTS step TEXT;',
+        'ALTER TABLE aion_state ADD COLUMN IF NOT EXISTS mode TEXT;',
+        "ALTER TABLE aion_state ADD COLUMN IF NOT EXISTS payload_json JSONB NOT NULL DEFAULT '{}'::jsonb;",
+        'ALTER TABLE aion_state ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP NOT NULL DEFAULT NOW();',
+
+        # biotime_entries
+        'ALTER TABLE biotime_entries ADD COLUMN IF NOT EXISTS entry_date DATE;',
+        'ALTER TABLE biotime_entries ADD COLUMN IF NOT EXISTS payload_json JSONB;',
+        'ALTER TABLE biotime_entries ADD COLUMN IF NOT EXISTS status TEXT;',
+        'ALTER TABLE biotime_entries ADD COLUMN IF NOT EXISTS level TEXT;',
+        'ALTER TABLE biotime_entries ADD COLUMN IF NOT EXISTS recommendation TEXT;',
+        'ALTER TABLE biotime_entries ADD COLUMN IF NOT EXISTS protocol_training TEXT;',
+        'ALTER TABLE biotime_entries ADD COLUMN IF NOT EXISTS protocol_sleep TEXT;',
+        'ALTER TABLE biotime_entries ADD COLUMN IF NOT EXISTS protocol_nutrition TEXT;',
+        'ALTER TABLE biotime_entries ADD COLUMN IF NOT EXISTS created_at TIMESTAMP NOT NULL DEFAULT NOW();',
+    ]
+
+    try:
+        with db_conn() as conn:
+            with conn.cursor() as cur:
+                for s in stmts:
+                    try:
+                        cur.execute(s)
+                    except Exception as e:
+                        # не валим весь процесс из-за одной миграции
+                        print("DB MIGRATE STMT ERROR:", s, repr(e))
+        print("DB migrate ok (columns ensured)")
+    except Exception as e:
+        print("DB MIGRATE ERROR:", repr(e))
+
+
+def db_exec(query, params=None, fetchone=False, fetchall=False, _retry=False):
     if not db_enabled():
         return None
     try:
@@ -102,22 +144,30 @@ def db_exec(query, params=None, fetchone=False, fetchall=False):
                     return cur.fetchall()
                 return None
     except Exception as e:
-        print("DB ERROR:", repr(e))
+        msg = repr(e)
+        print("DB ERROR:", msg)
+
+        # авто-ремонт схемы при ошибках отсутствия колонок/таблиц
+        if not _retry and (
+            "UndefinedColumn" in msg
+            or "does not exist" in msg
+            or "undefinedcolumn" in msg.lower()
+        ):
+            try:
+                migrate_db_schema()
+                return db_exec(query, params=params, fetchone=fetchone, fetchall=fetchall, _retry=True)
+            except Exception as e2:
+                print("DB RETRY FAILED:", repr(e2))
+
         return None
 
 
 def init_db():
-    """
-    Создаёт таблицы, если их нет, и ДОБАВЛЯЕТ недостающие колонки
-    в уже существующие таблицы (авто-миграция).
-    Это фиксит ошибку:
-    UndefinedColumn: column "mode" of relation "aion_state" does not exist
-    """
     if not db_enabled():
         print("DB disabled: DATABASE_URL not set. Using memory.")
         return
 
-    # 1) базовые таблицы (если их нет)
+    # создаём таблицы, если их нет
     db_exec(
         """
         CREATE TABLE IF NOT EXISTS aion_state (
@@ -128,7 +178,8 @@ def init_db():
             payload_json JSONB NOT NULL DEFAULT '{}'::jsonb,
             updated_at TIMESTAMP NOT NULL DEFAULT NOW()
         );
-        """
+        """,
+        _retry=True
     )
 
     db_exec(
@@ -147,28 +198,12 @@ def init_db():
             protocol_nutrition TEXT,
             created_at TIMESTAMP NOT NULL DEFAULT NOW()
         );
-        """
+        """,
+        _retry=True
     )
 
-    # 2) МИГРАЦИИ: добавляем недостающие колонки в существующих таблицах
-    # aion_state
-    db_exec('ALTER TABLE aion_state ADD COLUMN IF NOT EXISTS ui_message_id BIGINT;')
-    db_exec('ALTER TABLE aion_state ADD COLUMN IF NOT EXISTS step TEXT;')
-    db_exec('ALTER TABLE aion_state ADD COLUMN IF NOT EXISTS mode TEXT;')
-    db_exec("ALTER TABLE aion_state ADD COLUMN IF NOT EXISTS payload_json JSONB NOT NULL DEFAULT '{}'::jsonb;")
-    db_exec('ALTER TABLE aion_state ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP NOT NULL DEFAULT NOW();')
-
-    # biotime_entries
-    db_exec('ALTER TABLE biotime_entries ADD COLUMN IF NOT EXISTS entry_date DATE;')
-    db_exec("ALTER TABLE biotime_entries ADD COLUMN IF NOT EXISTS payload_json JSONB;")
-    db_exec('ALTER TABLE biotime_entries ADD COLUMN IF NOT EXISTS status TEXT;')
-    db_exec('ALTER TABLE biotime_entries ADD COLUMN IF NOT EXISTS level TEXT;')
-    db_exec('ALTER TABLE biotime_entries ADD COLUMN IF NOT EXISTS recommendation TEXT;')
-    db_exec('ALTER TABLE biotime_entries ADD COLUMN IF NOT EXISTS protocol_training TEXT;')
-    db_exec('ALTER TABLE biotime_entries ADD COLUMN IF NOT EXISTS protocol_sleep TEXT;')
-    db_exec('ALTER TABLE biotime_entries ADD COLUMN IF NOT EXISTS protocol_nutrition TEXT;')
-    db_exec('ALTER TABLE biotime_entries ADD COLUMN IF NOT EXISTS created_at TIMESTAMP NOT NULL DEFAULT NOW();')
-
+    # гарантируем колонки (миграция)
+    migrate_db_schema()
     print("DB init + migrate ok")
 
 
@@ -344,7 +379,6 @@ def fetch_history_limit(chat_id: int, limit: int = 60):
     )
     return rows or []
 
-
 # =========================
 # TELEGRAM HELPERS
 # =========================
@@ -437,7 +471,6 @@ def send_document_bytes(chat_id: int, filename: str, file_bytes: bytes, caption:
     except Exception as e:
         print("TG sendDocument EXC:", repr(e))
 
-
 # =========================
 # UI MARKUP
 # =========================
@@ -482,7 +515,6 @@ def after_calc_inline():
             [{"text": "⬅️ В меню", "callback_data": CB_MENU}],
         ]
     }
-
 
 # =========================
 # TEXTS / LOGIC
@@ -614,7 +646,6 @@ def parse_pressure(text: str):
 
     return {"sys": sys, "dia": dia, "pulse": pulse}
 
-
 # =========================
 # BIO TIME MODEL
 # =========================
@@ -719,7 +750,6 @@ def result_block(biotime: float, mode: str, status: str, level: str, advice: str
         f"• {p_nutri}\n"
         "━━━━━━━━━━━━━━━━━━"
     )
-
 
 # =========================
 # AION NAVIGATION ENGINE (0–1000)
@@ -874,7 +904,6 @@ def dynamics_block(rows_desc):
         "— скорость износа растёт при отрицательной динамике"
     )
 
-
 # =========================
 # AION PRO (фиксированная формула)
 # =========================
@@ -887,7 +916,6 @@ def calc_biotime_pro(parts):
     risk_penalty = float(parts[5])
     biotime = round((sleep * 1.2 + recovery * 1.2 - stress) - pressure_penalty - drop_penalty - risk_penalty, 1)
     return clamp(biotime, 0.0, 12.0)
-
 
 # =========================
 # SINGLE UI MESSAGE
@@ -937,7 +965,6 @@ def next_step(step: str):
 def start_biotime_wizard(chat_id: int, ui_mid: int):
     set_state(chat_id, ui_message_id=ui_mid, step=STEP_BT_SLEEP_HOURS, mode=None, payload={})
     edit_message(chat_id, ui_mid, prompt(STEP_BT_SLEEP_HOURS), back_inline())
-
 
 # =========================
 # HISTORY TEXT
@@ -990,7 +1017,6 @@ def build_csv_bytes(rows_desc) -> bytes:
             r.get("protocol_nutrition"),
         ])
     return output.getvalue().encode("utf-8")
-
 
 # =========================
 # ASSISTANT (простая логика)
@@ -1046,7 +1072,6 @@ def assist_answer(chat_id: int, question: str, last_row, nav_rows):
         return head + "\nПо питанию/воде: добавь воду (500–700 мл), еда без перегруза ЖКТ вечером."
 
     return head + "\nОтвет: уточни цель (тренировка/сон/питание/стресс), и я дам протокол точнее."
-
 
 # =========================
 # ROUTES: HEALTH + DEBUG
