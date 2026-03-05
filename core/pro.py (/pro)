@@ -1,0 +1,17 @@
+from core.parsing import clamp
+
+def calc_biotime_pro(parts):
+    """
+    parts: [sleep, stress, recovery, pressure_penalty, drop_penalty, risk_penalty]
+    Формула AION PRO (фикс):
+    BioTime = round((Sleep*1.2 + Recovery*1.2 - Stress) - PressurePenalty - DropPenalty - RiskPenalty, 1)
+    """
+    sleep = float(parts[0])
+    stress = float(parts[1])
+    recovery = float(parts[2])
+    pressure_penalty = float(parts[3])
+    drop_penalty = float(parts[4])
+    risk_penalty = float(parts[5])
+
+    biotime = round((sleep * 1.2 + recovery * 1.2 - stress) - pressure_penalty - drop_penalty - risk_penalty, 1)
+    return clamp(biotime, 0.0, 12.0)
