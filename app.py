@@ -10,8 +10,7 @@ from flask import Flask, request, jsonify
 
 import psycopg2
 import psycopg2.extras
-from core.biotime import calculate_biotime_pro
-from database.queries import save_biotime
+
 app = Flask(__name__)
 
 TELEGRAM_TOKEN = os.environ.get("TELEGRAM_TOKEN")
@@ -75,7 +74,6 @@ WIZ_ORDER = [
 # =========================
 MEM_STATE = {}
 
-
 # =========================
 # DB LAYER
 # =========================
@@ -84,6 +82,7 @@ def db_enabled() -> bool:
 
 
 def db_conn():
+    # Render Postgres обычно требует sslmode=require
     return psycopg2.connect(DATABASE_URL, sslmode="require")
 
 
@@ -404,7 +403,6 @@ def send_document_bytes(chat_id: int, filename: str, file_bytes: bytes, caption:
         data["caption"] = caption
     try:
         r = requests.post(url, data=data, files=files, timeout=30)
-        # логируем только если ошибка
         if r.status_code != 200:
             print("TG sendDocument ERROR:", r.status_code, (r.text or "")[:500])
     except Exception as e:
@@ -497,7 +495,7 @@ def settings_text():
     )
 
 
-def profile_text(last_row: dict | None):
+def profile_text(last_row):
     if not last_row:
         return (
             "🧠 Профиль\n\n"
@@ -636,7 +634,11 @@ def compute_biotime_from_payload(p: dict):
     if awaken >= 3:
         drop_penalty += 0.5
 
-    biotime = round((sleep_score * 0.6 + recovery * 0.8 - stress * 0.7) + 6.0 - pressure_penalty - drop_penalty - risk_penalty, 1)
+    biotime = round(
+        (sleep_score * 0.6 + recovery * 0.8 - stress * 0.7) + 6.0
+        - pressure_penalty - drop_penalty - risk_penalty,
+        1
+    )
     return clamp(biotime, 0.0, 12.0)
 
 
@@ -700,18 +702,9 @@ def avg(values):
 
 
 def calc_nav_metrics(rows_desc: list[dict]):
-    """
-    rows_desc: последние записи DESC (новые -> старые)
-    строим:
-      - текущий индекс 0..1000
-      - вектор
-      - риск 30 дней
-      - накопление/буфер (условно, дни)
-    """
     if not rows_desc:
         return None
 
-    # соберём biotime по времени ASC
     rows_asc = list(reversed(rows_desc))
     series = []
     for r in rows_asc:
@@ -732,16 +725,11 @@ def calc_nav_metrics(rows_desc: list[dict]):
     a7 = avg(last_7)
     a30 = avg(last_30)
 
-    # vector: разница 7 vs 30 (в баллах BioTime)
     delta = (a7 - a30) if (a7 is not None and a30 is not None) else 0.0
+    vector = int(round(delta * 20))
 
-    # переведём в "вектор" как число в диапазоне примерно -60..60
-    vector = int(round(delta * 20))  # 1.0 BioTime ~ 20 пунктов
-
-    # накопление перегруза: сколько дней подряд 7д среднее ниже 30д среднего
     accum_days = 0
     if len(series) >= 10:
-        # посмотрим последние 10 шагов и считаем подряд
         for k in range(1, min(len(series), 30) + 1):
             sub = series[-k:]
             sub7 = sub[-7:] if len(sub) >= 7 else sub
@@ -752,22 +740,16 @@ def calc_nav_metrics(rows_desc: list[dict]):
                 accum_days += 1
             else:
                 break
-    else:
-        accum_days = 0
 
-    # буфер: насколько ты выше красной зоны (7)
     buffer_days = int(round(clamp((a7 - 7.0), 0, 5))) if a7 is not None else 0
 
-    # риск: базово от уровня + тренда
-    # низкая средняя + отрицательный тренд -> выше риск
     base = 50.0
     if a7 is not None:
-        base += (7.5 - a7) * 8.0  # ниже 7.5 -> рост риска
-    base += (-delta) * 25.0  # отрицательный тренд увеличивает риск
+        base += (7.5 - a7) * 8.0
+    base += (-delta) * 25.0
 
     risk = int(round(clamp(base, 5, 95)))
 
-    # режим по индексу
     if index_1000 < 420:
         regime = "ВОССТАНОВЛЕНИЕ"
     elif index_1000 < 780:
@@ -796,7 +778,6 @@ def nav_block(rows_desc: list[dict]):
         )
 
     idx = m["index_1000"]
-    # шкала из 20 блоков
     filled = int(round(idx / 1000 * 20))
     bar = "█" * filled + "░" * (20 - filled)
 
@@ -828,11 +809,9 @@ def dynamics_block(rows_desc: list[dict]):
 
     rows_asc = list(reversed(rows_desc))
     series = []
-    dates = []
     for r in rows_asc:
         try:
             series.append(float(r.get("biotime_value")))
-            dates.append(str(r.get("entry_date") or "")[:10])
         except Exception:
             pass
 
@@ -849,9 +828,8 @@ def dynamics_block(rows_desc: list[dict]):
     a7 = avg(last7)
     a30 = avg(last30)
 
-    # скорость износа (условная): отрицательная динамика * 30
     delta = (a7 - a30) if (a7 is not None and a30 is not None) else 0.0
-    wear_rate = round(clamp((-delta) * 30.0, 0.0, 12.0), 2)  # 0..12 условно
+    wear_rate = round(clamp((-delta) * 30.0, 0.0, 12.0), 2)
 
     stability = int(round(clamp((a7 / 12.0) * 100.0, 0, 100))) if a7 is not None else 0
 
@@ -878,7 +856,6 @@ def calc_biotime_pro(parts):
     pressure_penalty = float(parts[3])
     drop_penalty = float(parts[4])
     risk_penalty = float(parts[5])
-    # ТВОЯ ЗАФИКСИРОВАННАЯ ФОРМУЛА
     biotime = round((sleep * 1.2 + recovery * 1.2 - stress) - pressure_penalty - drop_penalty - risk_penalty, 1)
     return clamp(biotime, 0.0, 12.0)
 
@@ -950,7 +927,6 @@ def history_block(rows_desc: list[dict], title: str):
         bt = r.get("biotime_value")
         lvl = r.get("level") or "-"
         rec = r.get("recommendation") or "-"
-        # чуть короче, чтобы влезало
         rec_short = str(rec)
         if len(rec_short) > 60:
             rec_short = rec_short[:57] + "..."
@@ -1000,7 +976,7 @@ def assist_intro_text():
     )
 
 
-def assist_answer(chat_id: int, question: str, last_row: dict | None, nav_rows: list[dict]):
+def assist_answer(chat_id: int, question: str, last_row, nav_rows: list[dict]):
     q = (question or "").strip()
     if not q:
         return "Напиши вопрос текстом."
@@ -1012,12 +988,10 @@ def assist_answer(chat_id: int, question: str, last_row: dict | None, nav_rows: 
         )
 
     bt = float(last_row.get("biotime_value") or 0)
-    status = last_row.get("status") or ""
     lvl = last_row.get("level") or ""
     rec = last_row.get("recommendation") or ""
     m = calc_nav_metrics(nav_rows) if nav_rows else None
 
-    # универсальный ответ: сначала состояние, потом ответ на вопрос
     head = (
         f"Текущее состояние:\n"
         f"• BioTime: {round(bt,1)}/12\n"
@@ -1027,7 +1001,6 @@ def assist_answer(chat_id: int, question: str, last_row: dict | None, nav_rows: 
     if m:
         head += f"• Индекс AION 1: {m['index_1000']}/1000, риск 30 дней: {m['risk']}%\n"
 
-    # простые шаблоны под популярные запросы
     ql = q.lower()
     if "трен" in ql or "зал" in ql or "нагруз" in ql:
         if bt < 7:
@@ -1043,7 +1016,6 @@ def assist_answer(chat_id: int, question: str, last_row: dict | None, nav_rows: 
     if "пит" in ql or "вода" in ql:
         return head + "\nПо питанию/воде: добавь воду (500–700 мл), еда без перегруза ЖКТ вечером."
 
-    # общий ответ
     return head + "\nОтвет: уточни цель (тренировка/сон/питание/стресс), и я дам протокол точнее."
 
 
@@ -1057,7 +1029,7 @@ def home():
 
 @app.post("/webhook")
 def webhook():
-    # всегда 200, чтобы Telegram не делал ретраи (и не было спама)
+    # всегда 200, чтобы Telegram не делал ретраи
     if not TELEGRAM_TOKEN:
         return jsonify({"ok": True, "error": "No TELEGRAM_TOKEN"}), 200
 
@@ -1141,7 +1113,6 @@ def webhook():
             return jsonify({"ok": True}), 200
 
         if data == CB_ASSIST:
-            # включаем режим помощника
             st = get_state(chat_id)
             mid = st.get("ui_message_id") or ensure_ui(chat_id)
             set_state(chat_id, ui_message_id=mid, step=None, mode="assist", payload={})
@@ -1161,7 +1132,7 @@ def webhook():
     if not chat_id:
         return jsonify({"ok": True}), 200
 
-    # /start /menu — НЕ удаляем сообщение пользователя (иначе он думает что “пропало”)
+    # /start /menu — НЕ удаляем сообщение пользователя
     if text.startswith("/start") or text == "/menu" or text.lower() in ("start", "старт"):
         clear_flow(chat_id, keep_ui=True)
         ensure_ui(chat_id)
@@ -1169,7 +1140,6 @@ def webhook():
 
     # /pro — AION PRO быстрый режим
     if text.startswith("/pro"):
-        # можно удалять, чтобы не засорять
         try_delete_user_message(chat_id, incoming_message_id)
 
         parts = text.split()
@@ -1188,7 +1158,6 @@ def webhook():
         status, level, advice, mode, p_train, p_sleep, p_nutri = classify_biotime(biotime)
         final_text = result_block(biotime, mode, status, level, advice, p_train, p_sleep, p_nutri)
 
-        # сохраняем в историю (если БД есть)
         save_biotime_entry(chat_id, {"pro": parts[1:]}, biotime, status, level, advice, p_train, p_sleep, p_nutri)
 
         core_animation_async(chat_id, mid, final_text)
@@ -1206,9 +1175,6 @@ def webhook():
     # ASSIST MODE
     # =========================
     if mode == "assist" and not step:
-        # не удаляем вопрос — пусть остаётся, но можно удалить если хочешь:
-        # try_delete_user_message(chat_id, incoming_message_id)
-
         last = fetch_last_entry(chat_id) if db_enabled() else None
         rows = fetch_history_limit(chat_id, limit=60) if db_enabled() else []
         ans = assist_answer(chat_id, text, last, rows)
@@ -1219,7 +1185,6 @@ def webhook():
     # WIZARD INPUT
     # =========================
     if step:
-        # скрываем “5”, “7.5” и т.п. чтобы не засорять чат
         try_delete_user_message(chat_id, incoming_message_id)
 
         try:
