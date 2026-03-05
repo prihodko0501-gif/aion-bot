@@ -21,7 +21,7 @@ try:
     if _dburl:
         _conn = psycopg2.connect(_dburl, sslmode="require")
         _cur = _conn.cursor()
-        _cur.execute("ALTER TABLE public.aion_state ADD COLUMN IF NOT EXISTS mode TEXT;")
+        _cur.execute("ALTER TABLE public.aion_state ADD COLUMN IF NOT EXISTS mode TEXT")
         _conn.commit()
         _cur.close()
         _conn.close()
