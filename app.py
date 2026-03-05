@@ -13,17 +13,23 @@ import psycopg2.extras
 
 app = Flask(__name__)
 
-# FIX DATABASE STRUCTURE
+# =========================
+# DB QUICK FIX (Render Postgres requires sslmode=require)
+# =========================
 try:
-    conn = psycopg2.connect(os.environ.get("DATABASE_URL"), sslmode="require")
-    cur = conn.cursor()
-    cur.execute("ALTER TABLE aion_state ADD COLUMN IF NOT EXISTS mode TEXT;")
-    conn.commit()
-    cur.close()
-    conn.close()
-    print("DB FIX APPLIED")
+    _dburl = os.environ.get("DATABASE_URL")
+    if _dburl:
+        _conn = psycopg2.connect(_dburl, sslmode="require")
+        _cur = _conn.cursor()
+        _cur.execute("ALTER TABLE aion_state ADD COLUMN IF NOT EXISTS mode TEXT;")
+        _conn.commit()
+        _cur.close()
+        _conn.close()
+        print("DB FIX APPLIED: aion_state.mode ensured")
+    else:
+        print("DB FIX SKIPPED: DATABASE_URL is empty")
 except Exception as e:
-    print("DB FIX ERROR:", e)
+    print("DB FIX ERROR:", repr(e))
 TELEGRAM_TOKEN = os.environ.get("TELEGRAM_TOKEN")
 API_URL = f"https://api.telegram.org/bot{TELEGRAM_TOKEN}" if TELEGRAM_TOKEN else None
 DATABASE_URL = os.environ.get("DATABASE_URL")  # Render Postgres (optional)
