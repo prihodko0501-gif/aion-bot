@@ -10,7 +10,8 @@ from flask import Flask, request, jsonify
 
 import psycopg2
 import psycopg2.extras
-
+from core.biotime import calculate_biotime_pro
+from database.queries import save_biotime
 app = Flask(__name__)
 
 TELEGRAM_TOKEN = os.environ.get("TELEGRAM_TOKEN")
