@@ -107,10 +107,17 @@ def db_exec(query, params=None, fetchone=False, fetchall=False):
 
 
 def init_db():
+    """
+    Создаёт таблицы, если их нет, и ДОБАВЛЯЕТ недостающие колонки
+    в уже существующие таблицы (авто-миграция).
+    Это фиксит ошибку:
+    UndefinedColumn: column "mode" of relation "aion_state" does not exist
+    """
     if not db_enabled():
         print("DB disabled: DATABASE_URL not set. Using memory.")
         return
 
+    # 1) базовые таблицы (если их нет)
     db_exec(
         """
         CREATE TABLE IF NOT EXISTS aion_state (
@@ -143,7 +150,26 @@ def init_db():
         """
     )
 
-    print("DB init ok")
+    # 2) МИГРАЦИИ: добавляем недостающие колонки в существующих таблицах
+    # aion_state
+    db_exec('ALTER TABLE aion_state ADD COLUMN IF NOT EXISTS ui_message_id BIGINT;')
+    db_exec('ALTER TABLE aion_state ADD COLUMN IF NOT EXISTS step TEXT;')
+    db_exec('ALTER TABLE aion_state ADD COLUMN IF NOT EXISTS mode TEXT;')
+    db_exec("ALTER TABLE aion_state ADD COLUMN IF NOT EXISTS payload_json JSONB NOT NULL DEFAULT '{}'::jsonb;")
+    db_exec('ALTER TABLE aion_state ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP NOT NULL DEFAULT NOW();')
+
+    # biotime_entries
+    db_exec('ALTER TABLE biotime_entries ADD COLUMN IF NOT EXISTS entry_date DATE;')
+    db_exec("ALTER TABLE biotime_entries ADD COLUMN IF NOT EXISTS payload_json JSONB;")
+    db_exec('ALTER TABLE biotime_entries ADD COLUMN IF NOT EXISTS status TEXT;')
+    db_exec('ALTER TABLE biotime_entries ADD COLUMN IF NOT EXISTS level TEXT;')
+    db_exec('ALTER TABLE biotime_entries ADD COLUMN IF NOT EXISTS recommendation TEXT;')
+    db_exec('ALTER TABLE biotime_entries ADD COLUMN IF NOT EXISTS protocol_training TEXT;')
+    db_exec('ALTER TABLE biotime_entries ADD COLUMN IF NOT EXISTS protocol_sleep TEXT;')
+    db_exec('ALTER TABLE biotime_entries ADD COLUMN IF NOT EXISTS protocol_nutrition TEXT;')
+    db_exec('ALTER TABLE biotime_entries ADD COLUMN IF NOT EXISTS created_at TIMESTAMP NOT NULL DEFAULT NOW();')
+
+    print("DB init + migrate ok")
 
 
 def get_state(chat_id: int):
@@ -870,17 +896,12 @@ def ensure_ui(chat_id: int):
     st = get_state(chat_id)
     mid = st.get("ui_message_id")
 
-    print("ensure_ui: chat_id", chat_id, "stored ui_message_id", mid)
-
     if mid:
         ok = edit_message(chat_id, mid, start_text(), main_menu_inline())
-        print("ensure_ui: edit ok =", ok)
         if ok:
             return mid
 
     new_mid = send_message(chat_id, start_text(), main_menu_inline())
-    print("ensure_ui: send new_mid =", new_mid)
-
     if new_mid:
         set_state(chat_id, ui_message_id=new_mid, step=None, mode=None, payload=None)
     return new_mid
@@ -1079,21 +1100,6 @@ def webhook():
         return jsonify({"ok": True, "error": "No TELEGRAM_TOKEN"}), 200
 
     update = request.get_json(silent=True) or {}
-
-    # ---- ЛОГ ДЛЯ ДЕБАГА ----
-    try:
-        utype = "callback_query" if "callback_query" in update else ("message" if "message" in update else "other")
-        print("UPDATE TYPE:", utype)
-        if "message" in update:
-            m = update.get("message") or {}
-            print("MSG:", (m.get("chat") or {}).get("id"), m.get("message_id"), (m.get("text") or "")[:120])
-        if "callback_query" in update:
-            cq = update.get("callback_query") or {}
-            msg = cq.get("message") or {}
-            print("CB:", (msg.get("chat") or {}).get("id"), msg.get("message_id"), (cq.get("data") or "")[:120])
-    except Exception as e:
-        print("LOG ERROR:", repr(e))
-    # ------------------------
 
     # =========================
     # CALLBACKS
