@@ -202,11 +202,13 @@ def handle_update(update: dict):
 
     if text.startswith("/start") or text.lower() in ("start", "старт"):
 
-        clear_flow(chat_id, keep_ui=True)
+    try_delete_user_message(chat_id, incoming_message_id)
 
-        ensure_ui(chat_id)
+    clear_flow(chat_id, keep_ui=True)
 
-        return
+    ensure_ui(chat_id)
+
+    return
 
     st = get_state(chat_id)
 
