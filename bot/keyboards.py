@@ -1,3 +1,7 @@
+import os
+
+MINIAPP_URL = os.environ.get("MINIAPP_URL", "")
+
 # =========================
 # КНОПКИ МЕНЮ
 # =========================
