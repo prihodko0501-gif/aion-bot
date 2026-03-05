@@ -13,6 +13,9 @@ import psycopg2.extras
 
 app = Flask(__name__)
 
+# ВАЖНО: чтобы Flask не различал /webhook и /webhook/
+app.url_map.strict_slashes = False
+
 TELEGRAM_TOKEN = os.environ.get("TELEGRAM_TOKEN")
 API_URL = f"https://api.telegram.org/bot{TELEGRAM_TOKEN}" if TELEGRAM_TOKEN else None
 DATABASE_URL = os.environ.get("DATABASE_URL")  # Render Postgres (optional)
@@ -701,7 +704,7 @@ def avg(values):
     return sum(values) / len(values)
 
 
-def calc_nav_metrics(rows_desc: list[dict]):
+def calc_nav_metrics(rows_desc):
     if not rows_desc:
         return None
 
@@ -768,7 +771,7 @@ def calc_nav_metrics(rows_desc: list[dict]):
     }
 
 
-def nav_block(rows_desc: list[dict]):
+def nav_block(rows_desc):
     m = calc_nav_metrics(rows_desc)
     if not m:
         return (
@@ -799,7 +802,7 @@ def nav_block(rows_desc: list[dict]):
     )
 
 
-def dynamics_block(rows_desc: list[dict]):
+def dynamics_block(rows_desc):
     if not rows_desc:
         return (
             "📊 Динамика 30–90 дней\n\n"
@@ -867,12 +870,17 @@ def ensure_ui(chat_id: int):
     st = get_state(chat_id)
     mid = st.get("ui_message_id")
 
+    print("ensure_ui: chat_id", chat_id, "stored ui_message_id", mid)
+
     if mid:
         ok = edit_message(chat_id, mid, start_text(), main_menu_inline())
+        print("ensure_ui: edit ok =", ok)
         if ok:
             return mid
 
     new_mid = send_message(chat_id, start_text(), main_menu_inline())
+    print("ensure_ui: send new_mid =", new_mid)
+
     if new_mid:
         set_state(chat_id, ui_message_id=new_mid, step=None, mode=None, payload=None)
     return new_mid
@@ -913,7 +921,7 @@ def start_biotime_wizard(chat_id: int, ui_mid: int):
 # =========================
 # HISTORY TEXT
 # =========================
-def history_block(rows_desc: list[dict], title: str):
+def history_block(rows_desc, title: str):
     if not rows_desc:
         return (
             f"📚 История ({title})\n\n"
@@ -934,7 +942,7 @@ def history_block(rows_desc: list[dict], title: str):
     return "\n".join(lines)
 
 
-def build_csv_bytes(rows_desc: list[dict]) -> bytes:
+def build_csv_bytes(rows_desc) -> bytes:
     output = io.StringIO()
     writer = csv.writer(output)
     writer.writerow([
@@ -976,7 +984,7 @@ def assist_intro_text():
     )
 
 
-def assist_answer(chat_id: int, question: str, last_row, nav_rows: list[dict]):
+def assist_answer(chat_id: int, question: str, last_row, nav_rows):
     q = (question or "").strip()
     if not q:
         return "Напиши вопрос текстом."
@@ -1020,20 +1028,72 @@ def assist_answer(chat_id: int, question: str, last_row, nav_rows: list[dict]):
 
 
 # =========================
-# ROUTES
+# ROUTES: HEALTH + DEBUG
 # =========================
 @app.get("/")
 def home():
-    return "AION is alive 🚀", 200
+    return jsonify({
+        "ok": True,
+        "service": "AION",
+        "token_set": bool(TELEGRAM_TOKEN),
+        "db_set": bool(DATABASE_URL),
+        "api_url_set": bool(API_URL),
+    }), 200
 
 
-@app.post("/webhook")
+@app.get("/debug/env")
+def debug_env():
+    return jsonify({
+        "token_set": bool(TELEGRAM_TOKEN),
+        "db_set": bool(DATABASE_URL),
+        "api_url_set": bool(API_URL),
+    }), 200
+
+
+@app.get("/debug/db")
+def debug_db():
+    if not db_enabled():
+        return jsonify({"ok": False, "error": "DATABASE_URL not set"}), 200
+    row = db_exec("SELECT NOW() as now", fetchone=True)
+    return jsonify({"ok": bool(row), "row": row}), 200
+
+
+# =========================
+# WEBHOOK (POST) + CHECK (GET)
+# =========================
+@app.route("/webhook", methods=["POST", "GET"])
+@app.route("/webhook/", methods=["POST", "GET"])
 def webhook():
+    # GET нужен только для проверки в браузере
+    if request.method == "GET":
+        return jsonify({
+            "ok": True,
+            "service": "AION webhook",
+            "token_set": bool(TELEGRAM_TOKEN),
+            "db_set": bool(DATABASE_URL),
+            "api_url_set": bool(API_URL),
+        }), 200
+
     # всегда 200, чтобы Telegram не делал ретраи
     if not TELEGRAM_TOKEN:
         return jsonify({"ok": True, "error": "No TELEGRAM_TOKEN"}), 200
 
     update = request.get_json(silent=True) or {}
+
+    # ---- ЛОГ ДЛЯ ДЕБАГА ----
+    try:
+        utype = "callback_query" if "callback_query" in update else ("message" if "message" in update else "other")
+        print("UPDATE TYPE:", utype)
+        if "message" in update:
+            m = update.get("message") or {}
+            print("MSG:", (m.get("chat") or {}).get("id"), m.get("message_id"), (m.get("text") or "")[:120])
+        if "callback_query" in update:
+            cq = update.get("callback_query") or {}
+            msg = cq.get("message") or {}
+            print("CB:", (msg.get("chat") or {}).get("id"), msg.get("message_id"), (cq.get("data") or "")[:120])
+    except Exception as e:
+        print("LOG ERROR:", repr(e))
+    # ------------------------
 
     # =========================
     # CALLBACKS
