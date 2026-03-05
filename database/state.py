@@ -26,7 +26,8 @@ def get_state(chat_id: int):
     }
 
 def set_state(chat_id: int, ui_message_id=None, step=None, mode=None, payload=None):
-    if chat_id not in MEM_STATE:
+    payload = payload or {}
+     if chat_id not in MEM_STATE:
         MEM_STATE[chat_id] = {"ui_message_id": None, "step": None, "mode": None, "payload": {}}
 
     if ui_message_id is not None:
