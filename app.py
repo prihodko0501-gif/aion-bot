@@ -14,7 +14,7 @@ import psycopg2.extras
 app = Flask(__name__)
 
 # =========================
-# DB QUICK FIX (Render Postgres requires sslmode=require)
+# DB QUICK FIX. (Render Postgres requires sslmode=require)
 # =========================
 try:
     _dburl = os.environ.get("DATABASE_URL")
