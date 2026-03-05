@@ -13,7 +13,7 @@ import psycopg2.extras
 
 app = Flask(__name__)
 
-# ВАЖНО: чтобы Flask не различал /webhook и /webhook/
+# Чтобы Flask не различал /webhook и /webhook/
 app.url_map.strict_slashes = False
 
 TELEGRAM_TOKEN = os.environ.get("TELEGRAM_TOKEN")
@@ -78,7 +78,7 @@ WIZ_ORDER = [
 MEM_STATE = {}
 
 # =========================
-# DB LAYER (AUTO MIGRATION + RETRY)
+# DB LAYER (ЖЁСТКИЙ ФИКС: СНОС aion_state)
 # =========================
 def db_enabled() -> bool:
     return bool(DATABASE_URL)
@@ -89,46 +89,32 @@ def db_conn():
     return psycopg2.connect(DATABASE_URL, sslmode="require")
 
 
-def migrate_db_schema():
+def recreate_aion_state_table():
     """
-    Принудительно добавляет недостающие колонки в уже существующие таблицы.
-    Это фиксит кейс: column "mode" does not exist, и любые будущие несовпадения схемы.
+    Жёсткий фикс: удаляем старую aion_state (если она без mode) и создаём заново.
+    Это НЕ трогает biotime_entries (историю).
     """
     if not db_enabled():
         return
-
-    stmts = [
-        # aion_state
-        'ALTER TABLE aion_state ADD COLUMN IF NOT EXISTS ui_message_id BIGINT;',
-        'ALTER TABLE aion_state ADD COLUMN IF NOT EXISTS step TEXT;',
-        'ALTER TABLE aion_state ADD COLUMN IF NOT EXISTS mode TEXT;',
-        "ALTER TABLE aion_state ADD COLUMN IF NOT EXISTS payload_json JSONB NOT NULL DEFAULT '{}'::jsonb;",
-        'ALTER TABLE aion_state ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP NOT NULL DEFAULT NOW();',
-
-        # biotime_entries
-        'ALTER TABLE biotime_entries ADD COLUMN IF NOT EXISTS entry_date DATE;',
-        'ALTER TABLE biotime_entries ADD COLUMN IF NOT EXISTS payload_json JSONB;',
-        'ALTER TABLE biotime_entries ADD COLUMN IF NOT EXISTS status TEXT;',
-        'ALTER TABLE biotime_entries ADD COLUMN IF NOT EXISTS level TEXT;',
-        'ALTER TABLE biotime_entries ADD COLUMN IF NOT EXISTS recommendation TEXT;',
-        'ALTER TABLE biotime_entries ADD COLUMN IF NOT EXISTS protocol_training TEXT;',
-        'ALTER TABLE biotime_entries ADD COLUMN IF NOT EXISTS protocol_sleep TEXT;',
-        'ALTER TABLE biotime_entries ADD COLUMN IF NOT EXISTS protocol_nutrition TEXT;',
-        'ALTER TABLE biotime_entries ADD COLUMN IF NOT EXISTS created_at TIMESTAMP NOT NULL DEFAULT NOW();',
-    ]
-
     try:
         with db_conn() as conn:
             with conn.cursor() as cur:
-                for s in stmts:
-                    try:
-                        cur.execute(s)
-                    except Exception as e:
-                        # не валим весь процесс из-за одной миграции
-                        print("DB MIGRATE STMT ERROR:", s, repr(e))
-        print("DB migrate ok (columns ensured)")
+                cur.execute("DROP TABLE IF EXISTS aion_state;")
+                cur.execute(
+                    """
+                    CREATE TABLE IF NOT EXISTS aion_state (
+                        telegram_id BIGINT PRIMARY KEY,
+                        ui_message_id BIGINT,
+                        step TEXT,
+                        mode TEXT,
+                        payload_json JSONB NOT NULL DEFAULT '{}'::jsonb,
+                        updated_at TIMESTAMP NOT NULL DEFAULT NOW()
+                    );
+                    """
+                )
+        print("DB: aion_state recreated OK")
     except Exception as e:
-        print("DB MIGRATE ERROR:", repr(e))
+        print("DB: recreate_aion_state_table FAILED:", repr(e))
 
 
 def db_exec(query, params=None, fetchone=False, fetchall=False, _retry=False):
@@ -147,17 +133,15 @@ def db_exec(query, params=None, fetchone=False, fetchall=False, _retry=False):
         msg = repr(e)
         print("DB ERROR:", msg)
 
-        # авто-ремонт схемы при ошибках отсутствия колонок/таблиц
-        if not _retry and (
-            "UndefinedColumn" in msg
-            or "does not exist" in msg
-            or "undefinedcolumn" in msg.lower()
+        # Если поймали старую схему state: column "mode" does not exist
+        if (
+            (not _retry)
+            and ("UndefinedColumn" in msg or "undefinedcolumn" in msg.lower())
+            and ("aion_state" in msg)
+            and ('"mode"' in msg or " mode " in msg)
         ):
-            try:
-                migrate_db_schema()
-                return db_exec(query, params=params, fetchone=fetchone, fetchall=fetchall, _retry=True)
-            except Exception as e2:
-                print("DB RETRY FAILED:", repr(e2))
+            recreate_aion_state_table()
+            return db_exec(query, params=params, fetchone=fetchone, fetchall=fetchall, _retry=True)
 
         return None
 
@@ -167,21 +151,7 @@ def init_db():
         print("DB disabled: DATABASE_URL not set. Using memory.")
         return
 
-    # создаём таблицы, если их нет
-    db_exec(
-        """
-        CREATE TABLE IF NOT EXISTS aion_state (
-            telegram_id BIGINT PRIMARY KEY,
-            ui_message_id BIGINT,
-            step TEXT,
-            mode TEXT,
-            payload_json JSONB NOT NULL DEFAULT '{}'::jsonb,
-            updated_at TIMESTAMP NOT NULL DEFAULT NOW()
-        );
-        """,
-        _retry=True
-    )
-
+    # biotime_entries (история) — создаём/обновлять можно безопасно
     db_exec(
         """
         CREATE TABLE IF NOT EXISTS biotime_entries (
@@ -198,13 +168,13 @@ def init_db():
             protocol_nutrition TEXT,
             created_at TIMESTAMP NOT NULL DEFAULT NOW()
         );
-        """,
-        _retry=True
+        """
     )
 
-    # гарантируем колонки (миграция)
-    migrate_db_schema()
-    print("DB init + migrate ok")
+    # aion_state — пересоздаём жёстко, чтобы гарантировать mode/step/payload_json
+    recreate_aion_state_table()
+
+    print("DB init ok")
 
 
 def get_state(chat_id: int):
@@ -379,6 +349,7 @@ def fetch_history_limit(chat_id: int, limit: int = 60):
     )
     return rows or []
 
+
 # =========================
 # TELEGRAM HELPERS
 # =========================
@@ -471,6 +442,7 @@ def send_document_bytes(chat_id: int, filename: str, file_bytes: bytes, caption:
     except Exception as e:
         print("TG sendDocument EXC:", repr(e))
 
+
 # =========================
 # UI MARKUP
 # =========================
@@ -515,6 +487,7 @@ def after_calc_inline():
             [{"text": "⬅️ В меню", "callback_data": CB_MENU}],
         ]
     }
+
 
 # =========================
 # TEXTS / LOGIC
@@ -646,6 +619,7 @@ def parse_pressure(text: str):
 
     return {"sys": sys, "dia": dia, "pulse": pulse}
 
+
 # =========================
 # BIO TIME MODEL
 # =========================
@@ -730,7 +704,16 @@ def classify_biotime(biotime: float):
     return status, level, advice, mode, p_train, p_sleep, p_nutri
 
 
-def result_block(biotime: float, mode: str, status: str, level: str, advice: str, p_train: str, p_sleep: str, p_nutri: str):
+def result_block(
+    biotime: float,
+    mode: str,
+    status: str,
+    level: str,
+    advice: str,
+    p_train: str,
+    p_sleep: str,
+    p_nutri: str,
+):
     filled = int(round(clamp(biotime, 0, 12)))
     bar = "▰" * filled + "▱" * (12 - filled)
     return (
@@ -750,6 +733,7 @@ def result_block(biotime: float, mode: str, status: str, level: str, advice: str
         f"• {p_nutri}\n"
         "━━━━━━━━━━━━━━━━━━"
     )
+
 
 # =========================
 # AION NAVIGATION ENGINE (0–1000)
@@ -904,6 +888,7 @@ def dynamics_block(rows_desc):
         "— скорость износа растёт при отрицательной динамике"
     )
 
+
 # =========================
 # AION PRO (фиксированная формула)
 # =========================
@@ -916,6 +901,7 @@ def calc_biotime_pro(parts):
     risk_penalty = float(parts[5])
     biotime = round((sleep * 1.2 + recovery * 1.2 - stress) - pressure_penalty - drop_penalty - risk_penalty, 1)
     return clamp(biotime, 0.0, 12.0)
+
 
 # =========================
 # SINGLE UI MESSAGE
@@ -965,6 +951,7 @@ def next_step(step: str):
 def start_biotime_wizard(chat_id: int, ui_mid: int):
     set_state(chat_id, ui_message_id=ui_mid, step=STEP_BT_SLEEP_HOURS, mode=None, payload={})
     edit_message(chat_id, ui_mid, prompt(STEP_BT_SLEEP_HOURS), back_inline())
+
 
 # =========================
 # HISTORY TEXT
@@ -1017,6 +1004,7 @@ def build_csv_bytes(rows_desc) -> bytes:
             r.get("protocol_nutrition"),
         ])
     return output.getvalue().encode("utf-8")
+
 
 # =========================
 # ASSISTANT (простая логика)
@@ -1073,53 +1061,17 @@ def assist_answer(chat_id: int, question: str, last_row, nav_rows):
 
     return head + "\nОтвет: уточни цель (тренировка/сон/питание/стресс), и я дам протокол точнее."
 
+
 # =========================
-# ROUTES: HEALTH + DEBUG
+# ROUTES
 # =========================
 @app.get("/")
 def home():
-    return jsonify({
-        "ok": True,
-        "service": "AION",
-        "token_set": bool(TELEGRAM_TOKEN),
-        "db_set": bool(DATABASE_URL),
-        "api_url_set": bool(API_URL),
-    }), 200
+    return "AION is alive 🚀", 200
 
 
-@app.get("/debug/env")
-def debug_env():
-    return jsonify({
-        "token_set": bool(TELEGRAM_TOKEN),
-        "db_set": bool(DATABASE_URL),
-        "api_url_set": bool(API_URL),
-    }), 200
-
-
-@app.get("/debug/db")
-def debug_db():
-    if not db_enabled():
-        return jsonify({"ok": False, "error": "DATABASE_URL not set"}), 200
-    row = db_exec("SELECT NOW() as now", fetchone=True)
-    return jsonify({"ok": bool(row), "row": row}), 200
-
-
-# =========================
-# WEBHOOK (POST) + CHECK (GET)
-# =========================
-@app.route("/webhook", methods=["POST", "GET"])
-@app.route("/webhook/", methods=["POST", "GET"])
+@app.post("/webhook")
 def webhook():
-    # GET нужен только для проверки в браузере
-    if request.method == "GET":
-        return jsonify({
-            "ok": True,
-            "service": "AION webhook",
-            "token_set": bool(TELEGRAM_TOKEN),
-            "db_set": bool(DATABASE_URL),
-            "api_url_set": bool(API_URL),
-        }), 200
-
     # всегда 200, чтобы Telegram не делал ретраи
     if not TELEGRAM_TOKEN:
         return jsonify({"ok": True, "error": "No TELEGRAM_TOKEN"}), 200
