@@ -49,6 +49,7 @@ def main_menu_inline():
             [{"text": BTN_PROFILE, "callback_data": CB_PROFILE}],
             [{"text": BTN_SETTINGS, "callback_data": CB_SETTINGS}],
             [{"text": BTN_INFO, "callback_data": CB_INFO}],
+            [{"text": "📱 MiniApp", "web_app": {"url": MINIAPP_URL}}],
             [{"text": BTN_ASSIST, "callback_data": CB_ASSIST}],
             # будущие:
             # [{"text": BTN_LANG, "callback_data": CB_LANG}],
