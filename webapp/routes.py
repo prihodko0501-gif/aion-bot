@@ -8,7 +8,6 @@ def register_routes(app):
 
     @app.post("/webhook")
     def webhook():
-        # всегда 200, чтобы Telegram не делал ретраи
         update = request.get_json(silent=True) or {}
         try:
             handle_update(update)
