@@ -1,27 +1,15 @@
 import os
-from flask import Flask, request, jsonify
-from bot.handler import handle_update
+from flask import Flask
+
+from webapp.routes import register_routes
+from database.core import init_db
 
 app = Flask(__name__)
+app.url_map.strict_slashes = False
 
-
-@app.get("/")
-def home():
-    return "AION bot is running", 200
-
-
-@app.post("/webhook")
-def webhook():
-    try:
-        update = request.get_json(silent=True) or {}
-        print("UPDATE:", update)
-        handle_update(update)
-        return jsonify({"ok": True}), 200
-    except Exception as e:
-        print("WEBHOOK ERROR:", e)
-        return jsonify({"ok": False, "error": str(e)}), 200
-
+init_db()
+register_routes(app)
 
 if __name__ == "__main__":
-    port = int(os.getenv("PORT", "10000"))
+    port = int(os.environ.get("PORT", "8080"))
     app.run(host="0.0.0.0", port=port)
