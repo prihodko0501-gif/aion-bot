@@ -42,10 +42,10 @@ def answer_callback_query(callback_query_id, text=None):
     return tg_request("answerCallbackQuery", payload)
 
 
-def remove_reply_keyboard(chat_id, text="Старая клавиатура удалена"):
+def remove_reply_keyboard(chat_id):
     payload = {
         "chat_id": chat_id,
-        "text": text,
+        "text": "\u2063",
         "reply_markup": {
             "remove_keyboard": True
         }
