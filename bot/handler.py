@@ -16,9 +16,198 @@ from bot.keyboards import (
 )
 from bot import texts
 from database.state import get_state, set_state, clear_state
+from database.entries import (
+    save_biotime_entry,
+    fetch_history,
+    fetch_history_limit,
+    fetch_last_entry,
+    build_csv_bytes,
+)
 
+from core.parsing import parse_float, parse_int, parse_pressure
+from core.biotime import (
+    compute_biotime_from_payload,
+    classify_biotime,
+    result_block,
+)
 
 WEBAPP_URL = os.getenv("WEBAPP_URL", "").strip() or None
+
+STEP_BT_SLEEP_HOURS = "bt_sleep_hours"
+STEP_BT_LATENCY_MIN = "bt_latency_min"
+STEP_BT_AWAKENINGS = "bt_awakenings"
+STEP_BT_MORNING_FEEL = "bt_morning_feel"
+STEP_BT_RHR = "bt_rhr"
+STEP_BT_ENERGY = "bt_energy"
+STEP_BT_PRESSURE = "bt_pressure"
+
+WIZ_ORDER = [
+    STEP_BT_SLEEP_HOURS,
+    STEP_BT_LATENCY_MIN,
+    STEP_BT_AWAKENINGS,
+    STEP_BT_MORNING_FEEL,
+    STEP_BT_RHR,
+    STEP_BT_ENERGY,
+    STEP_BT_PRESSURE,
+]
+
+
+def prompt(step: str):
+    if step == STEP_BT_SLEEP_HOURS:
+        return "🧬 Новый расчёт\n\n1) Сон (часы)?\nНапример: 7.5"
+
+    if step == STEP_BT_LATENCY_MIN:
+        return "2) Засыпание (минут)?\nНапример: 15"
+
+    if step == STEP_BT_AWAKENINGS:
+        return "3) Пробуждения (кол-во)?\nНапример: 0"
+
+    if step == STEP_BT_MORNING_FEEL:
+        return "4) Самочувствие утром (0–10)?\nНапример: 7"
+
+    if step == STEP_BT_RHR:
+        return "5) Пульс покоя (уд/мин)?\nНапример: 58"
+
+    if step == STEP_BT_ENERGY:
+        return "6) Энергия (0–10)?\nНапример: 8"
+
+    if step == STEP_BT_PRESSURE:
+        return '7) Давление утром SYS/DIA и пульс (например: 120/80 62)\nили напиши: "пропусти"'
+
+    return "..."
+
+
+def next_step(step: str):
+    try:
+        i = WIZ_ORDER.index(step)
+        if i + 1 < len(WIZ_ORDER):
+            return WIZ_ORDER[i + 1]
+        return None
+    except Exception:
+        return None
+
+
+def safe_edit(chat_id, message_id, text, reply_markup=None):
+    result = edit_message(chat_id, message_id, text, reply_markup=reply_markup)
+    if result.get("ok"):
+        return True
+
+    sent = send_message(chat_id, text, reply_markup=reply_markup)
+    if sent.get("ok"):
+        msg = sent.get("result", {})
+        set_state(chat_id, ui_message_id=msg.get("message_id"))
+        return True
+
+    return False
+
+
+def show_main_menu(chat_id, message_id=None):
+    text = getattr(texts, "WELCOME_TEXT", None) or getattr(texts, "start_text", lambda: "AION")()
+    markup = main_menu(WEBAPP_URL)
+
+    if message_id:
+        result = edit_message(chat_id, message_id, text, reply_markup=markup)
+        if result.get("ok"):
+            set_state(chat_id, ui_message_id=message_id, step=None, payload={})
+            return
+
+    sent = send_message(chat_id, text, reply_markup=markup)
+    if sent.get("ok"):
+        msg = sent.get("result", {})
+        set_state(chat_id, ui_message_id=msg.get("message_id"), step=None, payload={})
+
+
+def render_profile(chat_id, message_id):
+    last = fetch_last_entry(chat_id)
+
+    if not last:
+        text = "🧠 Профиль\n\nПока нет данных.\nСделай новый расчёт."
+    else:
+        created_at, biotime = last
+        text = (
+            "🧠 Профиль\n\n"
+            f"Последний BioTime: {round(float(biotime), 1)}\n"
+            f"Последняя запись: {created_at}"
+        )
+
+    safe_edit(chat_id, message_id, text, back_to_menu())
+
+
+def render_history(chat_id, message_id, days=7):
+    rows = fetch_history(chat_id, days=days)
+
+    if not rows:
+        text = f"📚 История за {days} дней\n\nПока записей нет."
+        safe_edit(chat_id, message_id, text, back_to_menu())
+        return
+
+    lines = [f"📚 История за {days} дней\n"]
+    for created_at, biotime in rows[:15]:
+        lines.append(f"• {created_at:%d.%m %H:%M} — BioTime {round(float(biotime), 1)}")
+
+    safe_edit(chat_id, message_id, "\n".join(lines), back_to_menu())
+
+
+def render_navigation(chat_id, message_id):
+    rows = fetch_history_limit(chat_id, limit=30)
+
+    if not rows:
+        text = "🧭 Навигация\n\nПока нет данных для навигации."
+        safe_edit(chat_id, message_id, text, back_to_menu())
+        return
+
+    values = [float(row[1]) for row in rows]
+    current = values[0]
+    avg = sum(values) / len(values)
+    trend = current - avg
+
+    if trend > 0.3:
+        vector = "↗️ Улучшение"
+    elif trend < -0.3:
+        vector = "↘️ Снижение"
+    else:
+        vector = "➡️ Стабильно"
+
+    text = (
+        "🧭 Навигация AION\n\n"
+        f"Текущий BioTime: {round(current, 1)}\n"
+        f"Средний BioTime: {round(avg, 1)}\n"
+        f"Вектор: {vector}\n"
+        f"Записей учтено: {len(values)}"
+    )
+
+    safe_edit(chat_id, message_id, text, back_to_menu())
+
+
+def render_dynamics(chat_id, message_id):
+    rows = fetch_history_limit(chat_id, limit=30)
+
+    if not rows:
+        text = "📊 Динамика\n\nПока нет данных."
+        safe_edit(chat_id, message_id, text, back_to_menu())
+        return
+
+    values = [float(row[1]) for row in rows]
+    current = values[0]
+    oldest = values[-1]
+    delta = round(current - oldest, 1)
+
+    text = (
+        "📊 Динамика\n\n"
+        f"Текущий BioTime: {round(current, 1)}\n"
+        f"Первый в выборке: {round(oldest, 1)}\n"
+        f"Изменение: {delta}"
+    )
+
+    safe_edit(chat_id, message_id, text, back_to_menu())
+
+
+def render_assist(chat_id, message_id):
+    text = getattr(texts, "ASSIST_TEXT", None) or (
+        "💬 Помощник AION\n\n"
+        "Помощник подключён в базовом режиме."
+    )
+    safe_edit(chat_id, message_id, text, back_to_menu())
 
 
 def handle_update(update):
@@ -34,7 +223,7 @@ def handle_update(update):
         print("UNKNOWN UPDATE:", update)
 
     except Exception as e:
-        print("HANDLE_UPDATE ERROR:", e)
+        print("HANDLE_UPDATE ERROR:", repr(e))
 
 
 def handle_message(message):
@@ -44,20 +233,91 @@ def handle_message(message):
     if not chat_id:
         return
 
-    if text == "/start":
+    if text == "/start" or text.lower() in ("start", "старт"):
         clear_state(chat_id)
         show_main_menu(chat_id)
         return
 
     state = get_state(chat_id)
     step = state.get("step")
+    message_id = state.get("ui_message_id")
 
-    if step == "new_calc_sleep":
-        # пока заглушка, позже сюда вольём wizard
-        show_screen(chat_id, texts.NEW_CALC_TEXT, save_as_main=True)
+    if not step:
+        show_main_menu(chat_id)
         return
 
-    show_main_menu(chat_id)
+    payload = state.get("payload", {})
+
+    try:
+        if step == STEP_BT_SLEEP_HOURS:
+            payload["sleep_hours"] = parse_float(text)
+
+        elif step == STEP_BT_LATENCY_MIN:
+            payload["latency_min"] = parse_int(text)
+
+        elif step == STEP_BT_AWAKENINGS:
+            payload["awakenings"] = parse_int(text)
+
+        elif step == STEP_BT_MORNING_FEEL:
+            payload["morning_feel"] = parse_float(text)
+
+        elif step == STEP_BT_RHR:
+            payload["rhr"] = parse_int(text)
+
+        elif step == STEP_BT_ENERGY:
+            payload["energy"] = parse_float(text)
+
+        elif step == STEP_BT_PRESSURE:
+            payload["pressure"] = parse_pressure(text)
+
+    except Exception:
+        safe_edit(chat_id, message_id, "⚠️ Ошибка значения\n\n" + prompt(step), back_to_menu())
+        return
+
+    nxt = next_step(step)
+
+    if nxt:
+        set_state(chat_id, step=nxt, payload=payload)
+        safe_edit(chat_id, message_id, prompt(nxt), back_to_menu())
+        return
+
+    try:
+        biotime = compute_biotime_from_payload(payload)
+        status, level, advice, mode_day, p_train, p_sleep, p_nutri = classify_biotime(biotime)
+
+        final_text = result_block(
+            biotime,
+            mode_day,
+            status,
+            level,
+            advice,
+            p_train,
+            p_sleep,
+            p_nutri,
+        )
+    except Exception as e:
+        print("BIOTIME ERROR:", repr(e))
+        safe_edit(chat_id, message_id, "⚠️ Ошибка расчёта. Попробуй ещё раз.", back_to_menu())
+        clear_state(chat_id)
+        return
+
+    try:
+        save_biotime_entry(
+            chat_id,
+            payload,
+            biotime,
+            status,
+            level,
+            advice,
+            p_train,
+            p_sleep,
+            p_nutri,
+        )
+    except Exception as e:
+        print("SAVE ENTRY ERROR:", repr(e))
+
+    safe_edit(chat_id, message_id, final_text, back_to_menu())
+    clear_state(chat_id)
 
 
 def handle_callback(callback):
@@ -73,84 +333,43 @@ def handle_callback(callback):
         return
 
     if data == CB_MENU:
-        edit_or_send_main_menu(chat_id, message_id)
+        clear_state(chat_id)
+        show_main_menu(chat_id, message_id)
         return
 
     if data == CB_NAV:
-        edit_screen(chat_id, message_id, texts.NAV_TEXT)
+        render_navigation(chat_id, message_id)
         return
 
     if data == CB_NEW:
-        set_state(chat_id, step="new_calc_sleep")
-        edit_screen(chat_id, message_id, texts.NEW_CALC_TEXT)
+        set_state(chat_id, ui_message_id=message_id, step=STEP_BT_SLEEP_HOURS, payload={})
+        safe_edit(chat_id, message_id, prompt(STEP_BT_SLEEP_HOURS), back_to_menu())
         return
 
     if data == CB_DYN:
-        edit_screen(chat_id, message_id, texts.DYNAMICS_TEXT)
+        render_dynamics(chat_id, message_id)
         return
 
     if data == CB_HIS:
-        edit_screen(chat_id, message_id, texts.HISTORY_TEXT)
+        render_history(chat_id, message_id, days=7)
         return
 
     if data == CB_PROFILE:
-        edit_screen(chat_id, message_id, texts.PROFILE_TEXT)
+        render_profile(chat_id, message_id)
         return
 
     if data == CB_SETTINGS:
-        edit_screen(chat_id, message_id, texts.SETTINGS_TEXT)
+        text = getattr(texts, "SETTINGS_TEXT", "⚙️ Настройки")
+        safe_edit(chat_id, message_id, text, back_to_menu())
         return
 
     if data == CB_ABOUT:
-        edit_screen(chat_id, message_id, texts.ABOUT_TEXT)
+        text = getattr(texts, "ABOUT_TEXT", "ℹ️ О системе")
+        safe_edit(chat_id, message_id, text, back_to_menu())
         return
 
     if data == CB_ASSIST:
-        edit_screen(chat_id, message_id, texts.ASSIST_TEXT)
+        render_assist(chat_id, message_id)
         return
 
-    edit_or_send_main_menu(chat_id, message_id)
-
-
-def show_main_menu(chat_id):
-    result = send_message(
-        chat_id,
-        texts.WELCOME_TEXT,
-        reply_markup=main_menu(WEBAPP_URL)
-    )
-    if result.get("ok"):
-        msg = result.get("result", {})
-        set_state(chat_id, ui_message_id=msg.get("message_id"), step=None)
-
-
-def edit_or_send_main_menu(chat_id, message_id):
-    result = edit_message(
-        chat_id,
-        message_id,
-        texts.WELCOME_TEXT,
-        reply_markup=main_menu(WEBAPP_URL)
-    )
-
-    if not result.get("ok"):
-        show_main_menu(chat_id)
-
-
-def edit_screen(chat_id, message_id, text):
-    result = edit_message(
-        chat_id,
-        message_id,
-        text,
-        reply_markup=back_to_menu()
-    )
-    if not result.get("ok"):
-        sent = send_message(chat_id, text, reply_markup=back_to_menu())
-        if sent.get("ok"):
-            msg = sent.get("result", {})
-            set_state(chat_id, ui_message_id=msg.get("message_id"))
-
-
-def show_screen(chat_id, text, save_as_main=False):
-    result = send_message(chat_id, text, reply_markup=back_to_menu())
-    if save_as_main and result.get("ok"):
-        msg = result.get("result", {})
-        set_state(chat_id, ui_message_id=msg.get("message_id"))
+    show_main_menu(chat_id, message_id)
