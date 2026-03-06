@@ -68,25 +68,18 @@ WIZ_ORDER = [
 def prompt(step: str):
     if step == STEP_BT_SLEEP_HOURS:
         return "🧬 Новый расчёт\n\n1) Сон (часы)?\nНапример: 7.5"
-
     if step == STEP_BT_LATENCY_MIN:
         return "2) Засыпание (минут)?\nНапример: 15"
-
     if step == STEP_BT_AWAKENINGS:
         return "3) Пробуждения (кол-во)?\nНапример: 0"
-
     if step == STEP_BT_MORNING_FEEL:
         return "4) Самочувствие утром (0–10)?\nНапример: 7"
-
     if step == STEP_BT_RHR:
         return "5) Пульс покоя (уд/мин)?\nНапример: 58"
-
     if step == STEP_BT_ENERGY:
         return "6) Энергия (0–10)?\nНапример: 8"
-
     if step == STEP_BT_PRESSURE:
         return '7) Давление утром SYS/DIA и пульс (например: 120/80 62)\nили напиши: "пропусти"'
-
     return "..."
 
 
@@ -110,10 +103,8 @@ def ensure_ui(chat_id: int):
             return mid
 
     new_mid = send_message(chat_id, start_text(), main_menu_inline())
-
     if new_mid:
         set_state(chat_id, ui_message_id=new_mid, step=None, mode=None, payload={})
-
     return new_mid
 
 
@@ -126,13 +117,11 @@ def core_animation_async(chat_id: int, mid: int, final_text: str):
                 ("🫀 Оценка...\n▰▰▰▱▱", after_calc_inline()),
                 ("🔥 Сбор...\n▰▰▰▰▱", after_calc_inline()),
             ]
-
             for txt, mk in steps:
                 edit_message(chat_id, mid, txt, mk)
                 time.sleep(0.25)
 
             edit_message(chat_id, mid, final_text, after_calc_inline())
-
         except Exception as e:
             print("ANIM ERROR:", repr(e))
 
@@ -169,7 +158,6 @@ def render_history(chat_id: int, message_id: int, days: int = 7):
         return
 
     lines = [f"📚 История за {days} дней\n"]
-
     for created_at, biotime in rows[:15]:
         lines.append(f"• {created_at:%d.%m %H:%M} — BioTime {round(float(biotime), 1)}")
 
@@ -203,7 +191,6 @@ def render_navigation(chat_id: int, message_id: int):
         f"Вектор: {vector}\n"
         f"Записей учтено: {len(values)}"
     )
-
     edit_message(chat_id, message_id, text, back_inline())
 
 
@@ -226,14 +213,13 @@ def render_dynamics(chat_id: int, message_id: int):
         f"Первый в выборке: {round(oldest, 1)}\n"
         f"Изменение: {delta}"
     )
-
     edit_message(chat_id, message_id, text, back_inline())
 
 
 def render_assist(chat_id: int, message_id: int):
     text = (
         "💬 Помощник AION\n\n"
-        "Базовый режим подключён.\n"
+        "Помощник подключён в базовом режиме.\n"
         "Позже здесь будет полноценный AI-помощник."
     )
     edit_message(chat_id, message_id, text, back_inline())
@@ -242,7 +228,6 @@ def render_assist(chat_id: int, message_id: int):
 def handle_update(update: dict):
     if "callback_query" in update:
         cq = update["callback_query"]
-
         callback_query_id = cq.get("id")
         data = cq.get("data")
 
@@ -342,25 +327,18 @@ def handle_update(update: dict):
         try:
             if step == STEP_BT_SLEEP_HOURS:
                 payload["sleep_hours"] = parse_float(text)
-
             elif step == STEP_BT_LATENCY_MIN:
                 payload["latency_min"] = parse_int(text)
-
             elif step == STEP_BT_AWAKENINGS:
                 payload["awakenings"] = parse_int(text)
-
             elif step == STEP_BT_MORNING_FEEL:
                 payload["morning_feel"] = parse_float(text)
-
             elif step == STEP_BT_RHR:
                 payload["rhr"] = parse_int(text)
-
             elif step == STEP_BT_ENERGY:
                 payload["energy"] = parse_float(text)
-
             elif step == STEP_BT_PRESSURE:
                 payload["pressure"] = parse_pressure(text)
-
         except Exception:
             edit_message(chat_id, mid, "⚠️ Ошибка значения\n\n" + prompt(step), back_inline())
             return
