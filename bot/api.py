@@ -1,44 +1,29 @@
 import os
-import requests
+from flask import Flask, request, jsonify
+from bot.handler import handle_update
 
-BOT_TOKEN = os.getenv("BOT_TOKEN")
-BASE_URL = "https://api.telegram.org/bot{0}".format(BOT_TOKEN)
+app = Flask(__name__)
 
 
-def tg_request(method, payload):
-    url = "{0}/{1}".format(BASE_URL, method)
-    r = requests.post(url, json=payload, timeout=20)
+@app.route("/", methods=["GET"])
+def index():
+    return "AION bot is running", 200
+
+
+@app.route("/webhook", methods=["POST"])
+def webhook():
     try:
-        return r.json()
-    except Exception:
-        return {"ok": False, "raw": r.text}
+        update = request.get_json(silent=True)
+        if update is None:
+            update = {}
+        print("UPDATE:", update)
+        handle_update(update)
+        return jsonify({"ok": True}), 200
+    except Exception as e:
+        print("WEBHOOK ERROR:", str(e))
+        return jsonify({"ok": False, "error": str(e)}), 200
 
 
-def send_message(chat_id, text, reply_markup=None):
-    payload = {
-        "chat_id": chat_id,
-        "text": text,
-        "parse_mode": "HTML",
-    }
-    if reply_markup is not None:
-        payload["reply_markup"] = reply_markup
-    return tg_request("sendMessage", payload)
-
-
-def edit_message(chat_id, message_id, text, reply_markup=None):
-    payload = {
-        "chat_id": chat_id,
-        "message_id": message_id,
-        "text": text,
-        "parse_mode": "HTML",
-    }
-    if reply_markup is not None:
-        payload["reply_markup"] = reply_markup
-    return tg_request("editMessageText", payload)
-
-
-def answer_callback_query(callback_query_id, text=None):
-    payload = {"callback_query_id": callback_query_id}
-    if text:
-        payload["text"] = text
-    return tg_request("answerCallbackQuery", payload)
+if __name__ == "__main__":
+    port = int(os.getenv("PORT", "5000"))
+    app.run(host="0.0.0.0", port=port)
