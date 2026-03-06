@@ -40,3 +40,14 @@ def answer_callback_query(callback_query_id, text=None):
     if text:
         payload["text"] = text
     return tg_request("answerCallbackQuery", payload)
+
+
+def remove_reply_keyboard(chat_id, text="Клавиатура обновлена"):
+    payload = {
+        "chat_id": chat_id,
+        "text": text,
+        "reply_markup": {
+            "remove_keyboard": True
+        }
+    }
+    return tg_request("sendMessage", payload)
