@@ -1,28 +1,42 @@
 import os
 import requests
 
-TELEGRAM_TOKEN = os.environ.get("TELEGRAM_TOKEN")
-TELEGRAM_API_URL = f"https://api.telegram.org/bot{TELEGRAM_TOKEN}" if TELEGRAM_TOKEN else None
+TOKEN = os.getenv("TELEGRAM_TOKEN")
+API_URL = f"https://api.telegram.org/bot{TOKEN}"
+
+
+def tg_request(method, payload):
+    try:
+        r = requests.post(f"{API_URL}/{method}", json=payload, timeout=15)
+        return r.json()
+    except Exception as e:
+        print("TG REQUEST ERROR:", e)
+        return {"ok": False, "error": str(e)}
 
 
 def send_message(chat_id, text, reply_markup=None):
-
-    if not TELEGRAM_API_URL:
-        return
-
     payload = {
         "chat_id": chat_id,
-        "text": text
+        "text": text,
     }
-
-    if reply_markup:
+    if reply_markup is not None:
         payload["reply_markup"] = reply_markup
+    return tg_request("sendMessage", payload)
 
-    try:
-        requests.post(
-            f"{TELEGRAM_API_URL}/sendMessage",
-            json=payload,
-            timeout=10
-        )
-    except Exception:
-        pass
+
+def edit_message(chat_id, message_id, text, reply_markup=None):
+    payload = {
+        "chat_id": chat_id,
+        "message_id": message_id,
+        "text": text,
+    }
+    if reply_markup is not None:
+        payload["reply_markup"] = reply_markup
+    return tg_request("editMessageText", payload)
+
+
+def answer_callback_query(callback_query_id, text=None):
+    payload = {"callback_query_id": callback_query_id}
+    if text:
+        payload["text"] = text
+    return tg_request("answerCallbackQuery", payload)
