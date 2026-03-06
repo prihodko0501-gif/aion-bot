@@ -1,6 +1,11 @@
 import os
 
-from bot.api import send_message, edit_message, answer_callback_query
+from bot.api import (
+    send_message,
+    edit_message,
+    answer_callback_query,
+    remove_reply_keyboard,
+)
 from bot.keyboards import (
     main_menu,
     back_to_menu,
@@ -102,7 +107,7 @@ def safe_edit(chat_id, message_id, text, reply_markup=None):
 
 
 def show_main_menu(chat_id, message_id=None):
-    text = getattr(texts, "WELCOME_TEXT", None) or getattr(texts, "start_text", lambda: "AION")()
+    text = getattr(texts, "WELCOME_TEXT", None) or "AION — выбери действие:"
     markup = main_menu(WEBAPP_URL)
 
     if message_id:
@@ -203,10 +208,7 @@ def render_dynamics(chat_id, message_id):
 
 
 def render_assist(chat_id, message_id):
-    text = getattr(texts, "ASSIST_TEXT", None) or (
-        "💬 Помощник AION\n\n"
-        "Помощник подключён в базовом режиме."
-    )
+    text = getattr(texts, "ASSIST_TEXT", None) or "💬 Помощник AION\n\nБазовый режим."
     safe_edit(chat_id, message_id, text, back_to_menu())
 
 
@@ -235,6 +237,27 @@ def handle_message(message):
 
     if text == "/start" or text.lower() in ("start", "старт"):
         clear_state(chat_id)
+        remove_reply_keyboard(chat_id)
+        show_main_menu(chat_id)
+        return
+
+    legacy_buttons = {
+        "🧬 biotime",
+        "biotime",
+        "sleep",
+        "cns",
+        "recovery",
+        "pressure",
+        "info",
+        "🛌 sleep",
+        "🧠 cns",
+        "🔥 recovery",
+        "❤️ pressure",
+        "ℹ️ info",
+    }
+
+    if text.lower() in legacy_buttons:
+        remove_reply_keyboard(chat_id)
         show_main_menu(chat_id)
         return
 
