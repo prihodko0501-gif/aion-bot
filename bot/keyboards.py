@@ -1,6 +1,3 @@
-from urllib.parse import quote
-
-
 CB_NAV = "nav"
 CB_NEW = "new_calc"
 CB_DYN = "dynamics"
@@ -10,10 +7,12 @@ CB_SETTINGS = "settings"
 CB_ABOUT = "about"
 CB_ASSIST = "assist"
 CB_MENU = "menu"
-CB_BACK = "back"
+
+CB_H7 = "hist_7"
+CB_H14 = "hist_14"
 
 
-def main_menu(webapp_url: str | None = None):
+def main_menu(webapp_url=None):
     rows = [
         [{"text": "🧭 Навигация", "callback_data": CB_NAV}],
         [{"text": "🧬 Новый расчёт", "callback_data": CB_NEW}],
@@ -39,12 +38,11 @@ def back_to_menu():
     }
 
 
-def back_and_menu():
+def history_menu():
     return {
         "inline_keyboard": [
-            [
-                {"text": "⬅️ Назад", "callback_data": CB_BACK},
-                {"text": "🏠 Меню", "callback_data": CB_MENU},
-            ]
+            [{"text": "📅 7 дней", "callback_data": CB_H7}],
+            [{"text": "📅 14 дней", "callback_data": CB_H14}],
+            [{"text": "⬅️ В меню", "callback_data": CB_MENU}],
         ]
     }
