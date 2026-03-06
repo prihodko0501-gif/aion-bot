@@ -6,17 +6,29 @@ from bot.api import (
     edit_message,
     try_delete_user_message,
     answer_callback,
+    send_document_bytes,
 )
 
 from bot.keyboards import (
     CB_MENU,
+    CB_INFO,
+    CB_SETTINGS,
+    CB_PROFILE,
     CB_NEW,
+    CB_NAV,
+    CB_DYNAMICS,
+    CB_HISTORY,
+    CB_H7,
+    CB_H14,
+    CB_CSV,
+    CB_ASSIST,
     main_menu_inline,
     back_inline,
+    history_inline,
     after_calc_inline,
 )
 
-from bot.texts import start_text
+from bot.texts import start_text, info_text, settings_text
 
 from database.state import get_state, set_state, clear_flow
 from database.entries import save_biotime_entry
@@ -27,6 +39,7 @@ from core.biotime import (
     classify_biotime,
     result_block,
 )
+
 
 STEP_BT_SLEEP_HOURS = "bt_sleep_hours"
 STEP_BT_LATENCY_MIN = "bt_latency_min"
@@ -83,7 +96,7 @@ def next_step(step: str):
 
 
 def ensure_ui(chat_id: int):
-    st = get_state(chat_id)
+    st = get_state(chat_id) or {}
     mid = st.get("ui_message_id")
 
     if mid:
@@ -122,8 +135,62 @@ def core_animation_async(chat_id: int, mid: int, final_text: str):
 
 
 def start_biotime_wizard(chat_id: int, ui_mid: int):
-    set_state(chat_id, ui_message_id=ui_mid, step=STEP_BT_SLEEP_HOURS, mode=None, payload={})
+    set_state(chat_id, ui_message_id=ui_mid, step=STEP_BT_SLEEP_HOURS, mode="biotime", payload={})
     edit_message(chat_id, ui_mid, prompt(STEP_BT_SLEEP_HOURS), back_inline())
+
+
+def render_navigation_stub(chat_id: int, message_id: int):
+    text = (
+        "🧭 Навигация AION\n\n"
+        "Пока подключён базовый экран.\n"
+        "Здесь будут:\n"
+        "• индекс AION\n"
+        "• вектор\n"
+        "• риск\n"
+        "• скорость износа"
+    )
+    edit_message(chat_id, message_id, text, back_inline())
+
+
+def render_dynamics_stub(chat_id: int, message_id: int):
+    text = (
+        "📊 Динамика\n\n"
+        "Модуль динамики пока в базовой версии.\n"
+        "После накопления записей здесь будет график изменений."
+    )
+    edit_message(chat_id, message_id, text, back_inline())
+
+
+def render_profile_stub(chat_id: int, message_id: int):
+    text = (
+        "🧠 Профиль\n\n"
+        "Профиль пока в базовой версии.\n"
+        "Здесь будут личные параметры и настройки пользователя."
+    )
+    edit_message(chat_id, message_id, text, back_inline())
+
+
+def render_assist_stub(chat_id: int, message_id: int):
+    text = (
+        "💬 Помощник AION\n\n"
+        "Помощник подключён в базовом режиме.\n"
+        "Позже здесь будет полноценная логика вопросов и ответов."
+    )
+    edit_message(chat_id, message_id, text, back_inline())
+
+
+def render_history_stub(chat_id: int, message_id: int):
+    text = (
+        "📚 История\n\n"
+        "Базовый экран истории.\n"
+        "Можно посмотреть 7 или 14 дней, либо экспортировать CSV."
+    )
+    edit_message(chat_id, message_id, text, history_inline())
+
+
+def send_csv_stub(chat_id: int):
+    data = b"date,biotime\n"
+    send_document_bytes(chat_id, "aion_history.csv", data)
 
 
 def handle_update(update: dict):
@@ -143,8 +210,6 @@ def handle_update(update: dict):
         if not chat_id or not message_id:
             return
 
-        set_state(chat_id, ui_message_id=message_id, step=None, mode=None, payload={})
-
         if data == CB_MENU:
             clear_flow(chat_id, keep_ui=True)
             edit_message(chat_id, message_id, start_text(), main_menu_inline())
@@ -152,6 +217,53 @@ def handle_update(update: dict):
 
         if data == CB_NEW:
             start_biotime_wizard(chat_id, message_id)
+            return
+
+        if data == CB_NAV:
+            clear_flow(chat_id, keep_ui=True)
+            render_navigation_stub(chat_id, message_id)
+            return
+
+        if data == CB_DYNAMICS:
+            clear_flow(chat_id, keep_ui=True)
+            render_dynamics_stub(chat_id, message_id)
+            return
+
+        if data == CB_HISTORY:
+            clear_flow(chat_id, keep_ui=True)
+            render_history_stub(chat_id, message_id)
+            return
+
+        if data == CB_PROFILE:
+            clear_flow(chat_id, keep_ui=True)
+            render_profile_stub(chat_id, message_id)
+            return
+
+        if data == CB_SETTINGS:
+            clear_flow(chat_id, keep_ui=True)
+            edit_message(chat_id, message_id, settings_text(), back_inline())
+            return
+
+        if data == CB_INFO:
+            clear_flow(chat_id, keep_ui=True)
+            edit_message(chat_id, message_id, info_text(), back_inline())
+            return
+
+        if data == CB_ASSIST:
+            clear_flow(chat_id, keep_ui=True)
+            render_assist_stub(chat_id, message_id)
+            return
+
+        if data == CB_H7:
+            edit_message(chat_id, message_id, "📅 История за 7 дней\n\nПока базовый режим.", history_inline())
+            return
+
+        if data == CB_H14:
+            edit_message(chat_id, message_id, "📅 История за 14 дней\n\nПока базовый режим.", history_inline())
+            return
+
+        if data == CB_CSV:
+            send_csv_stub(chat_id)
             return
 
         edit_message(chat_id, message_id, start_text(), main_menu_inline())
@@ -171,7 +283,7 @@ def handle_update(update: dict):
         ensure_ui(chat_id)
         return
 
-    st = get_state(chat_id)
+    st = get_state(chat_id) or {}
     step = st.get("step")
     payload = st.get("payload") or {}
     mid = st.get("ui_message_id") or ensure_ui(chat_id)
@@ -208,35 +320,44 @@ def handle_update(update: dict):
         nxt = next_step(step)
 
         if nxt:
-            set_state(chat_id, ui_message_id=mid, step=nxt, mode=None, payload=payload)
+            set_state(chat_id, ui_message_id=mid, step=nxt, mode="biotime", payload=payload)
             edit_message(chat_id, mid, prompt(nxt), back_inline())
             return
 
-        biotime = compute_biotime_from_payload(payload)
-        status, level, advice, mode_day, p_train, p_sleep, p_nutri = classify_biotime(biotime)
+        try:
+            biotime = compute_biotime_from_payload(payload)
+            status, level, advice, mode_day, p_train, p_sleep, p_nutri = classify_biotime(biotime)
 
-        final_text = result_block(
-            biotime,
-            mode_day,
-            status,
-            level,
-            advice,
-            p_train,
-            p_sleep,
-            p_nutri,
-        )
+            final_text = result_block(
+                biotime,
+                mode_day,
+                status,
+                level,
+                advice,
+                p_train,
+                p_sleep,
+                p_nutri,
+            )
+        except Exception as e:
+            print("BIOTIME ERROR:", repr(e))
+            edit_message(chat_id, mid, "⚠️ Ошибка расчёта. Попробуй ещё раз.", back_inline())
+            clear_flow(chat_id, keep_ui=True)
+            return
 
-        save_biotime_entry(
-            chat_id,
-            payload,
-            biotime,
-            status,
-            level,
-            advice,
-            p_train,
-            p_sleep,
-            p_nutri,
-        )
+        try:
+            save_biotime_entry(
+                chat_id,
+                payload,
+                biotime,
+                status,
+                level,
+                advice,
+                p_train,
+                p_sleep,
+                p_nutri,
+            )
+        except Exception as e:
+            print("SAVE ENTRY ERROR:", repr(e))
 
         core_animation_async(chat_id, mid, final_text)
         clear_flow(chat_id, keep_ui=True)
