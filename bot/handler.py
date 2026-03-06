@@ -181,8 +181,7 @@ def handle_update(update: dict):
 
         try:
             if step == STEP_BT_SLEEP_HOURS:
-                v = parse_float(text)
-                payload["sleep_hours"] = v
+                payload["sleep_hours"] = parse_float(text)
 
             elif step == STEP_BT_LATENCY_MIN:
                 payload["latency_min"] = parse_int(text)
