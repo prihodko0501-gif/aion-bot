@@ -1,8 +1,13 @@
-WELCOME_TEXT = "<b>AION</b>\n\nВыбери раздел меню."
-NEW_CALC_TEXT = "<b>Новый расчёт</b>\n\nРаздел подключается."
-NAV_TEXT = "<b>Навигация</b>\n\nРаздел подключается."
-DYNAMICS_TEXT = "<b>Динамика</b>\n\nРаздел подключается."
-HISTORY_TEXT = "<b>История</b>\n\nРаздел подключается."
-PROFILE_TEXT = "<b>Профиль</b>\n\nРаздел подключается."
-SETTINGS_TEXT = "<b>Настройки</b>\n\nРаздел подключается."
-ABOUT_TEXT = "<b>О системе</b>\n\nAION — Biological Upgrade System."
+WELCOME_TEXT = (
+    "AION — система управления скоростью биологического износа, "
+    "основанная на анализе твоей физиологии.\n\n"
+    "Выберите модуль:"
+)
+
+BIOTIME_INPUT = (
+    "🧬 BioTime модуль.\n\n"
+    "Введи 6 чисел через пробел:\n"
+    "Sleep Stress Recovery PressurePenalty DropPenalty RiskPenalty\n\n"
+    "Пример:\n"
+    "7 6 8 0 0 1"
+)
