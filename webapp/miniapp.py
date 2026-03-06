@@ -1,5 +1,11 @@
-# (позже) Здесь будут API endpoints для Telegram Mini App
-# Например:
-# GET /api/history
-# GET /api/nav
-# GET /api/profile
+from flask import jsonify
+
+
+def miniapp_status():
+    """
+    Проверка работы backend mini app
+    """
+
+    return jsonify({
+        "status": "AION miniapp backend running"
+    })
