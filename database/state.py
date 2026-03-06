@@ -5,11 +5,7 @@ def get_state(user_id: int):
     return state_cache.get(user_id, {})
 
 
-def set_state(user_id: int, ui_message_id=None, step=None, mode=None, payload=None, state=None):
-    if state is not None:
-        state_cache[user_id] = state
-        return
-
+def set_state(user_id: int, ui_message_id=None, step=None, mode=None, payload=None):
     current = state_cache.get(user_id, {})
 
     if ui_message_id is not None:
@@ -26,7 +22,6 @@ def set_state(user_id: int, ui_message_id=None, step=None, mode=None, payload=No
 
 def clear_flow(user_id: int, keep_ui: bool = False):
     current = state_cache.get(user_id, {})
-
     ui_message_id = current.get("ui_message_id") if keep_ui else None
 
     state_cache[user_id] = {
