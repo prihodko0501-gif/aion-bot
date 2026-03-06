@@ -1,88 +1,126 @@
-from bot.api import send_message, edit_message, answer_callback_query
-from bot.keyboards import main_menu, back_to_menu
-import bot.texts as texts
+from bot.api import send_message
+from bot.keyboards import *
+from bot import texts
+from core.biotime import calculate_biotime
+
+
+USER_STATE = {}
 
 
 def handle_update(update):
-    try:
-        if "callback_query" in update:
-            handle_callback(update["callback_query"])
-            return
 
-        if "message" in update:
-            handle_message(update["message"])
-            return
+    message = update.get("message") or {}
 
-        print("UNKNOWN UPDATE:", update)
-
-    except Exception as e:
-        print("HANDLE_UPDATE ERROR:", str(e))
-
-
-def handle_message(message):
-    chat_id = message["chat"]["id"]
+    chat_id = message.get("chat", {}).get("id")
     text = (message.get("text") or "").strip()
 
-    if text in ["/start", "start", "старт", "Start", "START"]:
+    if not chat_id:
+        return
+
+    if text == "/start":
+
+        USER_STATE.pop(chat_id, None)
+
         send_message(
-            chat_id=chat_id,
-            text=texts.WELCOME_TEXT,
-            reply_markup=main_menu()
+            chat_id,
+            texts.WELCOME_TEXT,
+            reply_markup=main_menu_reply()
         )
         return
 
-    send_message(
-        chat_id=chat_id,
-        text="Используй меню ниже.",
-        reply_markup=main_menu()
-    )
+    if USER_STATE.get(chat_id, {}).get("step") == "biotime_input":
 
+        parts = text.split()
 
-def handle_callback(callback):
-    callback_id = callback["id"]
-    data = callback.get("data", "")
-    message = callback.get("message", {})
-    chat_id = message["chat"]["id"]
-    message_id = message["message_id"]
+        if len(parts) != 6:
+            send_message(
+                chat_id,
+                "Нужно 6 чисел. Пример: 7 6 8 0 0 1",
+                reply_markup=main_menu_reply()
+            )
+            return
 
-    answer_callback_query(callback_id)
+        try:
 
-    if data == "menu":
-        safe_edit(chat_id, message_id, texts.WELCOME_TEXT, main_menu())
+            sleep = float(parts[0])
+            stress = float(parts[1])
+            recovery = float(parts[2])
+            pressure_penalty = float(parts[3])
+            drop_penalty = float(parts[4])
+            risk_penalty = float(parts[5])
+
+        except Exception:
+
+            send_message(
+                chat_id,
+                "Ошибка формата. Введи 6 чисел через пробел.",
+                reply_markup=main_menu_reply()
+            )
+            return
+
+        biotime, level, advice = calculate_biotime(
+            sleep,
+            stress,
+            recovery,
+            pressure_penalty,
+            drop_penalty,
+            risk_penalty
+        )
+
+        send_message(
+            chat_id,
+            f"🧬 BioTime = {biotime}\n{level}\n\nРекомендация: {advice}",
+            reply_markup=main_menu_reply()
+        )
+
+        USER_STATE.pop(chat_id, None)
+
         return
 
-    if data == "new_calc":
-        safe_edit(chat_id, message_id, texts.NEW_CALC_TEXT, back_to_menu())
+    if text == BTN_BIOTIME:
+
+        USER_STATE[chat_id] = {"step": "biotime_input"}
+
+        send_message(
+            chat_id,
+            texts.BIOTIME_INPUT,
+            reply_markup=main_menu_reply()
+        )
+
         return
 
-    if data == "nav":
-        safe_edit(chat_id, message_id, texts.NAV_TEXT, back_to_menu())
+    if text == BTN_SLEEP:
+
+        send_message(chat_id, "💤 Sleep модуль.", reply_markup=main_menu_reply())
         return
 
-    if data == "dynamics":
-        safe_edit(chat_id, message_id, texts.DYNAMICS_TEXT, back_to_menu())
+    if text == BTN_CNS:
+
+        send_message(chat_id, "🧠 CNS модуль.", reply_markup=main_menu_reply())
         return
 
-    if data == "history":
-        safe_edit(chat_id, message_id, texts.HISTORY_TEXT, back_to_menu())
+    if text == BTN_RECOVERY:
+
+        send_message(chat_id, "🔥 Recovery модуль.", reply_markup=main_menu_reply())
         return
 
-    if data == "profile":
-        safe_edit(chat_id, message_id, texts.PROFILE_TEXT, back_to_menu())
+    if text == BTN_PRESSURE:
+
+        send_message(chat_id, "❤️ Pressure модуль.", reply_markup=main_menu_reply())
         return
 
-    if data == "settings":
-        safe_edit(chat_id, message_id, texts.SETTINGS_TEXT, back_to_menu())
+    if text == BTN_INFO:
+
+        send_message(
+            chat_id,
+            "ℹ️ AION\n\n"
+            "🧬 BioTime — интегральная оценка восстановления\n"
+            "❤️ Pressure — давление\n"
+            "💤 Sleep — сон\n"
+            "🧠 CNS — нервная система\n"
+            "🔥 Recovery — восстановление",
+            reply_markup=main_menu_reply()
+        )
         return
 
-    if data == "about":
-        safe_edit(chat_id, message_id, texts.ABOUT_TEXT, back_to_menu())
-        return
-
-    safe_edit(chat_id, message_id, "Неизвестная команда.", main_menu())
-
-
-def safe_edit(chat_id, message_id, text, reply_markup=None):
-    result = edit_message(chat_id, message_id, text, reply_markup)
-    if not result.get("ok"):
-        send_message(chat_id, text, reply_markup)
+    send_message(chat_id, "Выберите модуль:", reply_markup=main_menu_reply())
