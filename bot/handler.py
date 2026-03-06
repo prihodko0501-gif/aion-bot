@@ -31,7 +31,13 @@ from bot.keyboards import (
 from bot.texts import start_text, info_text, settings_text
 
 from database.state import get_state, set_state, clear_flow
-from database.entries import save_biotime_entry
+from database.entries import (
+    save_biotime_entry,
+    fetch_last_entry,
+    fetch_history,
+    fetch_history_limit,
+    build_csv_bytes,
+)
 
 from core.parsing import parse_float, parse_int, parse_pressure
 from core.biotime import (
@@ -39,7 +45,6 @@ from core.biotime import (
     classify_biotime,
     result_block,
 )
-
 
 STEP_BT_SLEEP_HOURS = "bt_sleep_hours"
 STEP_BT_LATENCY_MIN = "bt_latency_min"
@@ -139,58 +144,99 @@ def start_biotime_wizard(chat_id: int, ui_mid: int):
     edit_message(chat_id, ui_mid, prompt(STEP_BT_SLEEP_HOURS), back_inline())
 
 
-def render_navigation_stub(chat_id: int, message_id: int):
+def render_profile(chat_id: int, message_id: int):
+    last = fetch_last_entry(chat_id)
+
+    if not last:
+        text = "🧠 Профиль\n\nПока нет данных.\nСделай новый расчёт."
+    else:
+        created_at, biotime = last
+        text = (
+            "🧠 Профиль\n\n"
+            f"Последний BioTime: {round(float(biotime), 1)}\n"
+            f"Последняя запись: {created_at}"
+        )
+
+    edit_message(chat_id, message_id, text, back_inline())
+
+
+def render_history(chat_id: int, message_id: int, days: int = 7):
+    rows = fetch_history(chat_id, days=days)
+
+    if not rows:
+        text = f"📚 История за {days} дней\n\nПока записей нет."
+        edit_message(chat_id, message_id, text, history_inline())
+        return
+
+    lines = [f"📚 История за {days} дней\n"]
+
+    for created_at, biotime in rows[:15]:
+        lines.append(f"• {created_at:%d.%m %H:%M} — BioTime {round(float(biotime), 1)}")
+
+    edit_message(chat_id, message_id, "\n".join(lines), history_inline())
+
+
+def render_navigation(chat_id: int, message_id: int):
+    rows = fetch_history_limit(chat_id, limit=30)
+
+    if not rows:
+        text = "🧭 Навигация\n\nПока нет данных для навигации."
+        edit_message(chat_id, message_id, text, back_inline())
+        return
+
+    values = [float(row[1]) for row in rows]
+    current = values[0]
+    avg = sum(values) / len(values)
+    trend = current - avg
+
+    if trend > 0.3:
+        vector = "↗️ Улучшение"
+    elif trend < -0.3:
+        vector = "↘️ Снижение"
+    else:
+        vector = "➡️ Стабильно"
+
     text = (
         "🧭 Навигация AION\n\n"
-        "Пока подключён базовый экран.\n"
-        "Здесь будут:\n"
-        "• индекс AION\n"
-        "• вектор\n"
-        "• риск\n"
-        "• скорость износа"
+        f"Текущий BioTime: {round(current, 1)}\n"
+        f"Средний BioTime: {round(avg, 1)}\n"
+        f"Вектор: {vector}\n"
+        f"Записей учтено: {len(values)}"
     )
+
     edit_message(chat_id, message_id, text, back_inline())
 
 
-def render_dynamics_stub(chat_id: int, message_id: int):
+def render_dynamics(chat_id: int, message_id: int):
+    rows = fetch_history_limit(chat_id, limit=30)
+
+    if not rows:
+        text = "📊 Динамика\n\nПока нет данных."
+        edit_message(chat_id, message_id, text, back_inline())
+        return
+
+    values = [float(row[1]) for row in rows]
+    current = values[0]
+    oldest = values[-1]
+    delta = round(current - oldest, 1)
+
     text = (
         "📊 Динамика\n\n"
-        "Модуль динамики пока в базовой версии.\n"
-        "После накопления записей здесь будет график изменений."
+        f"Текущий BioTime: {round(current, 1)}\n"
+        f"Первый в выборке: {round(oldest, 1)}\n"
+        f"Изменение: {delta}"
     )
+
     edit_message(chat_id, message_id, text, back_inline())
 
 
-def render_profile_stub(chat_id: int, message_id: int):
-    text = (
-        "🧠 Профиль\n\n"
-        "Профиль пока в базовой версии.\n"
-        "Здесь будут личные параметры и настройки пользователя."
-    )
-    edit_message(chat_id, message_id, text, back_inline())
-
-
-def render_assist_stub(chat_id: int, message_id: int):
+def render_assist(chat_id: int, message_id: int):
     text = (
         "💬 Помощник AION\n\n"
-        "Помощник подключён в базовом режиме.\n"
-        "Позже здесь будет полноценная логика вопросов и ответов."
+        "Базовый режим подключён.\n"
+        "Позже здесь будет полноценный AI-помощник."
     )
     edit_message(chat_id, message_id, text, back_inline())
-
-
-def render_history_stub(chat_id: int, message_id: int):
-    text = (
-        "📚 История\n\n"
-        "Базовый экран истории.\n"
-        "Можно посмотреть 7 или 14 дней, либо экспортировать CSV."
-    )
-    edit_message(chat_id, message_id, text, history_inline())
-
-
-def send_csv_stub(chat_id: int):
-    data = b"date,biotime\n"
-    send_document_bytes(chat_id, "aion_history.csv", data)
 
 
 def handle_update(update: dict):
@@ -219,24 +265,9 @@ def handle_update(update: dict):
             start_biotime_wizard(chat_id, message_id)
             return
 
-        if data == CB_NAV:
+        if data == CB_INFO:
             clear_flow(chat_id, keep_ui=True)
-            render_navigation_stub(chat_id, message_id)
-            return
-
-        if data == CB_DYNAMICS:
-            clear_flow(chat_id, keep_ui=True)
-            render_dynamics_stub(chat_id, message_id)
-            return
-
-        if data == CB_HISTORY:
-            clear_flow(chat_id, keep_ui=True)
-            render_history_stub(chat_id, message_id)
-            return
-
-        if data == CB_PROFILE:
-            clear_flow(chat_id, keep_ui=True)
-            render_profile_stub(chat_id, message_id)
+            edit_message(chat_id, message_id, info_text(), back_inline())
             return
 
         if data == CB_SETTINGS:
@@ -244,26 +275,43 @@ def handle_update(update: dict):
             edit_message(chat_id, message_id, settings_text(), back_inline())
             return
 
-        if data == CB_INFO:
+        if data == CB_PROFILE:
             clear_flow(chat_id, keep_ui=True)
-            edit_message(chat_id, message_id, info_text(), back_inline())
+            render_profile(chat_id, message_id)
+            return
+
+        if data == CB_HISTORY:
+            clear_flow(chat_id, keep_ui=True)
+            render_history(chat_id, message_id, days=7)
+            return
+
+        if data == CB_H7:
+            render_history(chat_id, message_id, days=7)
+            return
+
+        if data == CB_H14:
+            render_history(chat_id, message_id, days=14)
+            return
+
+        if data == CB_CSV:
+            rows = fetch_history_limit(chat_id, limit=100)
+            csv_bytes = build_csv_bytes(rows)
+            send_document_bytes(chat_id, "aion_history.csv", csv_bytes)
+            return
+
+        if data == CB_NAV:
+            clear_flow(chat_id, keep_ui=True)
+            render_navigation(chat_id, message_id)
+            return
+
+        if data == CB_DYNAMICS:
+            clear_flow(chat_id, keep_ui=True)
+            render_dynamics(chat_id, message_id)
             return
 
         if data == CB_ASSIST:
             clear_flow(chat_id, keep_ui=True)
-            render_assist_stub(chat_id, message_id)
-            return
-
-        if data == CB_H7:
-            edit_message(chat_id, message_id, "📅 История за 7 дней\n\nПока базовый режим.", history_inline())
-            return
-
-        if data == CB_H14:
-            edit_message(chat_id, message_id, "📅 История за 14 дней\n\nПока базовый режим.", history_inline())
-            return
-
-        if data == CB_CSV:
-            send_csv_stub(chat_id)
+            render_assist(chat_id, message_id)
             return
 
         edit_message(chat_id, message_id, start_text(), main_menu_inline())
