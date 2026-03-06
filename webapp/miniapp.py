@@ -1,11 +1,7 @@
-from flask import jsonify
+from flask import Blueprint
 
+miniapp_bp = Blueprint("miniapp", __name__)
 
-def miniapp_status():
-    """
-    Проверка работы backend mini app
-    """
-
-    return jsonify({
-        "status": "AION miniapp backend running"
-    })
+@miniapp_bp.get("/miniapp")
+def miniapp_home():
+    return "<h1>AION MiniApp OK</h1><p>Стартовая страница MiniApp.</p>", 200
