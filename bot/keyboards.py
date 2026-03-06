@@ -1,34 +1,20 @@
-def main_menu():
-    return {
-        "inline_keyboard": [
-            [
-                {"text": "🧬 Новый расчёт", "callback_data": "new_calc"},
-                {"text": "🧭 Навигация", "callback_data": "nav"}
-            ],
-            [
-                {"text": "📊 Динамика", "callback_data": "dynamics"},
-                {"text": "📚 История", "callback_data": "history"}
-            ],
-            [
-                {"text": "🧠 Профиль", "callback_data": "profile"},
-                {"text": "⚙️ Настройки", "callback_data": "settings"}
-            ],
-            [
-                {"text": "ℹ️ О системе", "callback_data": "about"}
-            ],
-            [
-                {
-                    "text": "📱 Mini App",
-                    "web_app": {"url": "https://aion-bot.onrender.com"}
-                }
-            ]
-        ]
-    }
+BTN_BIOTIME = "🧬 BioTime"
+BTN_SLEEP = "💤 Sleep"
+BTN_CNS = "🧠 CNS"
+BTN_RECOVERY = "🔥 Recovery"
+BTN_PRESSURE = "❤️ Pressure"
+BTN_INFO = "ℹ️ Info"
 
 
-def back_to_menu():
+def main_menu_reply():
     return {
-        "inline_keyboard": [
-            [{"text": "⬅️ Назад в меню", "callback_data": "menu"}]
-        ]
+        "keyboard": [
+            [{"text": BTN_BIOTIME}],
+            [{"text": BTN_SLEEP}, {"text": BTN_CNS}],
+            [{"text": BTN_RECOVERY}, {"text": BTN_PRESSURE}],
+            [{"text": BTN_INFO}],
+        ],
+        "resize_keyboard": True,
+        "one_time_keyboard": False,
+        "is_persistent": True,
     }
