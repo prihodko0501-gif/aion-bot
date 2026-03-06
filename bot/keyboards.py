@@ -1,10 +1,3 @@
-import os
-
-MINIAPP_URL = os.environ.get("MINIAPP_URL", "")
-
-# =========================
-# КНОПКИ МЕНЮ
-# =========================
 BTN_NAV = "🧭 Навигация"
 BTN_NEW = "🧬 Новый расчёт"
 BTN_DYNAMICS = "📊 Динамика"
@@ -14,13 +7,6 @@ BTN_SETTINGS = "⚙️ Настройки"
 BTN_INFO = "ℹ️ О системе"
 BTN_ASSIST = "💬 Помощник"
 
-# (на будущее)
-BTN_LANG = "🌍 Язык"
-BTN_REF = "🎁 Рефералы"
-
-# =========================
-# CALLBACKS
-# =========================
 CB_NAV = "nav"
 CB_NEW = "calc_new"
 CB_DYNAMICS = "dyn"
@@ -30,9 +16,6 @@ CB_SETTINGS = "settings"
 CB_INFO = "info"
 CB_ASSIST = "assist"
 CB_MENU = "menu"
-
-CB_LANG = "lang"
-CB_REF = "ref"
 
 CB_H7 = "hist_7"
 CB_H14 = "hist_14"
@@ -49,17 +32,17 @@ def main_menu_inline():
             [{"text": BTN_PROFILE, "callback_data": CB_PROFILE}],
             [{"text": BTN_SETTINGS, "callback_data": CB_SETTINGS}],
             [{"text": BTN_INFO, "callback_data": CB_INFO}],
-            [{"text": "📱 MiniApp", "web_app": {"url": MINIAPP_URL}}],
             [{"text": BTN_ASSIST, "callback_data": CB_ASSIST}],
-            # будущие:
-            # [{"text": BTN_LANG, "callback_data": CB_LANG}],
-            # [{"text": BTN_REF, "callback_data": CB_REF}],
         ]
     }
 
 
 def back_inline():
-    return {"inline_keyboard": [[{"text": "⬅️ В меню", "callback_data": CB_MENU}]]}
+    return {
+        "inline_keyboard": [
+            [{"text": "⬅️ В меню", "callback_data": CB_MENU}]
+        ]
+    }
 
 
 def history_inline():
