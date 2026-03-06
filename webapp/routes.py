@@ -1,19 +1,20 @@
-from flask import request, jsonify
-from bot.handler import handle_update
+from flask import jsonify
 
 
 def register_routes(app):
 
-    @app.route("/")
+    @app.get("/")
     def home():
-        return "AION server running"
+        return "AION backend running", 200
 
-    @app.route("/webhook", methods=["POST"])
-    def webhook():
-
-        data = request.json
-
-        if data:
-            handle_update(data)
-
-        return jsonify({"status": "ok"})
+    @app.get("/miniapp")
+    def miniapp():
+        return """
+        <html>
+          <head><title>AION Mini App</title></head>
+          <body style="font-family: Arial; padding: 24px;">
+            <h1>AION Mini App</h1>
+            <p>Mini App backend is alive.</p>
+          </body>
+        </html>
+        """, 200
