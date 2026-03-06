@@ -26,7 +26,6 @@ from database.entries import (
     fetch_history,
     fetch_history_limit,
     fetch_last_entry,
-    build_csv_bytes,
 )
 
 from core.parsing import parse_float, parse_int, parse_pressure
@@ -60,25 +59,18 @@ WIZ_ORDER = [
 def prompt(step: str):
     if step == STEP_BT_SLEEP_HOURS:
         return "🧬 Новый расчёт\n\n1) Сон (часы)?\nНапример: 7.5"
-
     if step == STEP_BT_LATENCY_MIN:
         return "2) Засыпание (минут)?\nНапример: 15"
-
     if step == STEP_BT_AWAKENINGS:
         return "3) Пробуждения (кол-во)?\nНапример: 0"
-
     if step == STEP_BT_MORNING_FEEL:
         return "4) Самочувствие утром (0–10)?\nНапример: 7"
-
     if step == STEP_BT_RHR:
         return "5) Пульс покоя (уд/мин)?\nНапример: 58"
-
     if step == STEP_BT_ENERGY:
         return "6) Энергия (0–10)?\nНапример: 8"
-
     if step == STEP_BT_PRESSURE:
         return '7) Давление утром SYS/DIA и пульс (например: 120/80 62)\nили напиши: "пропусти"'
-
     return "..."
 
 
@@ -237,7 +229,7 @@ def handle_message(message):
 
     if text == "/start" or text.lower() in ("start", "старт"):
         clear_state(chat_id)
-        remove_reply_keyboard(chat_id)
+        remove_reply_keyboard(chat_id, text="Старая клавиатура удалена")
         show_main_menu(chat_id)
         return
 
@@ -257,7 +249,7 @@ def handle_message(message):
     }
 
     if text.lower() in legacy_buttons:
-        remove_reply_keyboard(chat_id)
+        remove_reply_keyboard(chat_id, text="Старая клавиатура удалена")
         show_main_menu(chat_id)
         return
 
@@ -274,25 +266,18 @@ def handle_message(message):
     try:
         if step == STEP_BT_SLEEP_HOURS:
             payload["sleep_hours"] = parse_float(text)
-
         elif step == STEP_BT_LATENCY_MIN:
             payload["latency_min"] = parse_int(text)
-
         elif step == STEP_BT_AWAKENINGS:
             payload["awakenings"] = parse_int(text)
-
         elif step == STEP_BT_MORNING_FEEL:
             payload["morning_feel"] = parse_float(text)
-
         elif step == STEP_BT_RHR:
             payload["rhr"] = parse_int(text)
-
         elif step == STEP_BT_ENERGY:
             payload["energy"] = parse_float(text)
-
         elif step == STEP_BT_PRESSURE:
             payload["pressure"] = parse_pressure(text)
-
     except Exception:
         safe_edit(chat_id, message_id, "⚠️ Ошибка значения\n\n" + prompt(step), back_to_menu())
         return
