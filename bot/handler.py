@@ -1,21 +1,25 @@
 from bot.api import send_message, edit_message, answer_callback_query
 from bot.keyboards import main_menu, back_to_menu
-from bot import texts
+import bot.texts as texts
 
 
-def handle_update(update: dict):
-    if "callback_query" in update:
-        handle_callback(update["callback_query"])
-        return
+def handle_update(update):
+    try:
+        if "callback_query" in update:
+            handle_callback(update["callback_query"])
+            return
 
-    if "message" in update:
-        handle_message(update["message"])
-        return
+        if "message" in update:
+            handle_message(update["message"])
+            return
 
-    print("UNKNOWN UPDATE:", update)
+        print("UNKNOWN UPDATE:", update)
+
+    except Exception as e:
+        print("HANDLE_UPDATE ERROR:", str(e))
 
 
-def handle_message(message: dict):
+def handle_message(message):
     chat_id = message["chat"]["id"]
     text = (message.get("text") or "").strip()
 
@@ -34,7 +38,7 @@ def handle_message(message: dict):
     )
 
 
-def handle_callback(callback: dict):
+def handle_callback(callback):
     callback_id = callback["id"]
     data = callback.get("data", "")
     message = callback.get("message", {})
@@ -75,17 +79,10 @@ def handle_callback(callback: dict):
         safe_edit(chat_id, message_id, texts.ABOUT_TEXT, back_to_menu())
         return
 
-    safe_edit(
-        chat_id,
-        message_id,
-        "Неизвестная команда. Возвращаю в меню.",
-        main_menu()
-    )
+    safe_edit(chat_id, message_id, "Неизвестная команда.", main_menu())
 
 
-def safe_edit(chat_id: int, message_id: int, text: str, reply_markup: dict | None = None):
+def safe_edit(chat_id, message_id, text, reply_markup=None):
     result = edit_message(chat_id, message_id, text, reply_markup)
-
     if not result.get("ok"):
-        # если editMessageText не сработал — отправляем новое сообщение
         send_message(chat_id, text, reply_markup)
