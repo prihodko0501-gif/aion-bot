@@ -9,6 +9,7 @@ from bot.api import (
 from bot.keyboards import (
     main_menu,
     back_to_menu,
+    history_menu,
     CB_NAV,
     CB_NEW,
     CB_DYN,
@@ -18,6 +19,8 @@ from bot.keyboards import (
     CB_ABOUT,
     CB_ASSIST,
     CB_MENU,
+    CB_H7,
+    CB_H14,
 )
 from bot import texts
 from database.state import get_state, set_state, clear_state
@@ -99,7 +102,12 @@ def safe_edit(chat_id, message_id, text, reply_markup=None):
 
 
 def show_main_menu(chat_id, message_id=None):
-    text = getattr(texts, "WELCOME_TEXT", None) or "AION — выбери действие:"
+    text = (
+        "AION — система управления скоростью "
+        "биологического износа на основании "
+        "анализа твоей физиологии.\n\n"
+        "Выбери действие:"
+    )
     markup = main_menu(WEBAPP_URL)
 
     if message_id:
@@ -135,14 +143,14 @@ def render_history(chat_id, message_id, days=7):
 
     if not rows:
         text = f"📚 История за {days} дней\n\nПока записей нет."
-        safe_edit(chat_id, message_id, text, back_to_menu())
+        safe_edit(chat_id, message_id, text, history_menu())
         return
 
     lines = [f"📚 История за {days} дней\n"]
     for created_at, biotime in rows[:15]:
         lines.append(f"• {created_at:%d.%m %H:%M} — BioTime {round(float(biotime), 1)}")
 
-    safe_edit(chat_id, message_id, "\n".join(lines), back_to_menu())
+    safe_edit(chat_id, message_id, "\n".join(lines), history_menu())
 
 
 def render_navigation(chat_id, message_id):
@@ -200,7 +208,7 @@ def render_dynamics(chat_id, message_id):
 
 
 def render_assist(chat_id, message_id):
-    text = getattr(texts, "ASSIST_TEXT", None) or "💬 Помощник AION\n\nБазовый режим."
+    text = "💬 Помощник AION\n\nБазовый режим."
     safe_edit(chat_id, message_id, text, back_to_menu())
 
 
@@ -229,7 +237,7 @@ def handle_message(message):
 
     if text == "/start" or text.lower() in ("start", "старт"):
         clear_state(chat_id)
-        remove_reply_keyboard(chat_id, text="Старая клавиатура удалена")
+        remove_reply_keyboard(chat_id)
         show_main_menu(chat_id)
         return
 
@@ -249,7 +257,7 @@ def handle_message(message):
     }
 
     if text.lower() in legacy_buttons:
-        remove_reply_keyboard(chat_id, text="Старая клавиатура удалена")
+        remove_reply_keyboard(chat_id)
         show_main_menu(chat_id)
         return
 
@@ -362,18 +370,24 @@ def handle_callback(callback):
         render_history(chat_id, message_id, days=7)
         return
 
+    if data == CB_H7:
+        render_history(chat_id, message_id, days=7)
+        return
+
+    if data == CB_H14:
+        render_history(chat_id, message_id, days=14)
+        return
+
     if data == CB_PROFILE:
         render_profile(chat_id, message_id)
         return
 
     if data == CB_SETTINGS:
-        text = getattr(texts, "SETTINGS_TEXT", "⚙️ Настройки")
-        safe_edit(chat_id, message_id, text, back_to_menu())
+        safe_edit(chat_id, message_id, "⚙️ Настройки", back_to_menu())
         return
 
     if data == CB_ABOUT:
-        text = getattr(texts, "ABOUT_TEXT", "ℹ️ О системе")
-        safe_edit(chat_id, message_id, text, back_to_menu())
+        safe_edit(chat_id, message_id, "ℹ️ О системе", back_to_menu())
         return
 
     if data == CB_ASSIST:
