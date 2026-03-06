@@ -4,26 +4,18 @@ from bot.handler import handle_update
 
 app = Flask(__name__)
 
+@app.get("/")
+def home():
+    return "AION is alive 🚀", 200
 
-@app.route("/", methods=["GET"])
-def index():
-    return "AION bot is running", 200
 
-
-@app.route("/webhook", methods=["POST"])
+@app.post("/webhook")
 def webhook():
-    try:
-        update = request.get_json(silent=True)
-        if update is None:
-            update = {}
-        print("UPDATE:", update)
-        handle_update(update)
-        return jsonify({"ok": True}), 200
-    except Exception as e:
-        print("WEBHOOK ERROR:", str(e))
-        return jsonify({"ok": False, "error": str(e)}), 200
+    update = request.get_json(silent=True) or {}
+    handle_update(update)
+    return jsonify({"ok": True})
 
 
 if __name__ == "__main__":
-    port = int(os.getenv("PORT", "5000"))
+    port = int(os.environ.get("PORT", "8080"))
     app.run(host="0.0.0.0", port=port)
