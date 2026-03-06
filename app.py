@@ -1,32 +1,14 @@
-import os
-from flask import Flask
-
-from webapp.routes import register_routes
-from database.core import init_db
-
-# AION engine
-from core.biotime import calculate_aion_state
+from flask import Flask, request
 
 app = Flask(__name__)
 
-# Чтобы Flask не различал /webhook и /webhook/
-app.url_map.strict_slashes = False
-
-# регистрация роутов
-register_routes(app)
-
-# инициализация базы
-init_db()
-
-
 @app.route("/")
-def health():
-    return {
-        "status": "AION online",
-        "engine": "biological upgrade system"
-    }
+def home():
+    return "AION Bot Running"
 
+@app.route("/webhook", methods=["POST"])
+def webhook():
+    data = request.json
+    print(data)
 
-if __name__ == "__main__":
-    port = int(os.environ.get("PORT", "8080"))
-    app.run(host="0.0.0.0", port=port)
+    return {"status": "ok"}, 200
