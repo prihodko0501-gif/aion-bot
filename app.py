@@ -1,20 +1,12 @@
 import os
-from flask import Flask, request
+from flask import Flask
+
+from webapp.routes import register_routes
 
 app = Flask(__name__)
+app.url_map.strict_slashes = False
 
-
-@app.route("/")
-def home():
-    return "AION Bot Running"
-
-
-@app.route("/webhook", methods=["POST"])
-def webhook():
-    data = request.json
-    print(data)
-    return {"status": "ok"}, 200
-
+register_routes(app)
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", "10000"))
