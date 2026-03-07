@@ -8,4 +8,10 @@ def get_connection():
     if not url:
         return None
 
-    return psycopg2.connect(url)
+    try:
+        conn = psycopg2.connect(url, sslmode="require")
+        conn.autocommit = True
+        return conn
+    except Exception as e:
+        print("Database connection error:", e)
+        return None
