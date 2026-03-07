@@ -37,6 +37,6 @@ def parse_pressure(text: str):
     return {
         "sys": int(sys_str),
         "dia": int(dia_str),
-        "pulse": int(pulse) if pulse is not None else None,
+        "pulse": int(pulse) if pulse else None,
         "skipped": False,
     }
