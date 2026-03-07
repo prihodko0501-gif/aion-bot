@@ -1,10 +1,6 @@
 CB_NAV = "nav"
 CB_NEW = "new_calc"
-CB_DYN = "dynamics"
 CB_HIS = "history"
-CB_PROFILE = "profile"
-CB_SETTINGS = "settings"
-CB_ABOUT = "about"
 CB_ASSIST = "assist"
 CB_MENU = "menu"
 
@@ -14,13 +10,9 @@ CB_H14 = "hist_14"
 
 def main_menu(webapp_url=None):
     rows = [
-        [{"text": "🧭 Навигация", "callback_data": CB_NAV}],
         [{"text": "🧬 Новый расчёт", "callback_data": CB_NEW}],
-        [{"text": "📊 Динамика", "callback_data": CB_DYN}],
+        [{"text": "🧭 Навигация", "callback_data": CB_NAV}],
         [{"text": "📚 История", "callback_data": CB_HIS}],
-        [{"text": "🧠 Профиль", "callback_data": CB_PROFILE}],
-        [{"text": "⚙️ Настройки", "callback_data": CB_SETTINGS}],
-        [{"text": "ℹ️ О системе", "callback_data": CB_ABOUT}],
         [{"text": "💬 Помощник", "callback_data": CB_ASSIST}],
     ]
 
