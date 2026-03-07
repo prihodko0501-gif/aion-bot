@@ -1,10 +1,14 @@
+import os
 from flask import Flask
 
 app = Flask(__name__)
 
 @app.route("/")
 def home():
-    return "AION BOT WORKING"
+    return "AION BOT WORKING", 200
+
 
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=10000)
+    port = int(os.environ.get("PORT", 10000))
+    print(f"Starting server on port {port}", flush=True)
+    app.run(host="0.0.0.0", port=port)
