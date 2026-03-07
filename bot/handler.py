@@ -1,4 +1,6 @@
 import os
+import time
+import threading
 
 from bot.api import (
     send_message,
@@ -30,7 +32,6 @@ from database.entries import (
     fetch_history_limit,
     fetch_last_entry,
 )
-
 from core.parsing import parse_float, parse_int, parse_pressure
 from core.biotime import (
     compute_biotime_from_payload,
@@ -120,6 +121,42 @@ def show_main_menu(chat_id, message_id=None):
     if sent.get("ok"):
         msg = sent.get("result", {})
         set_state(chat_id, ui_message_id=msg.get("message_id"), step=None, payload={})
+
+
+def after_calc_menu():
+    return {
+        "inline_keyboard": [
+            [{"text": "🧬 Новый расчёт", "callback_data": CB_NEW}],
+            [{"text": "🧭 Навигация", "callback_data": CB_NAV}],
+            [{"text": "📊 Динамика", "callback_data": CB_DYN}],
+            [{"text": "📚 История", "callback_data": CB_HIS}],
+            [{"text": "💬 Помощник", "callback_data": CB_ASSIST}],
+            [{"text": "⬅️ В меню", "callback_data": CB_MENU}],
+        ]
+    }
+
+
+def core_animation_async(chat_id: int, message_id: int, final_text: str):
+    def run():
+        try:
+            steps = [
+                "🧬 Обработка...\n▰▱▱▱▱",
+                "🧠 Анализ...\n▰▰▱▱▱",
+                "🫀 Оценка...\n▰▰▰▱▱",
+                "🔥 Сбор результата...\n▰▰▰▰▱",
+                "⚡ Финализация...\n▰▰▰▰▰",
+            ]
+
+            for txt in steps:
+                edit_message(chat_id, message_id, txt, reply_markup=after_calc_menu())
+                time.sleep(0.35)
+
+            edit_message(chat_id, message_id, final_text, reply_markup=after_calc_menu())
+
+        except Exception as e:
+            print("ANIMATION ERROR:", repr(e))
+
+    threading.Thread(target=run, daemon=True).start()
 
 
 def render_profile(chat_id, message_id):
@@ -332,7 +369,7 @@ def handle_message(message):
     except Exception as e:
         print("SAVE ENTRY ERROR:", repr(e))
 
-    safe_edit(chat_id, message_id, final_text, back_to_menu())
+    core_animation_async(chat_id, message_id, final_text)
     clear_state(chat_id)
 
 
