@@ -2,12 +2,10 @@ import os
 from flask import Flask
 
 from webapp.routes import register_routes
-from database.core import init_db
 
 app = Flask(__name__)
 app.url_map.strict_slashes = False
 
-init_db()
 register_routes(app)
 
 if __name__ == "__main__":
