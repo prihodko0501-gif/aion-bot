@@ -4,38 +4,53 @@ from flask import Flask, request
 
 app = Flask(__name__)
 
-TOKEN = os.environ.get("TELEGRAM_TOKEN")
-API_URL = f"https://api.telegram.org/bot{TOKEN}"
+TELEGRAM_TOKEN = os.environ.get("TELEGRAM_TOKEN")
+TELEGRAM_API_URL = f"https://api.telegram.org/bot{TELEGRAM_TOKEN}"
+
+# ссылка на твою картинку
+PHOTO_URL = "https://raw.githubusercontent.com/prihodko0501-gif/aion-bot/refs/heads/main/9C9D1C07-7426-4DDC-84DD-A76E6AC20138.png"
 
 
-def send_message(chat_id, text):
-    url = f"{API_URL}/sendMessage"
-    data = {
-        "chat_id": chat_id,
-        "text": text
-    }
-    requests.post(url, json=data)
+def send_welcome(chat_id):
+
+    text = """
+Система AION разработана
+как глобальная платформа,
+измеряющая биологическое
+время и помогающая управлять
+скоростью жизни
+"""
+
+    requests.post(
+        f"{TELEGRAM_API_URL}/sendPhoto",
+        json={
+            "chat_id": chat_id,
+            "photo": PHOTO_URL,
+            "caption": text
+        }
+    )
 
 
 @app.route("/")
 def index():
-    return "AION BOT WORKING"
+    return "AION bot running"
 
 
 @app.route("/webhook", methods=["POST"])
 def webhook():
-    data = request.json
 
-    if "message" in data:
-        chat_id = data["message"]["chat"]["id"]
-        text = data["message"].get("text", "")
+    update = request.get_json()
+
+    if "message" in update:
+
+        chat_id = update["message"]["chat"]["id"]
+        text = update["message"].get("text", "")
 
         if text == "/start":
-            send_message(chat_id, "AION запущен. Бот на связи.")
+            send_welcome(chat_id)
 
-    return {"ok": True}
+    return "ok", 200
 
 
 if __name__ == "__main__":
-    port = int(os.environ.get("PORT", 10000))
-    app.run(host="0.0.0.0", port=port)
+    app.run(host="0.0.0.0", port=10000)
