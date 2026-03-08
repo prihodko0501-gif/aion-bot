@@ -1,45 +1,45 @@
 import os
 import requests
-from flask import Flask, request, send_from_directory, jsonify
+from flask import Flask, request, jsonify, send_from_directory
 
 app = Flask(__name__)
 
 TOKEN = os.environ.get("TELEGRAM_TOKEN")
 API = f"https://api.telegram.org/bot{TOKEN}"
 
-IMAGE_URL = "https://raw.githubusercontent.com/prihodko0501-gif/aion-bot/miniapp-structure/B0AEE152-2F0A-4DD9-8A25-D25C1D6AFE54.jpeg"
+IMAGE_URL = "https://raw.githubusercontent.com/prihodko0501-gif/aion-bot/main/B0AEE152-2F0A-4DD9-8A25-D25C1D6AFE54.jpeg"
 
 
-@app.get("/")
+@app.route("/")
 def home():
-    return "AION is alive 🚀", 200
+    return send_from_directory("webapp", "index.html")
 
 
-@app.get("/app")
+@app.route("/app")
 def mini_app():
     return send_from_directory("webapp", "index.html")
 
 
-@app.post("/webhook")
+@app.route("/webhook", methods=["POST"])
 def webhook():
-    data = request.get_json(silent=True) or {}
 
-    message = data.get("message")
-    if not message:
-        return jsonify({"ok": True}), 200
+    data = request.get_json()
 
-    chat_id = message["chat"]["id"]
-    text = message.get("text", "")
+    if "message" not in data:
+        return {"ok": True}
+
+    chat_id = data["message"]["chat"]["id"]
+    text = data["message"].get("text", "")
 
     if text == "/start":
+
         requests.post(
             f"{API}/sendPhoto",
             json={
                 "chat_id": chat_id,
                 "photo": IMAGE_URL,
-                "caption": "Upgrade System"
-            },
-            timeout=20
+                "caption": "AION\nBiological Upgrade System\n\nСистема инициализирована."
+            }
         )
 
-    return jsonify({"ok": True}), 200
+    return {"ok": True}
