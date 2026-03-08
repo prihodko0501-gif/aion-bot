@@ -1,39 +1,51 @@
-import os
-import requests
-from flask import Flask, request
+from flask import Flask
 
 app = Flask(__name__)
 
-TOKEN = os.environ.get("TELEGRAM_TOKEN")
-API = f"https://api.telegram.org/bot{TOKEN}"
-
-IMAGE_URL = "https://raw.githubusercontent.com/prihodko0501-gif/aion-bot/main/B0AEE152-2F0A-4DD9-8A25-D25C1D6AFE54.jpeg"
+LOGO_URL = "https://raw.githubusercontent.com/prihodko0501-gif/aion-bot/main/B0AEE152-2F0A-4DD9-8A25-D25C1D6AFE54.jpeg"
 
 
 @app.route("/")
 def home():
-    return "AION BOT ONLINE", 200
+    return "AION system online", 200
 
 
-@app.route("/webhook", methods=["POST"])
-def webhook():
+@app.route("/app")
+def mini_app():
+    return f"""
+    <html>
+    <head>
+        <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+        <style>
+            html, body {{
+                margin: 0;
+                padding: 0;
+                width: 100%;
+                height: 100%;
+                background: #000;
+                overflow: hidden;
+            }}
 
-    data = request.json
+            .screen {{
+                width: 100%;
+                height: 100vh;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                background: #000;
+            }}
 
-    if "message" in data:
-
-        chat_id = data["message"]["chat"]["id"]
-        text = data["message"].get("text", "")
-
-        if text == "/start":
-
-            requests.post(
-                f"{API}/sendPhoto",
-                json={
-                    "chat_id": chat_id,
-                    "photo": IMAGE_URL,
-                    "caption": "Upgrade System"
-                }
-            )
-
-    return "ok", 200
+            .logo {{
+                width: 90vw;
+                max-width: 600px;
+                display: block;
+            }}
+        </style>
+    </head>
+    <body>
+        <div class="screen">
+            <img class="logo" src="{LOGO_URL}" alt="AION">
+        </div>
+    </body>
+    </html>
+    """
