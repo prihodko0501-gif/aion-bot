@@ -12,37 +12,25 @@ IMAGE_URL = "https://raw.githubusercontent.com/prihodko0501-gif/aion-bot/main/B0
 
 def send_photo(chat_id):
     url = f"{TELEGRAM_API}/sendPhoto"
-
     payload = {
         "chat_id": chat_id,
         "photo": IMAGE_URL,
         "caption": "Upgrade System"
     }
-
     requests.post(url, data=payload)
 
 
 @app.route("/webhook", methods=["POST"])
 def webhook():
     data = request.get_json()
-
     if "message" in data:
         chat_id = data["message"]["chat"]["id"]
-
-        if "text" in data["message"]:
-            text = data["message"]["text"]
-
-            if text == "/start":
-                send_photo(chat_id)
-
+        text = data["message"].get("text", "")
+        if text == "/start":
+            send_photo(chat_id)
     return "ok"
 
 
 @app.route("/")
 def home():
     return "AION system online"
-
-
-if __name__ == "__main__":
-    port = int(os.environ.get("PORT", 10000))
-    app.run(host="0.0.0.0", port=port)
