@@ -5,21 +5,21 @@ from flask import Flask, request
 app = Flask(__name__)
 
 TOKEN = os.environ.get("TELEGRAM_TOKEN")
-TELEGRAM_URL = f"https://api.telegram.org/bot{TOKEN}"
+TELEGRAM_API = f"https://api.telegram.org/bot{TOKEN}"
 
 IMAGE_URL = "https://raw.githubusercontent.com/prihodko0501-gif/aion-bot/main/B0AEE152-2F0A-4DD9-8A25-D25C1D6AFE54.png"
 
 
 def send_photo(chat_id):
-    url = f"{TELEGRAM_URL}/sendPhoto"
+    url = f"{TELEGRAM_API}/sendPhoto"
 
-    data = {
+    payload = {
         "chat_id": chat_id,
         "photo": IMAGE_URL,
         "caption": "Upgrade System"
     }
 
-    requests.post(url, data=data)
+    requests.post(url, data=payload)
 
 
 @app.route("/webhook", methods=["POST"])
@@ -39,9 +39,10 @@ def webhook():
 
 
 @app.route("/")
-def index():
-    return "AION system running"
+def home():
+    return "AION system online"
 
 
 if __name__ == "__main__":
-    app.run()
+    port = int(os.environ.get("PORT", 10000))
+    app.run(host="0.0.0.0", port=port)
