@@ -1,44 +1,37 @@
-import os
-import requests
-from flask import Flask, request
+@app.route("/app")
+def mini_app():
 
-app = Flask(__name__)
+    return """
+<html>
 
-TOKEN = os.environ.get("TELEGRAM_TOKEN")
-TELEGRAM_API = f"https://api.telegram.org/bot{TOKEN}"
+<head>
 
-IMAGE_URL = "https://raw.githubusercontent.com/prihodko0501-gif/aion-bot/main/B0AEE152-2F0A-4DD9-8A25-D25C1D6AFE54.png"
+<meta name="viewport" content="width=device-width, initial-scale=1">
 
+<style>
 
-@app.route("/")
-def home():
-    return "AION BOT RUNNING", 200
+body{
+margin:0;
+background:#000;
+display:flex;
+align-items:center;
+justify-content:center;
+height:100vh;
+}
 
+img{
+width:220px;
+}
 
-@app.route("/webhook", methods=["POST"])
-def webhook():
+</style>
 
-    data = request.json
+</head>
 
-    if "message" in data:
+<body>
 
-        chat_id = data["message"]["chat"]["id"]
-        text = data["message"].get("text", "")
+<img src="https://raw.githubusercontent.com/prihodko0501-gif/aion-bot/main/B0AEE152-2F0A-4DD9-8A25-D25C1D6AFE54.png">
 
-        if text == "/start":
+</body>
 
-            requests.post(
-                f"{TELEGRAM_API}/sendPhoto",
-                json={
-                    "chat_id": chat_id,
-                    "photo": IMAGE_URL,
-                    "caption": "Upgrade System"
-                }
-            )
-
-    return "ok"
-
-
-port = int(os.environ.get("PORT", 10000))
-
-app.run(host="0.0.0.0", port=port)
+</html>
+"""
