@@ -7,7 +7,7 @@ app = Flask(__name__)
 TOKEN = os.environ.get("TELEGRAM_TOKEN")
 TELEGRAM_API = f"https://api.telegram.org/bot{TOKEN}"
 
-CHAT_IMAGE_URL = "https://raw.githubusercontent.com/prihodko0501-gif/aion-bot/main/9D9FDFD2-B4BA-466A-B297-D8919BC296B9.png"
+CHAT_IMAGE_URL = "https://raw.githubusercontent.com/prihodko0501-gif/aion-bot/main/B0AEE152-2F0A-4DD9-8A25-D25C1D6AFE54.png"
 APP_IMAGE_URL = "https://raw.githubusercontent.com/prihodko0501-gif/aion-bot/main/563CC010-50CF-4E76-9C55-A3CEA18351D9.png"
 
 
@@ -31,12 +31,10 @@ def mini_app():
                 overflow: hidden;
                 background: black;
             }}
-
             .screen {{
                 width: 100%;
                 height: 100vh;
             }}
-
             .screen img {{
                 width: 100%;
                 height: 100%;
