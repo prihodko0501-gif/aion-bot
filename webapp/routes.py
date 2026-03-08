@@ -2,7 +2,6 @@ from flask import request, jsonify
 from bot.handler import handle_update
 from webapp.miniapp import miniapp_bp
 
-
 def register_routes(app):
     app.register_blueprint(miniapp_bp)
 
