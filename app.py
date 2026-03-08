@@ -31,12 +31,10 @@ def mini_app():
                 overflow: hidden;
                 background: black;
             }}
-
             .screen {{
                 width: 100%;
                 height: 100vh;
             }}
-
             .screen img {{
                 width: 100%;
                 height: 100%;
