@@ -29,6 +29,7 @@ def webhook():
         return {"ok": True}
 
     message = data.get("message")
+
     if not message:
         return {"ok": True}
 
