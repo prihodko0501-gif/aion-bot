@@ -1,64 +1,36 @@
-import os
-import requests
-from flask import Flask, request
+import time
 
-app = Flask(__name__)
+if text == "/start":
 
-TELEGRAM_TOKEN = os.environ.get("TELEGRAM_TOKEN")
-TELEGRAM_API_URL = f"https://api.telegram.org/bot{TELEGRAM_TOKEN}"
+    requests.post(
+        f"{TELEGRAM_API_URL}/sendMessage",
+        json={
+            "chat_id": chat_id,
+            "text": "AION\nBiological Upgrade System\n\nИнициализация системы..."
+        }
+    )
 
-IMAGE_URL = "https://raw.githubusercontent.com/prihodko0501-gif/aion-bot/main/563CC010-50CF-4E76-9C55-A3CEA18351D9.png"
+    time.sleep(2)
 
+    requests.post(
+        f"{TELEGRAM_API_URL}/sendMessage",
+        json={
+            "chat_id": chat_id,
+            "text": "Анализ биологических параметров..."
+        }
+    )
 
-@app.route("/")
-def home():
-    return "AION BOT WORKING", 200
+    time.sleep(2)
 
+    requests.post(
+        f"{TELEGRAM_API_URL}/sendMessage",
+        json={
+            "chat_id": chat_id,
+            "text": "Система готова"
+        }
+    )
 
-@app.route("/app")
-def mini_app():
-    return f"""
-    <html>
-    <head>
-        <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <style>
-
-        html, body {{
-            margin:0;
-            padding:0;
-            height:100%;
-            background:black;
-            overflow:hidden;
-        }}
-
-        .screen {{
-            width:100%;
-            height:100vh;
-        }}
-
-        .screen img{{
-            width:100%;
-            height:100%;
-            object-fit:cover;
-        }}
-
-        </style>
-    </head>
-
-    <body>
-
-        <div class="screen">
-
-        <img src="{IMAGE_URL}">
-
-        </div>
-
-    </body>
-    </html>
-    """
-
-
-def send_start_screen(chat_id):
+    time.sleep(2)
 
     keyboard = {
         "inline_keyboard": [
@@ -77,30 +49,7 @@ def send_start_screen(chat_id):
         f"{TELEGRAM_API_URL}/sendPhoto",
         json={
             "chat_id": chat_id,
-            "photo": IMAGE_URL,
-            "caption": "AION — Biological Upgrade System",
+            "photo": "https://raw.githubusercontent.com/prihodko0501-gif/aion-bot/main/563CC010-50CF-4E76-9C55-A3CEA18351D9.png",
             "reply_markup": keyboard
         }
     )
-
-
-@app.route("/webhook", methods=["POST"])
-def webhook():
-
-    data = request.get_json(silent=True) or {}
-
-    if "message" in data:
-
-        chat_id = data["message"]["chat"]["id"]
-        text = data["message"].get("text", "")
-
-        if text == "/start":
-
-            send_start_screen(chat_id)
-
-    return "ok", 200
-
-
-if __name__ == "__main__":
-    port = int(os.environ.get("PORT", "10000"))
-    app.run(host="0.0.0.0", port=port)
