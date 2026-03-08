@@ -15,37 +15,26 @@ def mini_app():
     return f"""
     <html>
     <head>
-        <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <style>
             html, body {{
-                margin: 0;
-                padding: 0;
-                width: 100%;
-                height: 100%;
-                background: #000;
-                overflow: hidden;
+                margin:0;
+                padding:0;
+                height:100%;
+                background:#000;
+                display:flex;
+                justify-content:center;
+                align-items:center;
             }}
 
-            .screen {{
-                width: 100%;
-                height: 100vh;
-                display: flex;
-                align-items: center;
-                justify-content: center;
-                background: #000;
-            }}
-
-            .logo {{
-                width: 88vw;
-                max-width: 520px;
-                display: block;
+            img {{
+                width:90vw;
+                max-width:600px;
             }}
         </style>
     </head>
     <body>
-        <div class="screen">
-            <img class="logo" src="{LOGO_URL}" alt="AION">
-        </div>
+        <img src="{LOGO_URL}">
     </body>
     </html>
     """
