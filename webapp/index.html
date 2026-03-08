@@ -1,0 +1,388 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta
+    name="viewport"
+    content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"
+  />
+  <title>AION</title>
+
+  <style>
+    :root {
+      --bg: #05070d;
+      --panel: rgba(14, 19, 32, 0.88);
+      --panel-2: rgba(10, 14, 24, 0.92);
+      --line: rgba(83, 124, 255, 0.18);
+      --text: #eef4ff;
+      --muted: #9aa8c7;
+      --blue: #59b8ff;
+      --blue-2: #2f6dff;
+      --glow: 0 0 24px rgba(89, 184, 255, 0.28);
+      --radius-xl: 28px;
+      --radius-lg: 22px;
+      --radius-md: 18px;
+    }
+
+    * {
+      box-sizing: border-box;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    html,
+    body {
+      margin: 0;
+      padding: 0;
+      background:
+        radial-gradient(circle at top right, rgba(60, 130, 255, 0.16), transparent 28%),
+        radial-gradient(circle at bottom left, rgba(60, 130, 255, 0.10), transparent 24%),
+        linear-gradient(180deg, #04060b 0%, #060912 100%);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Inter, Roboto, sans-serif;
+      min-height: 100%;
+    }
+
+    body {
+      padding: 16px 14px 110px;
+    }
+
+    .app {
+      max-width: 430px;
+      margin: 0 auto;
+      position: relative;
+    }
+
+    .topbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 18px;
+      color: var(--text);
+    }
+
+    .icon-btn {
+      width: 42px;
+      height: 42px;
+      border-radius: 50%;
+      border: 1px solid rgba(255,255,255,0.08);
+      background: rgba(255,255,255,0.02);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--text);
+      font-size: 22px;
+      line-height: 1;
+      box-shadow: inset 0 0 0 1px rgba(255,255,255,0.02);
+    }
+
+    .hero {
+      position: relative;
+      text-align: center;
+      padding: 8px 8px 0;
+    }
+
+    .hero-logo {
+      width: 178px;
+      max-width: 52vw;
+      display: block;
+      margin: 8px auto 20px;
+      filter: drop-shadow(0 0 24px rgba(89, 184, 255, 0.25));
+    }
+
+    .brand {
+      font-size: 56px;
+      line-height: 1;
+      letter-spacing: 12px;
+      font-weight: 300;
+      margin: 0;
+    }
+
+    .subtitle {
+      margin-top: 14px;
+      color: var(--muted);
+      font-size: 12px;
+      letter-spacing: 5px;
+      text-transform: uppercase;
+    }
+
+    .enter-wrap {
+      margin: 26px 0 28px;
+      display: flex;
+      justify-content: center;
+    }
+
+    .enter-btn {
+      width: 100%;
+      max-width: 420px;
+      border: 1px solid rgba(89, 184, 255, 0.35);
+      background: linear-gradient(180deg, rgba(15,22,38,0.96), rgba(7,12,22,0.96));
+      color: var(--text);
+      border-radius: 999px;
+      padding: 18px 24px;
+      text-decoration: none;
+      letter-spacing: 4px;
+      font-size: 13px;
+      text-transform: uppercase;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 14px;
+      box-shadow: var(--glow), inset 0 0 0 1px rgba(255,255,255,0.03);
+    }
+
+    .enter-btn span:last-child {
+      font-size: 22px;
+      transform: translateY(-1px);
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 14px;
+      margin-top: 8px;
+    }
+
+    .card {
+      background: linear-gradient(180deg, var(--panel), var(--panel-2));
+      border: 1px solid rgba(255,255,255,0.04);
+      border-radius: var(--radius-lg);
+      padding: 18px 18px 16px;
+      box-shadow: inset 0 0 0 1px rgba(89,184,255,0.02);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .card.wide {
+      grid-column: span 2;
+    }
+
+    .label {
+      color: var(--muted);
+      font-size: 12px;
+      letter-spacing: 2.5px;
+      text-transform: uppercase;
+      margin-bottom: 10px;
+    }
+
+    .value {
+      font-size: 30px;
+      font-weight: 300;
+      letter-spacing: 1px;
+      margin-bottom: 8px;
+    }
+
+    .wave {
+      height: 34px;
+      width: 100%;
+      margin-top: 8px;
+      opacity: 0.85;
+    }
+
+    .section-title {
+      margin: 26px 2px 14px;
+      font-size: 14px;
+      letter-spacing: 4px;
+      text-transform: uppercase;
+      color: var(--text);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .modules {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 12px;
+    }
+
+    .module {
+      background: linear-gradient(180deg, var(--panel), var(--panel-2));
+      border: 1px solid rgba(255,255,255,0.04);
+      border-radius: var(--radius-md);
+      padding: 18px 10px 16px;
+      text-align: center;
+      min-height: 124px;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      gap: 10px;
+    }
+
+    .module-icon {
+      font-size: 26px;
+      color: var(--blue);
+      text-shadow: 0 0 20px rgba(89,184,255,0.35);
+    }
+
+    .module-name {
+      font-size: 12px;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      color: var(--text);
+    }
+
+    .bottom-nav {
+      position: fixed;
+      left: 50%;
+      bottom: 14px;
+      transform: translateX(-50%);
+      width: min(430px, calc(100% - 18px));
+      background: rgba(8, 11, 18, 0.95);
+      border: 1px solid rgba(255,255,255,0.05);
+      border-radius: 28px;
+      padding: 12px 12px 14px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      backdrop-filter: blur(14px);
+      box-shadow: 0 10px 40px rgba(0,0,0,0.45);
+      z-index: 10;
+    }
+
+    .nav-item {
+      width: 54px;
+      height: 54px;
+      border-radius: 18px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #d6e6ff;
+      opacity: 0.9;
+      font-size: 24px;
+    }
+
+    .nav-center {
+      width: 68px;
+      height: 68px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: radial-gradient(circle at center, rgba(89,184,255,0.28), rgba(16,22,34,0.98) 68%);
+      border: 1px solid rgba(89,184,255,0.35);
+      box-shadow: 0 0 24px rgba(89,184,255,0.28);
+      margin-top: -24px;
+    }
+
+    .nav-center img {
+      width: 34px;
+      height: 34px;
+      display: block;
+    }
+
+    .small {
+      font-size: 18px;
+    }
+
+    @media (max-width: 390px) {
+      .brand {
+        font-size: 48px;
+        letter-spacing: 9px;
+      }
+
+      .modules {
+        grid-template-columns: repeat(2, 1fr);
+      }
+    }
+  </style>
+</head>
+
+<body>
+  <div class="app">
+    <div class="topbar">
+      <div class="icon-btn">☰</div>
+      <div class="icon-btn">◯</div>
+    </div>
+
+    <section class="hero">
+      <img
+        class="hero-logo"
+        src="https://raw.githubusercontent.com/prihodko0501-gif/aion-bot/main/B0AEE152-2F0A-4DD9-8A25-D25C1D6AFE54.jpeg"
+        alt="AION"
+      />
+
+      <h1 class="brand">AION</h1>
+      <div class="subtitle">Biological Upgrade System</div>
+
+      <div class="enter-wrap">
+        <a href="#" class="enter-btn">
+          <span>Enter System</span>
+          <span>→</span>
+        </a>
+      </div>
+    </section>
+
+    <section class="grid">
+      <div class="card wide">
+        <div class="label">BioTime</div>
+        <div class="value">8.4</div>
+        <svg class="wave" viewBox="0 0 300 40" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path d="M0 29C22 29 22 11 44 11C66 11 66 33 88 33C110 33 110 15 132 15C154 15 154 28 176 28C198 28 198 8 220 8C242 8 242 25 264 25C286 25 286 17 300 17" stroke="#59B8FF" stroke-width="2.3" stroke-linecap="round"/>
+        </svg>
+      </div>
+
+      <div class="card">
+        <div class="label">Sleep</div>
+        <div class="value">92%</div>
+      </div>
+
+      <div class="card">
+        <div class="label">Stress</div>
+        <div class="value">27%</div>
+      </div>
+
+      <div class="card">
+        <div class="label">Recovery</div>
+        <div class="value">78%</div>
+      </div>
+
+      <div class="card">
+        <div class="label">Pressure</div>
+        <div class="value">124/76</div>
+      </div>
+    </section>
+
+    <div class="section-title">
+      <span>Modules</span>
+      <span>›</span>
+    </div>
+
+    <section class="modules">
+      <div class="module">
+        <div class="module-icon">☾</div>
+        <div class="module-name">Sleep</div>
+      </div>
+
+      <div class="module">
+        <div class="module-icon">⟡</div>
+        <div class="module-name">Stress</div>
+      </div>
+
+      <div class="module">
+        <div class="module-icon">✚</div>
+        <div class="module-name">Recovery</div>
+      </div>
+
+      <div class="module">
+        <div class="module-icon">⌬</div>
+        <div class="module-name">Longevity</div>
+      </div>
+    </section>
+  </div>
+
+  <nav class="bottom-nav">
+    <div class="nav-item small">⌂</div>
+    <div class="nav-item small">◷</div>
+
+    <div class="nav-center">
+      <img
+        src="https://raw.githubusercontent.com/prihodko0501-gif/aion-bot/main/B0AEE152-2F0A-4DD9-8A25-D25C1D6AFE54.jpeg"
+        alt="AION"
+      />
+    </div>
+
+    <div class="nav-item small">⌁</div>
+    <div class="nav-item small">◯</div>
+  </nav>
+</body>
+</html>
