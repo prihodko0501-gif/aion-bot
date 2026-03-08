@@ -1,5 +1,4 @@
 import os
-import time
 import requests
 from flask import Flask, request
 
@@ -8,7 +7,8 @@ app = Flask(__name__)
 TELEGRAM_TOKEN = os.environ.get("TELEGRAM_TOKEN")
 TELEGRAM_API_URL = f"https://api.telegram.org/bot{TELEGRAM_TOKEN}"
 
-IMAGE_URL = "https://raw.githubusercontent.com/prihodko0501-gif/aion-bot/main/563CC010-50CF-4E76-9C55-A3CEA18351D9.png"
+CHAT_IMAGE_URL = "https://raw.githubusercontent.com/prihodko0501-gif/aion-bot/main/9D9FDFD2-B4BA-466A-B297-D8919BC296B9.png"
+APP_IMAGE_URL = "https://raw.githubusercontent.com/prihodko0501-gif/aion-bot/main/563CC010-50CF-4E76-9C55-A3CEA18351D9.png"
 
 
 @app.route("/")
@@ -21,14 +21,15 @@ def mini_app():
     return f"""
     <html>
     <head>
-        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
         <style>
             html, body {{
                 margin: 0;
                 padding: 0;
+                width: 100%;
                 height: 100%;
-                background: black;
                 overflow: hidden;
+                background: black;
             }}
 
             .screen {{
@@ -44,48 +45,14 @@ def mini_app():
             }}
         </style>
     </head>
+
     <body>
         <div class="screen">
-            <img src="{IMAGE_URL}" alt="AION">
+            <img src="{APP_IMAGE_URL}" alt="AION">
         </div>
     </body>
     </html>
     """
-
-
-def send_message(chat_id, text):
-    requests.post(
-        f"{TELEGRAM_API_URL}/sendMessage",
-        json={
-            "chat_id": chat_id,
-            "text": text
-        }
-    )
-
-
-def send_start_screen(chat_id):
-    keyboard = {
-        "inline_keyboard": [
-            [
-                {
-                    "text": "Open AION",
-                    "web_app": {
-                        "url": "https://aion-bot.onrender.com/app"
-                    }
-                }
-            ]
-        ]
-    }
-
-    requests.post(
-        f"{TELEGRAM_API_URL}/sendPhoto",
-        json={
-            "chat_id": chat_id,
-            "photo": IMAGE_URL,
-            "caption": "AION — Biological Upgrade System",
-            "reply_markup": keyboard
-        }
-    )
 
 
 @app.route("/webhook", methods=["POST"])
@@ -97,16 +64,15 @@ def webhook():
         text = data["message"].get("text", "")
 
         if text == "/start":
-            send_message(chat_id, "AION\nBiological Upgrade System\n\nИнициализация системы...")
-            time.sleep(2)
-
-            send_message(chat_id, "Анализ биологических параметров...")
-            time.sleep(2)
-
-            send_message(chat_id, "Система готова")
-            time.sleep(2)
-
-            send_start_screen(chat_id)
+            requests.post(
+                f"{TELEGRAM_API_URL}/sendPhoto",
+                json={
+                    "chat_id": chat_id,
+                    "photo": CHAT_IMAGE_URL,
+                    "caption": "Upgrade System"
+                },
+                timeout=15,
+            )
 
     return "ok", 200
 
