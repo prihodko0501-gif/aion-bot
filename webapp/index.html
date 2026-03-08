@@ -15,13 +15,11 @@
       --panel:rgba(8,14,24,.78);
       --panel2:rgba(8,12,20,.94);
       --line:rgba(128,190,255,.12);
-      --line2:rgba(128,190,255,.22);
       --text:#eef5ff;
       --muted:#a8b7d4;
       --blue:#7fd0ff;
       --blue2:#3b86ff;
       --glow:0 0 30px rgba(87,181,255,.22);
-      --glow2:0 0 55px rgba(87,181,255,.14);
       --radius-xl:34px;
       --radius-lg:26px;
       --radius-md:22px;
@@ -114,6 +112,20 @@
       margin:0 auto;
     }
 
+    .screen{
+      display:none;
+      animation:fadeIn .22s ease;
+    }
+
+    .screen.active{
+      display:block;
+    }
+
+    @keyframes fadeIn{
+      from{opacity:0; transform:translateY(8px);}
+      to{opacity:1; transform:translateY(0);}
+    }
+
     .topbar{
       display:flex;
       align-items:center;
@@ -135,6 +147,7 @@
         inset 0 0 0 1px rgba(255,255,255,.02),
         0 0 22px rgba(87,181,255,.05);
       color:#f1f6ff;
+      cursor:pointer;
     }
 
     .glass-btn svg{
@@ -158,6 +171,12 @@
       display:block;
       margin:4px auto 12px;
       filter:drop-shadow(0 0 32px rgba(83,182,255,.20));
+    }
+
+    .logo.small{
+      width:130px;
+      margin-top:10px;
+      margin-bottom:10px;
     }
 
     .brand{
@@ -212,6 +231,7 @@
       box-shadow:
         inset 0 0 0 1px rgba(255,255,255,.02),
         var(--glow);
+      cursor:pointer;
     }
 
     .enter .arrow{
@@ -378,6 +398,7 @@
       gap:12px;
       text-align:center;
       padding:16px 10px;
+      cursor:pointer;
     }
 
     .module.small{
@@ -406,6 +427,173 @@
       font-size:13px;
       letter-spacing:3px;
       text-transform:uppercase;
+    }
+
+    .sleep-header{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      margin:2px 0 18px;
+      font-size:14px;
+    }
+
+    .back-btn{
+      display:flex;
+      align-items:center;
+      gap:8px;
+      color:#dbe8ff;
+      opacity:.95;
+      cursor:pointer;
+    }
+
+    .back-btn svg{
+      width:20px;
+      height:20px;
+      stroke:currentColor;
+      fill:none;
+      stroke-width:1.9;
+      stroke-linecap:round;
+      stroke-linejoin:round;
+    }
+
+    .screen-title{
+      text-align:center;
+      margin-top:8px;
+    }
+
+    .screen-title h2{
+      margin:0;
+      font-size:22px;
+      letter-spacing:4px;
+      font-weight:400;
+      text-transform:uppercase;
+    }
+
+    .screen-title .sub{
+      margin-top:8px;
+      font-size:13px;
+      letter-spacing:2px;
+      color:#d1dcf0;
+      opacity:.9;
+    }
+
+    .sleep-score{
+      text-align:center;
+      margin:22px 0 16px;
+    }
+
+    .sleep-score .num{
+      font-size:74px;
+      font-weight:300;
+      line-height:1;
+    }
+
+    .sleep-score .grade{
+      margin-top:6px;
+      font-size:18px;
+      color:#dbe8ff;
+    }
+
+    .chart-card{
+      border-radius:28px;
+      padding:18px;
+      background:
+        linear-gradient(180deg, rgba(8,14,24,.82), rgba(6,10,17,.96));
+      border:1px solid rgba(255,255,255,.04);
+      box-shadow:
+        inset 0 0 0 1px rgba(255,255,255,.02),
+        0 0 30px rgba(74,152,255,.05);
+    }
+
+    .chart-label{
+      text-align:center;
+      letter-spacing:4px;
+      text-transform:uppercase;
+      color:#dbe8ff;
+      font-size:13px;
+      margin-bottom:10px;
+    }
+
+    .sleep-chart{
+      width:100%;
+      height:170px;
+      display:block;
+    }
+
+    .list-card{
+      margin-top:16px;
+      border-radius:26px;
+      overflow:hidden;
+      background:
+        linear-gradient(180deg, rgba(8,14,24,.82), rgba(6,10,17,.96));
+      border:1px solid rgba(255,255,255,.04);
+      box-shadow:
+        inset 0 0 0 1px rgba(255,255,255,.02),
+        0 0 30px rgba(74,152,255,.05);
+    }
+
+    .list-row{
+      display:flex;
+      align-items:flex-start;
+      justify-content:space-between;
+      gap:14px;
+      padding:18px 18px 16px;
+      border-bottom:1px solid rgba(255,255,255,.05);
+    }
+
+    .list-row:last-child{
+      border-bottom:none;
+    }
+
+    .row-left{
+      min-width:0;
+    }
+
+    .row-title{
+      font-size:16px;
+      color:#eef5ff;
+    }
+
+    .row-sub{
+      margin-top:4px;
+      font-size:13px;
+      color:var(--muted);
+    }
+
+    .row-right{
+      text-align:right;
+      white-space:nowrap;
+      color:#eef5ff;
+      font-size:16px;
+    }
+
+    .row-right .row-sub{
+      text-align:right;
+    }
+
+    .action-wrap{
+      margin-top:18px;
+    }
+
+    .primary-btn{
+      width:100%;
+      border-radius:999px;
+      border:1px solid rgba(111,186,255,.28);
+      background:linear-gradient(180deg, rgba(8,13,22,.96), rgba(7,11,18,.94));
+      color:#fff;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      gap:16px;
+      text-decoration:none;
+      text-transform:uppercase;
+      letter-spacing:4.8px;
+      font-size:13px;
+      padding:18px 22px;
+      box-shadow:
+        inset 0 0 0 1px rgba(255,255,255,.02),
+        var(--glow);
+      cursor:pointer;
     }
 
     .bottom-nav{
@@ -437,6 +625,7 @@
       justify-content:center;
       color:#dae8ff;
       opacity:.92;
+      cursor:pointer;
     }
 
     .nav-item svg{
@@ -466,6 +655,7 @@
         radial-gradient(circle at center, rgba(89,184,255,.34), rgba(13,20,32,.98) 68%);
       border:1px solid rgba(89,184,255,.35);
       box-shadow:0 0 30px rgba(89,184,255,.30);
+      cursor:pointer;
     }
 
     .nav-center img{
@@ -488,226 +678,364 @@
   <div class="fog"></div>
 
   <div class="app">
-    <div class="topbar">
-      <div class="glass-btn" aria-label="menu">
-        <svg viewBox="0 0 24 24">
-          <path d="M4 7h16"></path>
-          <path d="M4 12h16"></path>
-          <path d="M4 17h10"></path>
+    <section class="screen active" id="screen-dashboard">
+      <div class="topbar">
+        <div class="glass-btn">
+          <svg viewBox="0 0 24 24">
+            <path d="M4 7h16"></path>
+            <path d="M4 12h16"></path>
+            <path d="M4 17h10"></path>
+          </svg>
+        </div>
+
+        <div class="glass-btn">
+          <svg viewBox="0 0 24 24">
+            <circle cx="12" cy="8" r="4"></circle>
+            <path d="M5 20c1.8-3.2 4.2-4.8 7-4.8s5.2 1.6 7 4.8"></path>
+          </svg>
+        </div>
+      </div>
+
+      <section class="hero">
+        <img class="logo" src="https://raw.githubusercontent.com/prihodko0501-gif/aion-bot/main/B0AEE152-2F0A-4DD9-8A25-D25C1D6AFE54.jpeg" alt="AION" />
+        <h1 class="brand">AION</h1>
+        <div class="subtitle">Biological Upgrade System</div>
+        <div class="brand-line"></div>
+
+        <a class="enter" onclick="showScreen('modules')">
+          <span>Enter System</span>
+          <span class="arrow">→</span>
+        </a>
+      </section>
+
+      <section class="cards">
+        <div class="card wide bio-card">
+          <div class="label">Bio Time</div>
+          <div class="value large" id="biotimeValue">8.4</div>
+          <svg class="bio-wave" viewBox="0 0 320 60" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M0 42C18 42 24 28 40 28C58 28 62 50 82 50C102 50 105 30 126 30C146 30 151 42 169 42C189 42 196 18 220 18C244 18 248 44 272 44C294 44 303 28 320 28"
+              stroke="#64BCFF" stroke-width="2.8" stroke-linecap="round"/>
+          </svg>
+        </div>
+      </section>
+
+      <section class="small-grid">
+        <div class="card small-card">
+          <div class="label">Sleep</div>
+          <div class="value" id="sleepValue">92%</div>
+          <div class="metric-icon">
+            <svg viewBox="0 0 24 24">
+              <path d="M18.5 15.5A7.5 7.5 0 0 1 8.5 5.5a8 8 0 1 0 10 10z"></path>
+            </svg>
+          </div>
+        </div>
+
+        <div class="card small-card">
+          <div class="label">Stress</div>
+          <div class="value" id="stressValue">27%</div>
+          <div class="metric-icon">
+            <svg viewBox="0 0 24 24">
+              <circle cx="12" cy="12" r="7.5"></circle>
+              <path d="M12 12l3.2-3.2"></path>
+            </svg>
+          </div>
+        </div>
+
+        <div class="card small-card">
+          <div class="label">Recovery</div>
+          <div class="value" id="recoveryValue">78%</div>
+          <div class="metric-icon">
+            <svg viewBox="0 0 24 24">
+              <path d="M12 20s-6-3.8-6-9a3.8 3.8 0 0 1 6-2.9A3.8 3.8 0 0 1 18 11c0 5.2-6 9-6 9z"></path>
+              <path d="M8.5 12h2.2l1-2.2 1.6 5 1-2.8H16"></path>
+            </svg>
+          </div>
+        </div>
+
+        <div class="card small-card">
+          <div class="label">Pressure</div>
+          <div class="value">124/76</div>
+          <div class="metric-icon">
+            <svg viewBox="0 0 24 24">
+              <path d="M3 12h4l2-4 4 8 2-4h6"></path>
+            </svg>
+          </div>
+        </div>
+      </section>
+    </section>
+
+    <section class="screen" id="screen-modules">
+      <div class="topbar">
+        <div class="glass-btn">
+          <svg viewBox="0 0 24 24">
+            <path d="M4 7h16"></path>
+            <path d="M4 12h16"></path>
+            <path d="M4 17h10"></path>
+          </svg>
+        </div>
+
+        <div class="glass-btn">
+          <svg viewBox="0 0 24 24">
+            <circle cx="12" cy="8" r="4"></circle>
+            <path d="M5 20c1.8-3.2 4.2-4.8 7-4.8s5.2 1.6 7 4.8"></path>
+          </svg>
+        </div>
+      </div>
+
+      <section class="hero">
+        <img class="logo small" src="https://raw.githubusercontent.com/prihodko0501-gif/aion-bot/main/B0AEE152-2F0A-4DD9-8A25-D25C1D6AFE54.jpeg" alt="AION" />
+        <h1 class="brand" style="font-size:44px; letter-spacing:10px;">AION</h1>
+        <div class="subtitle">Biological Upgrade System</div>
+        <div class="brand-line"></div>
+      </section>
+
+      <div class="section-head" style="margin-top:6px;">
+        <span>Modules</span>
+      </div>
+
+      <section class="modules-big">
+        <div class="module" onclick="showScreen('sleep')">
+          <div class="module-icon">
+            <svg viewBox="0 0 24 24">
+              <path d="M18.5 15.5A7.5 7.5 0 0 1 8.5 5.5a8 8 0 1 0 10 10z"></path>
+            </svg>
+          </div>
+          <div class="module-name">Sleep</div>
+        </div>
+
+        <div class="module">
+          <div class="module-icon">
+            <svg viewBox="0 0 24 24">
+              <path d="M4 16l4-5 4 3 4-6 4 8"></path>
+              <circle cx="8" cy="11" r="1.4"></circle>
+              <circle cx="12" cy="14" r="1.4"></circle>
+              <circle cx="16" cy="8" r="1.4"></circle>
+            </svg>
+          </div>
+          <div class="module-name">Stress</div>
+        </div>
+
+        <div class="module">
+          <div class="module-icon">
+            <svg viewBox="0 0 24 24">
+              <path d="M12 20s-6-3.8-6-9a3.8 3.8 0 0 1 6-2.9A3.8 3.8 0 0 1 18 11c0 5.2-6 9-6 9z"></path>
+              <path d="M8.5 12h2.2l1-2.2 1.6 5 1-2.8H16"></path>
+            </svg>
+          </div>
+          <div class="module-name">Recovery</div>
+        </div>
+
+        <div class="module">
+          <div class="module-icon">
+            <svg viewBox="0 0 24 24">
+              <path d="M12 3v18"></path>
+              <path d="M8 5c-2 1.2-3.3 3.2-3.3 5.5S6 14.8 8 16"></path>
+              <path d="M16 5c2 1.2 3.3 3.2 3.3 5.5S18 14.8 16 16"></path>
+              <path d="M8.8 9h6.4"></path>
+              <path d="M8.8 15h6.4"></path>
+            </svg>
+          </div>
+          <div class="module-name">Longevity</div>
+        </div>
+      </section>
+
+      <div class="section-head">
+        <span>Modules</span>
+        <span class="arrow">›</span>
+      </div>
+
+      <section class="modules-small">
+        <div class="module small" onclick="showScreen('sleep')">
+          <div class="module-icon">
+            <svg viewBox="0 0 24 24">
+              <path d="M18.5 15.5A7.5 7.5 0 0 1 8.5 5.5a8 8 0 1 0 10 10z"></path>
+            </svg>
+          </div>
+          <div class="module-name">Sleep</div>
+        </div>
+
+        <div class="module small">
+          <div class="module-icon">
+            <svg viewBox="0 0 24 24">
+              <path d="M4 16l4-5 4 3 4-6 4 8"></path>
+              <circle cx="8" cy="11" r="1.4"></circle>
+              <circle cx="12" cy="14" r="1.4"></circle>
+              <circle cx="16" cy="8" r="1.4"></circle>
+            </svg>
+          </div>
+          <div class="module-name">Stress</div>
+        </div>
+
+        <div class="module small">
+          <div class="module-icon">
+            <svg viewBox="0 0 24 24">
+              <path d="M12 20s-6-3.8-6-9a3.8 3.8 0 0 1 6-2.9A3.8 3.8 0 0 1 18 11c0 5.2-6 9-6 9z"></path>
+              <path d="M8.5 12h2.2l1-2.2 1.6 5 1-2.8H16"></path>
+            </svg>
+          </div>
+          <div class="module-name">Recovery</div>
+        </div>
+
+        <div class="module small">
+          <div class="module-icon">
+            <svg viewBox="0 0 24 24">
+              <path d="M12 3v18"></path>
+              <path d="M8 5c-2 1.2-3.3 3.2-3.3 5.5S6 14.8 8 16"></path>
+              <path d="M16 5c2 1.2 3.3 3.2 3.3 5.5S18 14.8 16 16"></path>
+              <path d="M8.8 9h6.4"></path>
+              <path d="M8.8 15h6.4"></path>
+            </svg>
+          </div>
+          <div class="module-name">Longevity</div>
+        </div>
+      </section>
+    </section>
+
+    <section class="screen" id="screen-sleep">
+      <div class="sleep-header">
+        <div class="back-btn" onclick="showScreen('modules')">
+          <svg viewBox="0 0 24 24">
+            <path d="M15 6 9 12l6 6"></path>
+          </svg>
+          <span>Back</span>
+        </div>
+
+        <div class="glass-btn">
+          <svg viewBox="0 0 24 24">
+            <circle cx="12" cy="8" r="4"></circle>
+            <path d="M5 20c1.8-3.2 4.2-4.8 7-4.8s5.2 1.6 7 4.8"></path>
+          </svg>
+        </div>
+      </div>
+
+      <div class="screen-title">
+        <h2>Sleep</h2>
+        <div class="sub">Optimization Program</div>
+      </div>
+
+      <div class="sleep-score">
+        <div class="num">92</div>
+        <div class="grade">Excellent</div>
+      </div>
+
+      <div class="chart-card">
+        <div class="chart-label">Sleep Score</div>
+
+        <svg class="sleep-chart" viewBox="0 0 360 180" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <g opacity="0.22" stroke="#6FC8FF" stroke-width="1">
+            <line x1="18" y1="30" x2="18" y2="136"/>
+            <line x1="102" y1="30" x2="102" y2="136"/>
+            <line x1="186" y1="30" x2="186" y2="136"/>
+            <line x1="270" y1="30" x2="270" y2="136"/>
+            <line x1="338" y1="30" x2="338" y2="136"/>
+          </g>
+
+          <g fill="#5BBEFF" opacity="0.8">
+            <rect x="26" y="52" width="10" height="64" rx="2"/>
+            <rect x="42" y="64" width="10" height="52" rx="2"/>
+            <rect x="58" y="70" width="10" height="46" rx="2"/>
+            <rect x="74" y="74" width="10" height="42" rx="2"/>
+            <rect x="90" y="82" width="10" height="34" rx="2"/>
+            <rect x="106" y="76" width="10" height="40" rx="2"/>
+            <rect x="122" y="86" width="10" height="30" rx="2"/>
+            <rect x="138" y="62" width="10" height="54" rx="2"/>
+            <rect x="154" y="50" width="10" height="66" rx="2"/>
+            <rect x="170" y="60" width="10" height="56" rx="2"/>
+            <rect x="186" y="46" width="10" height="70" rx="2"/>
+            <rect x="202" y="58" width="10" height="58" rx="2"/>
+            <rect x="218" y="72" width="10" height="44" rx="2"/>
+            <rect x="234" y="84" width="10" height="32" rx="2"/>
+            <rect x="250" y="86" width="10" height="30" rx="2"/>
+          </g>
+
+          <path d="M268 112C285 110 294 102 304 96C313 90 320 88 330 82C336 78 342 74 348 72"
+            stroke="#6BC7FF" stroke-width="2.5" stroke-linecap="round"/>
+
+          <g fill="#8fd8ff">
+            <circle cx="102" cy="46" r="3"/>
+            <circle cx="186" cy="42" r="3"/>
+            <circle cx="270" cy="40" r="3"/>
+            <circle cx="338" cy="70" r="3"/>
+          </g>
+
+          <g font-size="10" fill="#B8C9E6" font-family="Arial, sans-serif">
+            <text x="14" y="20">90%</text>
+            <text x="92" y="20">80%</text>
+            <text x="176" y="20">97%</text>
+            <text x="260" y="20">110%</text>
+            <text x="324" y="20">110%</text>
+
+            <text x="26" y="154">Awake</text>
+            <text x="101" y="154">REM</text>
+            <text x="173" y="154">Light</text>
+            <text x="246" y="154">Deep</text>
+            <text x="307" y="154">Sleep</text>
+          </g>
         </svg>
       </div>
 
-      <div class="glass-btn" aria-label="profile">
-        <svg viewBox="0 0 24 24">
-          <circle cx="12" cy="8" r="4"></circle>
-          <path d="M5 20c1.8-3.2 4.2-4.8 7-4.8s5.2 1.6 7 4.8"></path>
-        </svg>
-      </div>
-    </div>
+      <div class="list-card">
+        <div class="list-row">
+          <div class="row-left">
+            <div class="row-title">Sleep Duration</div>
+            <div class="row-sub">Full</div>
+          </div>
+          <div class="row-right">
+            <div>7h 25m</div>
+          </div>
+        </div>
 
-    <section class="hero">
-      <img
-        class="logo"
-        src="https://raw.githubusercontent.com/prihodko0501-gif/aion-bot/main/B0AEE152-2F0A-4DD9-8A25-D25C1D6AFE54.jpeg"
-        alt="AION"
-      />
+        <div class="list-row">
+          <div class="row-left">
+            <div class="row-title">Time to Fall Asleep</div>
+            <div class="row-sub">Normal</div>
+          </div>
+          <div class="row-right">
+            <div>5m</div>
+          </div>
+        </div>
 
-      <h1 class="brand">AION</h1>
-      <div class="subtitle">Biological Upgrade System</div>
-      <div class="brand-line"></div>
-
-      <a href="#" class="enter">
-        <span>Enter System</span>
-        <span class="arrow">→</span>
-      </a>
-    </section>
-
-    <section class="cards">
-      <div class="card wide bio-card">
-        <div class="label">Bio Time</div>
-        <div class="value large" id="biotimeValue">8.4</div>
-
-        <svg class="bio-wave" viewBox="0 0 320 60" fill="none" xmlns="http://www.w3.org/2000/svg">
-          <path
-            d="M0 42C18 42 24 28 40 28C58 28 62 50 82 50C102 50 105 30 126 30C146 30 151 42 169 42C189 42 196 18 220 18C244 18 248 44 272 44C294 44 303 28 320 28"
-            stroke="#64BCFF"
-            stroke-width="2.8"
-            stroke-linecap="round"
-          />
-        </svg>
-      </div>
-    </section>
-
-    <section class="small-grid">
-      <div class="card small-card">
-        <div class="label">Sleep</div>
-        <div class="value" id="sleepValue">92%</div>
-        <div class="metric-icon">
-          <svg viewBox="0 0 24 24">
-            <path d="M18.5 15.5A7.5 7.5 0 0 1 8.5 5.5a8 8 0 1 0 10 10z"></path>
-          </svg>
+        <div class="list-row">
+          <div class="row-left">
+            <div class="row-title">Sleep Stability</div>
+            <div class="row-sub">Optimal</div>
+          </div>
+          <div class="row-right">
+            <div>94%</div>
+            <div class="row-sub">Optimal</div>
+          </div>
         </div>
       </div>
 
-      <div class="card small-card">
-        <div class="label">Stress</div>
-        <div class="value" id="stressValue">27%</div>
-        <div class="metric-icon">
-          <svg viewBox="0 0 24 24">
-            <circle cx="12" cy="12" r="7.5"></circle>
-            <path d="M12 12l3.2-3.2"></path>
-          </svg>
-        </div>
-      </div>
-
-      <div class="card small-card">
-        <div class="label">Recovery</div>
-        <div class="value" id="recoveryValue">78%</div>
-        <div class="metric-icon">
-          <svg viewBox="0 0 24 24">
-            <path d="M12 20s-6-3.8-6-9a3.8 3.8 0 0 1 6-2.9A3.8 3.8 0 0 1 18 11c0 5.2-6 9-6 9z"></path>
-            <path d="M8.5 12h2.2l1-2.2 1.6 5 1-2.8H16"></path>
-          </svg>
-        </div>
-      </div>
-
-      <div class="card small-card">
-        <div class="label">Pressure</div>
-        <div class="value">124/76</div>
-        <div class="metric-icon">
-          <svg viewBox="0 0 24 24">
-            <path d="M3 12h4l2-4 4 8 2-4h6"></path>
-          </svg>
-        </div>
-      </div>
-    </section>
-
-    <div class="section-head">
-      <span>Modules</span>
-      <span class="arrow">›</span>
-    </div>
-
-    <section class="modules-big">
-      <div class="module">
-        <div class="module-icon">
-          <svg viewBox="0 0 24 24">
-            <path d="M18.5 15.5A7.5 7.5 0 0 1 8.5 5.5a8 8 0 1 0 10 10z"></path>
-          </svg>
-        </div>
-        <div class="module-name">Sleep</div>
-      </div>
-
-      <div class="module">
-        <div class="module-icon">
-          <svg viewBox="0 0 24 24">
-            <path d="M4 16l4-5 4 3 4-6 4 8"></path>
-            <circle cx="8" cy="11" r="1.4"></circle>
-            <circle cx="12" cy="14" r="1.4"></circle>
-            <circle cx="16" cy="8" r="1.4"></circle>
-          </svg>
-        </div>
-        <div class="module-name">Stress</div>
-      </div>
-
-      <div class="module">
-        <div class="module-icon">
-          <svg viewBox="0 0 24 24">
-            <path d="M12 20s-6-3.8-6-9a3.8 3.8 0 0 1 6-2.9A3.8 3.8 0 0 1 18 11c0 5.2-6 9-6 9z"></path>
-            <path d="M8.5 12h2.2l1-2.2 1.6 5 1-2.8H16"></path>
-          </svg>
-        </div>
-        <div class="module-name">Recovery</div>
-      </div>
-
-      <div class="module">
-        <div class="module-icon">
-          <svg viewBox="0 0 24 24">
-            <path d="M12 3v18"></path>
-            <path d="M8 5c-2 1.2-3.3 3.2-3.3 5.5S6 14.8 8 16"></path>
-            <path d="M16 5c2 1.2 3.3 3.2 3.3 5.5S18 14.8 16 16"></path>
-            <path d="M8.8 9h6.4"></path>
-            <path d="M8.8 15h6.4"></path>
-          </svg>
-        </div>
-        <div class="module-name">Longevity</div>
-      </div>
-    </section>
-
-    <div class="section-head">
-      <span>Modules</span>
-      <span class="arrow">›</span>
-    </div>
-
-    <section class="modules-small">
-      <div class="module small">
-        <div class="module-icon">
-          <svg viewBox="0 0 24 24">
-            <path d="M18.5 15.5A7.5 7.5 0 0 1 8.5 5.5a8 8 0 1 0 10 10z"></path>
-          </svg>
-        </div>
-        <div class="module-name">Sleep</div>
-      </div>
-
-      <div class="module small">
-        <div class="module-icon">
-          <svg viewBox="0 0 24 24">
-            <path d="M4 16l4-5 4 3 4-6 4 8"></path>
-            <circle cx="8" cy="11" r="1.4"></circle>
-            <circle cx="12" cy="14" r="1.4"></circle>
-            <circle cx="16" cy="8" r="1.4"></circle>
-          </svg>
-        </div>
-        <div class="module-name">Stress</div>
-      </div>
-
-      <div class="module small">
-        <div class="module-icon">
-          <svg viewBox="0 0 24 24">
-            <path d="M12 20s-6-3.8-6-9a3.8 3.8 0 0 1 6-2.9A3.8 3.8 0 0 1 18 11c0 5.2-6 9-6 9z"></path>
-            <path d="M8.5 12h2.2l1-2.2 1.6 5 1-2.8H16"></path>
-          </svg>
-        </div>
-        <div class="module-name">Recovery</div>
-      </div>
-
-      <div class="module small">
-        <div class="module-icon">
-          <svg viewBox="0 0 24 24">
-            <path d="M12 3v18"></path>
-            <path d="M8 5c-2 1.2-3.3 3.2-3.3 5.5S6 14.8 8 16"></path>
-            <path d="M16 5c2 1.2 3.3 3.2 3.3 5.5S18 14.8 16 16"></path>
-            <path d="M8.8 9h6.4"></path>
-            <path d="M8.8 15h6.4"></path>
-          </svg>
-        </div>
-        <div class="module-name">Longevity</div>
+      <div class="action-wrap">
+        <a class="primary-btn">
+          <span>Start Analysis</span>
+          <span class="arrow">→</span>
+        </a>
       </div>
     </section>
   </div>
 
   <nav class="bottom-nav">
-    <div class="nav-item active">
+    <div class="nav-item active" data-nav="dashboard" onclick="showScreen('dashboard')">
       <svg viewBox="0 0 24 24">
         <path d="M4 11.5 12 5l8 6.5"></path>
         <path d="M7 10.5V19h10v-8.5"></path>
       </svg>
     </div>
 
-    <div class="nav-item">
+    <div class="nav-item" data-nav="modules" onclick="showScreen('modules')">
       <svg viewBox="0 0 24 24">
         <circle cx="12" cy="12" r="8"></circle>
         <path d="M12 7v5l3 2"></path>
       </svg>
     </div>
 
-    <div class="nav-center">
-      <img
-        src="https://raw.githubusercontent.com/prihodko0501-gif/aion-bot/main/B0AEE152-2F0A-4DD9-8A25-D25C1D6AFE54.jpeg"
-        alt="AION"
-      />
+    <div class="nav-center" onclick="showScreen('dashboard')">
+      <img src="https://raw.githubusercontent.com/prihodko0501-gif/aion-bot/main/B0AEE152-2F0A-4DD9-8A25-D25C1D6AFE54.jpeg" alt="AION" />
     </div>
 
-    <div class="nav-item">
+    <div class="nav-item" data-nav="sleep" onclick="showScreen('sleep')">
       <svg viewBox="0 0 24 24">
         <path d="M3 12h4l2-4 4 8 2-4h6"></path>
       </svg>
@@ -759,6 +1087,29 @@
     );
 
     document.getElementById("biotimeValue").textContent = bioTime.toFixed(1);
+
+    function showScreen(name) {
+      document.querySelectorAll(".screen").forEach(screen => {
+        screen.classList.remove("active");
+      });
+
+      const target = document.getElementById("screen-" + name);
+      if (target) target.classList.add("active");
+
+      document.querySelectorAll("[data-nav]").forEach(item => {
+        item.classList.remove("active");
+      });
+
+      const activeNav = document.querySelector(`[data-nav="${name}"]`);
+      if (activeNav) activeNav.classList.add("active");
+
+      if (name === "dashboard") {
+        const firstNav = document.querySelector('[data-nav="dashboard"]');
+        if (firstNav) firstNav.classList.add("active");
+      }
+
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    }
   </script>
 </body>
 </html>
