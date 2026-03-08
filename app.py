@@ -7,12 +7,12 @@ app = Flask(__name__)
 TOKEN = os.environ.get("TELEGRAM_TOKEN")
 API = f"https://api.telegram.org/bot{TOKEN}"
 
-IMAGE_URL = "https://raw.githubusercontent.com/prihodko0501-gif/aion-bot/main/B0AEE152-2F0A-4DD9-8A25-D25C1D6AFE54.png"
+IMAGE_URL = "https://raw.githubusercontent.com/prihodko0501-gif/aion-bot/main/B0AEE152-2F0A-4DD9-8A25-D25C1D6AFE54.jpeg"
 
 
 @app.route("/")
 def home():
-    return "AION server running"
+    return "server running"
 
 
 @app.route("/app")
@@ -23,13 +23,17 @@ def mini_app():
 @app.route("/webhook", methods=["POST"])
 def webhook():
 
-    data = request.get_json()
+    data = request.get_json(silent=True)
 
-    if "message" not in data:
+    if not data:
         return {"ok": True}
 
-    chat_id = data["message"]["chat"]["id"]
-    text = data["message"].get("text", "")
+    message = data.get("message")
+    if not message:
+        return {"ok": True}
+
+    chat_id = message["chat"]["id"]
+    text = message.get("text", "")
 
     if text == "/start":
 
