@@ -1,347 +1,764 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-<title>AION</title>
+  <meta charset="UTF-8" />
+  <meta
+    name="viewport"
+    content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"
+  />
+  <title>AION</title>
 
-<style>
+  <style>
+    :root{
+      --bg:#02050b;
+      --bg2:#07111d;
+      --panel:rgba(8,14,24,.78);
+      --panel2:rgba(8,12,20,.94);
+      --line:rgba(128,190,255,.12);
+      --line2:rgba(128,190,255,.22);
+      --text:#eef5ff;
+      --muted:#a8b7d4;
+      --blue:#7fd0ff;
+      --blue2:#3b86ff;
+      --glow:0 0 30px rgba(87,181,255,.22);
+      --glow2:0 0 55px rgba(87,181,255,.14);
+      --radius-xl:34px;
+      --radius-lg:26px;
+      --radius-md:22px;
+    }
 
-:root {
---bg:#05070d;
---panel:rgba(14,19,32,0.88);
---panel-2:rgba(10,14,24,0.92);
---text:#eef4ff;
---muted:#9aa8c7;
---blue:#59b8ff;
---glow:0 0 24px rgba(89,184,255,0.28);
---radius-lg:22px;
---radius-md:18px;
-}
+    *{
+      box-sizing:border-box;
+      -webkit-tap-highlight-color:transparent;
+    }
 
-*{
-box-sizing:border-box;
--webkit-tap-highlight-color:transparent;
-}
+    html,body{
+      margin:0;
+      padding:0;
+      min-height:100%;
+      color:var(--text);
+      font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Inter,Roboto,Helvetica,Arial,sans-serif;
+      background:
+        radial-gradient(900px 500px at 86% 14%, rgba(86,154,255,.16), transparent 46%),
+        radial-gradient(600px 340px at 10% 28%, rgba(61,118,255,.07), transparent 55%),
+        radial-gradient(700px 360px at 20% 90%, rgba(80,170,255,.05), transparent 55%),
+        linear-gradient(180deg, var(--bg) 0%, var(--bg2) 100%);
+      overflow-x:hidden;
+    }
 
-html,body{
-margin:0;
-padding:0;
-background:
-radial-gradient(circle at top right,rgba(60,130,255,0.16),transparent 28%),
-radial-gradient(circle at bottom left,rgba(60,130,255,0.10),transparent 24%),
-linear-gradient(180deg,#04060b 0%,#060912 100%);
-color:var(--text);
-font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Inter,Roboto,sans-serif;
-min-height:100%;
-}
+    body{
+      padding:14px 14px 122px;
+    }
 
-body{
-padding:16px 14px 110px;
-}
+    .space,
+    .planet-arc,
+    .fog{
+      position:fixed;
+      inset:0;
+      pointer-events:none;
+      z-index:0;
+    }
 
-.app{
-max-width:430px;
-margin:0 auto;
-}
+    .space{
+      background-image:
+        radial-gradient(circle at 12% 18%, rgba(255,255,255,.7) 0 1px, transparent 1.5px),
+        radial-gradient(circle at 18% 66%, rgba(255,255,255,.42) 0 1px, transparent 1.5px),
+        radial-gradient(circle at 33% 28%, rgba(255,255,255,.28) 0 1px, transparent 1.5px),
+        radial-gradient(circle at 74% 22%, rgba(255,255,255,.6) 0 1px, transparent 1.5px),
+        radial-gradient(circle at 82% 32%, rgba(255,255,255,.35) 0 1px, transparent 1.5px),
+        radial-gradient(circle at 67% 81%, rgba(255,255,255,.18) 0 1px, transparent 1.5px);
+      opacity:.42;
+    }
 
-.topbar{
-display:flex;
-align-items:center;
-justify-content:space-between;
-margin-bottom:18px;
-}
+    .planet-arc::before{
+      content:"";
+      position:absolute;
+      right:-125px;
+      top:38px;
+      width:430px;
+      height:430px;
+      border-radius:50%;
+      border:1px solid rgba(170,215,255,.10);
+      box-shadow:
+        inset 0 0 50px rgba(113,190,255,.02),
+        0 0 80px rgba(80,170,255,.03);
+    }
 
-.icon-btn{
-width:42px;
-height:42px;
-border-radius:50%;
-border:1px solid rgba(255,255,255,0.08);
-background:rgba(255,255,255,0.02);
-display:flex;
-align-items:center;
-justify-content:center;
-font-size:22px;
-}
+    .planet-arc::after{
+      content:"";
+      position:absolute;
+      right:28px;
+      top:128px;
+      width:280px;
+      height:280px;
+      border-radius:50%;
+      border:1px solid rgba(170,215,255,.07);
+    }
 
-.hero{
-text-align:center;
-padding:8px 8px 0;
-}
+    .fog::before{
+      content:"";
+      position:absolute;
+      left:50%;
+      top:190px;
+      transform:translateX(-50%);
+      width:260px;
+      height:260px;
+      background:radial-gradient(circle, rgba(74,154,255,.16) 0%, transparent 70%);
+      filter:blur(20px);
+    }
 
-.hero-logo{
-width:178px;
-display:block;
-margin:8px auto 20px;
-filter:drop-shadow(0 0 24px rgba(89,184,255,0.25));
-}
+    .app{
+      position:relative;
+      z-index:1;
+      max-width:430px;
+      margin:0 auto;
+    }
 
-.brand{
-font-size:56px;
-letter-spacing:12px;
-font-weight:300;
-margin:0;
-}
+    .topbar{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      margin:4px 0 10px;
+    }
 
-.subtitle{
-margin-top:14px;
-color:var(--muted);
-font-size:12px;
-letter-spacing:5px;
-text-transform:uppercase;
-}
+    .glass-btn{
+      width:46px;
+      height:46px;
+      border-radius:50%;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      border:1px solid rgba(255,255,255,.08);
+      background:rgba(255,255,255,.02);
+      backdrop-filter:blur(12px);
+      box-shadow:
+        inset 0 0 0 1px rgba(255,255,255,.02),
+        0 0 22px rgba(87,181,255,.05);
+      color:#f1f6ff;
+    }
 
-.enter-wrap{
-margin:26px 0 28px;
-display:flex;
-justify-content:center;
-}
+    .glass-btn svg{
+      width:22px;
+      height:22px;
+      stroke:currentColor;
+      fill:none;
+      stroke-width:1.8;
+      stroke-linecap:round;
+      stroke-linejoin:round;
+    }
 
-.enter-btn{
-width:100%;
-max-width:420px;
-border:1px solid rgba(89,184,255,0.35);
-background:linear-gradient(180deg,rgba(15,22,38,0.96),rgba(7,12,22,0.96));
-color:white;
-border-radius:999px;
-padding:18px 24px;
-text-decoration:none;
-letter-spacing:4px;
-font-size:13px;
-text-transform:uppercase;
-display:flex;
-align-items:center;
-justify-content:center;
-gap:14px;
-box-shadow:var(--glow);
-}
+    .hero{
+      text-align:center;
+      padding-top:4px;
+    }
 
-.grid{
-display:grid;
-grid-template-columns:1fr 1fr;
-gap:14px;
-margin-top:8px;
-}
+    .logo{
+      width:210px;
+      max-width:58vw;
+      display:block;
+      margin:4px auto 12px;
+      filter:drop-shadow(0 0 32px rgba(83,182,255,.20));
+    }
 
-.card{
-background:linear-gradient(180deg,var(--panel),var(--panel-2));
-border-radius:var(--radius-lg);
-padding:18px;
-}
+    .brand{
+      margin:0;
+      font-size:62px;
+      line-height:1;
+      font-weight:300;
+      letter-spacing:13px;
+      text-transform:uppercase;
+      color:#f2f7ff;
+      text-shadow:0 0 14px rgba(255,255,255,.06);
+    }
 
-.card.wide{
-grid-column:span 2;
-}
+    .subtitle{
+      margin-top:14px;
+      font-size:12px;
+      letter-spacing:5.4px;
+      text-transform:uppercase;
+      color:#d1dcf0;
+      opacity:.92;
+    }
 
-.label{
-color:var(--muted);
-font-size:12px;
-letter-spacing:2px;
-text-transform:uppercase;
-margin-bottom:10px;
-}
+    .brand-line{
+      width:82%;
+      height:1px;
+      margin:18px auto 22px;
+      background:
+        linear-gradient(90deg,
+        transparent 0%,
+        rgba(101,176,255,.10) 15%,
+        rgba(106,194,255,.82) 50%,
+        rgba(101,176,255,.10) 85%,
+        transparent 100%);
+      box-shadow:0 0 18px rgba(93,182,255,.30);
+    }
 
-.value{
-font-size:30px;
-font-weight:300;
-}
+    .enter{
+      width:100%;
+      border-radius:999px;
+      border:1px solid rgba(111,186,255,.28);
+      background:linear-gradient(180deg, rgba(8,13,22,.96), rgba(7,11,18,.94));
+      color:#fff;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      gap:16px;
+      text-decoration:none;
+      text-transform:uppercase;
+      letter-spacing:4.8px;
+      font-size:13px;
+      padding:19px 22px;
+      box-shadow:
+        inset 0 0 0 1px rgba(255,255,255,.02),
+        var(--glow);
+    }
 
-.wave{
-height:34px;
-width:100%;
-margin-top:8px;
-opacity:0.85;
-}
+    .enter .arrow{
+      font-size:24px;
+      transform:translateY(-1px);
+    }
 
-.modules{
-display:grid;
-grid-template-columns:repeat(4,1fr);
-gap:12px;
-margin-top:20px;
-}
+    .cards{
+      display:grid;
+      grid-template-columns:1fr 1fr;
+      gap:14px;
+      margin-top:22px;
+    }
 
-.module{
-background:linear-gradient(180deg,var(--panel),var(--panel-2));
-border-radius:var(--radius-md);
-padding:18px 10px;
-text-align:center;
-}
+    .card{
+      position:relative;
+      overflow:hidden;
+      border-radius:var(--radius-lg);
+      background:
+        linear-gradient(180deg, rgba(8,14,24,.78), rgba(6,10,17,.94));
+      border:1px solid rgba(255,255,255,.04);
+      box-shadow:
+        inset 0 0 0 1px rgba(255,255,255,.02),
+        0 0 28px rgba(74,152,255,.045);
+      padding:18px 18px 16px;
+    }
 
-.module-icon{
-font-size:26px;
-color:var(--blue);
-text-shadow:0 0 20px rgba(89,184,255,0.35);
-}
+    .card::before{
+      content:"";
+      position:absolute;
+      inset:auto 10% 0 10%;
+      height:1px;
+      background:linear-gradient(90deg, transparent, rgba(95,183,255,.22), transparent);
+      opacity:.7;
+    }
 
-.module-name{
-font-size:12px;
-letter-spacing:2px;
-text-transform:uppercase;
-}
+    .wide{
+      grid-column:1 / -1;
+      min-height:174px;
+    }
 
-.bottom-nav{
-position:fixed;
-left:50%;
-bottom:14px;
-transform:translateX(-50%);
-width:min(430px,calc(100% - 18px));
-background:rgba(8,11,18,0.95);
-border-radius:28px;
-padding:12px;
-display:flex;
-align-items:center;
-justify-content:space-between;
-}
+    .label{
+      font-size:12px;
+      letter-spacing:3px;
+      text-transform:uppercase;
+      color:var(--muted);
+      margin-bottom:10px;
+    }
 
-.nav-item{
-width:54px;
-height:54px;
-display:flex;
-align-items:center;
-justify-content:center;
-font-size:22px;
-}
+    .value{
+      font-size:30px;
+      font-weight:300;
+      letter-spacing:1px;
+    }
 
-.nav-center{
-width:68px;
-height:68px;
-border-radius:50%;
-display:flex;
-align-items:center;
-justify-content:center;
-background:radial-gradient(circle at center,rgba(89,184,255,0.28),rgba(16,22,34,0.98) 68%);
-box-shadow:0 0 24px rgba(89,184,255,0.28);
-}
+    .value.large{
+      font-size:60px;
+      line-height:1;
+      letter-spacing:0;
+      margin-top:4px;
+      text-align:center;
+    }
 
-.nav-center img{
-width:34px;
-height:34px;
-}
+    .bio-card .label{
+      text-align:center;
+      margin-top:2px;
+      margin-bottom:8px;
+      color:#d2ddf0;
+    }
 
-</style>
+    .bio-wave{
+      width:100%;
+      height:60px;
+      margin-top:8px;
+    }
+
+    .bio-wave path{
+      filter:drop-shadow(0 0 12px rgba(100,188,255,.22));
+    }
+
+    .small-grid{
+      display:grid;
+      grid-template-columns:repeat(2,1fr);
+      gap:14px;
+      margin-top:14px;
+    }
+
+    .small-card{
+      min-height:122px;
+      display:flex;
+      flex-direction:column;
+      justify-content:flex-start;
+    }
+
+    .small-card .value{
+      margin-top:6px;
+      font-size:31px;
+    }
+
+    .metric-icon{
+      position:absolute;
+      right:16px;
+      bottom:16px;
+      width:54px;
+      height:54px;
+      color:var(--blue);
+      opacity:.95;
+    }
+
+    .metric-icon svg{
+      width:100%;
+      height:100%;
+      stroke:currentColor;
+      fill:none;
+      stroke-width:1.7;
+      stroke-linecap:round;
+      stroke-linejoin:round;
+      filter:drop-shadow(0 0 10px rgba(89,184,255,.16));
+    }
+
+    .section-head{
+      margin:28px 4px 14px;
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      font-size:13px;
+      letter-spacing:4px;
+      text-transform:uppercase;
+    }
+
+    .section-head .arrow{
+      font-size:24px;
+      line-height:1;
+      opacity:.94;
+    }
+
+    .modules-big{
+      display:grid;
+      grid-template-columns:1fr 1fr;
+      gap:14px;
+      margin-bottom:18px;
+    }
+
+    .modules-small{
+      display:grid;
+      grid-template-columns:repeat(4,1fr);
+      gap:12px;
+      margin-bottom:16px;
+    }
+
+    .module{
+      min-height:155px;
+      border-radius:24px;
+      background:
+        linear-gradient(180deg, rgba(8,14,24,.80), rgba(6,10,17,.95));
+      border:1px solid rgba(255,255,255,.04);
+      box-shadow:
+        inset 0 0 0 1px rgba(255,255,255,.02),
+        0 0 26px rgba(74,152,255,.045);
+      display:flex;
+      flex-direction:column;
+      align-items:center;
+      justify-content:center;
+      gap:12px;
+      text-align:center;
+      padding:16px 10px;
+    }
+
+    .module.small{
+      min-height:118px;
+      border-radius:20px;
+    }
+
+    .module-icon{
+      width:58px;
+      height:58px;
+      color:var(--blue);
+    }
+
+    .module-icon svg{
+      width:100%;
+      height:100%;
+      stroke:currentColor;
+      fill:none;
+      stroke-width:1.65;
+      stroke-linecap:round;
+      stroke-linejoin:round;
+      filter:drop-shadow(0 0 10px rgba(89,184,255,.15));
+    }
+
+    .module-name{
+      font-size:13px;
+      letter-spacing:3px;
+      text-transform:uppercase;
+    }
+
+    .bottom-nav{
+      position:fixed;
+      left:50%;
+      bottom:14px;
+      transform:translateX(-50%);
+      z-index:10;
+      width:min(430px,calc(100% - 18px));
+      padding:12px 12px 14px;
+      border-radius:30px;
+      border:1px solid rgba(255,255,255,.05);
+      background:
+        linear-gradient(180deg, rgba(8,11,18,.95), rgba(6,8,14,.97));
+      backdrop-filter:blur(14px);
+      box-shadow:
+        0 10px 42px rgba(0,0,0,.5),
+        inset 0 0 0 1px rgba(255,255,255,.015);
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+    }
+
+    .nav-item{
+      width:54px;
+      height:54px;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      color:#dae8ff;
+      opacity:.92;
+    }
+
+    .nav-item svg{
+      width:25px;
+      height:25px;
+      stroke:currentColor;
+      fill:none;
+      stroke-width:1.9;
+      stroke-linecap:round;
+      stroke-linejoin:round;
+    }
+
+    .nav-item.active{
+      color:#95d7ff;
+      filter:drop-shadow(0 0 10px rgba(89,184,255,.25));
+    }
+
+    .nav-center{
+      width:78px;
+      height:78px;
+      border-radius:50%;
+      margin-top:-30px;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      background:
+        radial-gradient(circle at center, rgba(89,184,255,.34), rgba(13,20,32,.98) 68%);
+      border:1px solid rgba(89,184,255,.35);
+      box-shadow:0 0 30px rgba(89,184,255,.30);
+    }
+
+    .nav-center img{
+      width:38px;
+      height:38px;
+      display:block;
+      filter:drop-shadow(0 0 8px rgba(89,184,255,.18));
+    }
+
+    @media (max-width:390px){
+      .brand{font-size:54px;letter-spacing:10px;}
+      .modules-small{grid-template-columns:repeat(3,1fr);}
+    }
+  </style>
 </head>
 
 <body>
+  <div class="space"></div>
+  <div class="planet-arc"></div>
+  <div class="fog"></div>
 
-<div class="app">
+  <div class="app">
+    <div class="topbar">
+      <div class="glass-btn" aria-label="menu">
+        <svg viewBox="0 0 24 24">
+          <path d="M4 7h16"></path>
+          <path d="M4 12h16"></path>
+          <path d="M4 17h10"></path>
+        </svg>
+      </div>
 
-<div class="topbar">
-<div class="icon-btn">☰</div>
-<div class="icon-btn">◯</div>
-</div>
+      <div class="glass-btn" aria-label="profile">
+        <svg viewBox="0 0 24 24">
+          <circle cx="12" cy="8" r="4"></circle>
+          <path d="M5 20c1.8-3.2 4.2-4.8 7-4.8s5.2 1.6 7 4.8"></path>
+        </svg>
+      </div>
+    </div>
 
-<section class="hero">
+    <section class="hero">
+      <img
+        class="logo"
+        src="https://raw.githubusercontent.com/prihodko0501-gif/aion-bot/main/B0AEE152-2F0A-4DD9-8A25-D25C1D6AFE54.jpeg"
+        alt="AION"
+      />
 
-<img class="hero-logo"
-src="https://raw.githubusercontent.com/prihodko0501-gif/aion-bot/main/B0AEE152-2F0A-4DD9-8A25-D25C1D6AFE54.jpeg">
+      <h1 class="brand">AION</h1>
+      <div class="subtitle">Biological Upgrade System</div>
+      <div class="brand-line"></div>
 
-<h1 class="brand">AION</h1>
+      <a href="#" class="enter">
+        <span>Enter System</span>
+        <span class="arrow">→</span>
+      </a>
+    </section>
 
-<div class="subtitle">Biological Upgrade System</div>
+    <section class="cards">
+      <div class="card wide bio-card">
+        <div class="label">Bio Time</div>
+        <div class="value large" id="biotimeValue">8.4</div>
 
-<div class="enter-wrap">
-<a href="#" class="enter-btn">
-<span>ENTER SYSTEM</span>
-<span>→</span>
-</a>
-</div>
+        <svg class="bio-wave" viewBox="0 0 320 60" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path
+            d="M0 42C18 42 24 28 40 28C58 28 62 50 82 50C102 50 105 30 126 30C146 30 151 42 169 42C189 42 196 18 220 18C244 18 248 44 272 44C294 44 303 28 320 28"
+            stroke="#64BCFF"
+            stroke-width="2.8"
+            stroke-linecap="round"
+          />
+        </svg>
+      </div>
+    </section>
 
-</section>
+    <section class="small-grid">
+      <div class="card small-card">
+        <div class="label">Sleep</div>
+        <div class="value" id="sleepValue">92%</div>
+        <div class="metric-icon">
+          <svg viewBox="0 0 24 24">
+            <path d="M18.5 15.5A7.5 7.5 0 0 1 8.5 5.5a8 8 0 1 0 10 10z"></path>
+          </svg>
+        </div>
+      </div>
 
-<section class="grid">
+      <div class="card small-card">
+        <div class="label">Stress</div>
+        <div class="value" id="stressValue">27%</div>
+        <div class="metric-icon">
+          <svg viewBox="0 0 24 24">
+            <circle cx="12" cy="12" r="7.5"></circle>
+            <path d="M12 12l3.2-3.2"></path>
+          </svg>
+        </div>
+      </div>
 
-<div class="card wide">
-<div class="label">BioTime</div>
-<div class="value">8.4</div>
+      <div class="card small-card">
+        <div class="label">Recovery</div>
+        <div class="value" id="recoveryValue">78%</div>
+        <div class="metric-icon">
+          <svg viewBox="0 0 24 24">
+            <path d="M12 20s-6-3.8-6-9a3.8 3.8 0 0 1 6-2.9A3.8 3.8 0 0 1 18 11c0 5.2-6 9-6 9z"></path>
+            <path d="M8.5 12h2.2l1-2.2 1.6 5 1-2.8H16"></path>
+          </svg>
+        </div>
+      </div>
 
-<svg class="wave" viewBox="0 0 300 40" fill="none">
-<path d="M0 29C22 29 22 11 44 11C66 11 66 33 88 33C110 33 110 15 132 15C154 15 154 28 176 28C198 28 198 8 220 8C242 8 242 25 264 25C286 25 286 17 300 17"
-stroke="#59B8FF" stroke-width="2.3" stroke-linecap="round"/>
-</svg>
+      <div class="card small-card">
+        <div class="label">Pressure</div>
+        <div class="value">124/76</div>
+        <div class="metric-icon">
+          <svg viewBox="0 0 24 24">
+            <path d="M3 12h4l2-4 4 8 2-4h6"></path>
+          </svg>
+        </div>
+      </div>
+    </section>
 
-</div>
+    <div class="section-head">
+      <span>Modules</span>
+      <span class="arrow">›</span>
+    </div>
 
-<div class="card">
-<div class="label">Sleep</div>
-<div class="value">92%</div>
-</div>
+    <section class="modules-big">
+      <div class="module">
+        <div class="module-icon">
+          <svg viewBox="0 0 24 24">
+            <path d="M18.5 15.5A7.5 7.5 0 0 1 8.5 5.5a8 8 0 1 0 10 10z"></path>
+          </svg>
+        </div>
+        <div class="module-name">Sleep</div>
+      </div>
 
-<div class="card">
-<div class="label">Stress</div>
-<div class="value">27%</div>
-</div>
+      <div class="module">
+        <div class="module-icon">
+          <svg viewBox="0 0 24 24">
+            <path d="M4 16l4-5 4 3 4-6 4 8"></path>
+            <circle cx="8" cy="11" r="1.4"></circle>
+            <circle cx="12" cy="14" r="1.4"></circle>
+            <circle cx="16" cy="8" r="1.4"></circle>
+          </svg>
+        </div>
+        <div class="module-name">Stress</div>
+      </div>
 
-<div class="card">
-<div class="label">Recovery</div>
-<div class="value">78%</div>
-</div>
+      <div class="module">
+        <div class="module-icon">
+          <svg viewBox="0 0 24 24">
+            <path d="M12 20s-6-3.8-6-9a3.8 3.8 0 0 1 6-2.9A3.8 3.8 0 0 1 18 11c0 5.2-6 9-6 9z"></path>
+            <path d="M8.5 12h2.2l1-2.2 1.6 5 1-2.8H16"></path>
+          </svg>
+        </div>
+        <div class="module-name">Recovery</div>
+      </div>
 
-<div class="card">
-<div class="label">Pressure</div>
-<div class="value">124/76</div>
-</div>
+      <div class="module">
+        <div class="module-icon">
+          <svg viewBox="0 0 24 24">
+            <path d="M12 3v18"></path>
+            <path d="M8 5c-2 1.2-3.3 3.2-3.3 5.5S6 14.8 8 16"></path>
+            <path d="M16 5c2 1.2 3.3 3.2 3.3 5.5S18 14.8 16 16"></path>
+            <path d="M8.8 9h6.4"></path>
+            <path d="M8.8 15h6.4"></path>
+          </svg>
+        </div>
+        <div class="module-name">Longevity</div>
+      </div>
+    </section>
 
-</section>
+    <div class="section-head">
+      <span>Modules</span>
+      <span class="arrow">›</span>
+    </div>
 
-<div class="modules">
+    <section class="modules-small">
+      <div class="module small">
+        <div class="module-icon">
+          <svg viewBox="0 0 24 24">
+            <path d="M18.5 15.5A7.5 7.5 0 0 1 8.5 5.5a8 8 0 1 0 10 10z"></path>
+          </svg>
+        </div>
+        <div class="module-name">Sleep</div>
+      </div>
 
-<div class="module">
-<div class="module-icon">☾</div>
-<div class="module-name">Sleep</div>
-</div>
+      <div class="module small">
+        <div class="module-icon">
+          <svg viewBox="0 0 24 24">
+            <path d="M4 16l4-5 4 3 4-6 4 8"></path>
+            <circle cx="8" cy="11" r="1.4"></circle>
+            <circle cx="12" cy="14" r="1.4"></circle>
+            <circle cx="16" cy="8" r="1.4"></circle>
+          </svg>
+        </div>
+        <div class="module-name">Stress</div>
+      </div>
 
-<div class="module">
-<div class="module-icon">⟡</div>
-<div class="module-name">Stress</div>
-</div>
+      <div class="module small">
+        <div class="module-icon">
+          <svg viewBox="0 0 24 24">
+            <path d="M12 20s-6-3.8-6-9a3.8 3.8 0 0 1 6-2.9A3.8 3.8 0 0 1 18 11c0 5.2-6 9-6 9z"></path>
+            <path d="M8.5 12h2.2l1-2.2 1.6 5 1-2.8H16"></path>
+          </svg>
+        </div>
+        <div class="module-name">Recovery</div>
+      </div>
 
-<div class="module">
-<div class="module-icon">✚</div>
-<div class="module-name">Recovery</div>
-</div>
+      <div class="module small">
+        <div class="module-icon">
+          <svg viewBox="0 0 24 24">
+            <path d="M12 3v18"></path>
+            <path d="M8 5c-2 1.2-3.3 3.2-3.3 5.5S6 14.8 8 16"></path>
+            <path d="M16 5c2 1.2 3.3 3.2 3.3 5.5S18 14.8 16 16"></path>
+            <path d="M8.8 9h6.4"></path>
+            <path d="M8.8 15h6.4"></path>
+          </svg>
+        </div>
+        <div class="module-name">Longevity</div>
+      </div>
+    </section>
+  </div>
 
-<div class="module">
-<div class="module-icon">⌬</div>
-<div class="module-name">Longevity</div>
-</div>
+  <nav class="bottom-nav">
+    <div class="nav-item active">
+      <svg viewBox="0 0 24 24">
+        <path d="M4 11.5 12 5l8 6.5"></path>
+        <path d="M7 10.5V19h10v-8.5"></path>
+      </svg>
+    </div>
 
-</div>
+    <div class="nav-item">
+      <svg viewBox="0 0 24 24">
+        <circle cx="12" cy="12" r="8"></circle>
+        <path d="M12 7v5l3 2"></path>
+      </svg>
+    </div>
 
-</div>
+    <div class="nav-center">
+      <img
+        src="https://raw.githubusercontent.com/prihodko0501-gif/aion-bot/main/B0AEE152-2F0A-4DD9-8A25-D25C1D6AFE54.jpeg"
+        alt="AION"
+      />
+    </div>
 
-<nav class="bottom-nav">
+    <div class="nav-item">
+      <svg viewBox="0 0 24 24">
+        <path d="M3 12h4l2-4 4 8 2-4h6"></path>
+      </svg>
+    </div>
 
-<div class="nav-item">⌂</div>
-<div class="nav-item">◷</div>
+    <div class="nav-item">
+      <svg viewBox="0 0 24 24">
+        <circle cx="12" cy="8" r="4"></circle>
+        <path d="M5 20c1.8-3.2 4.2-4.8 7-4.8s5.2 1.6 7 4.8"></path>
+      </svg>
+    </div>
+  </nav>
 
-<div class="nav-center">
-<img src="https://raw.githubusercontent.com/prihodko0501-gif/aion-bot/main/B0AEE152-2F0A-4DD9-8A25-D25C1D6AFE54.jpeg">
-</div>
+  <script src="https://telegram.org/js/telegram-web-app.js"></script>
+  <script>
+    const tg = window.Telegram?.WebApp;
 
-<div class="nav-item">⌁</div>
-<div class="nav-item">◯</div>
+    if (tg) {
+      tg.ready();
+      tg.expand();
+      tg.setHeaderColor("#05070d");
+      tg.setBackgroundColor("#05070d");
+    }
 
-</nav>
+    document.body.style.backgroundColor = "#05070d";
 
-<script src="https://telegram.org/js/telegram-web-app.js"></script>
+    function calculateBioTime(sleep, recovery, stress, pressurePenalty, dropPenalty, riskPenalty) {
+      let bio = (sleep * 1.2 + recovery * 1.2 - stress) - pressurePenalty - dropPenalty - riskPenalty;
+      bio = Math.round(bio * 10) / 10;
+      if (bio < 0) bio = 0;
+      if (bio > 12) bio = 12;
+      return bio;
+    }
 
-<script>
+    const sleep = 92;
+    const recovery = 78;
+    const stress = 27;
+    const pressurePenalty = 0;
+    const dropPenalty = 0;
+    const riskPenalty = 0;
 
-const tg = window.Telegram.WebApp;
+    const bioTime = calculateBioTime(
+      sleep,
+      recovery,
+      stress,
+      pressurePenalty,
+      dropPenalty,
+      riskPenalty
+    );
 
-tg.ready();
-
-tg.expand();
-
-/* делаем верх Telegram черным */
-
-tg.setHeaderColor("#05070d");
-
-tg.setBackgroundColor("#05070d");
-
-document.body.style.backgroundColor="#05070d";
-
-</script>
-
+    document.getElementById("biotimeValue").textContent = bioTime.toFixed(1);
+  </script>
 </body>
 </html>
