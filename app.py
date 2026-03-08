@@ -1,8 +1,11 @@
-from flask import Flask
-from webapp.routes import register_routes
+from flask import Flask, send_from_directory
 
 app = Flask(__name__)
-register_routes(app)
 
-if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=10000)
+@app.get("/")
+def home():
+    return "AION is alive 🚀", 200
+
+@app.get("/app")
+def miniapp():
+    return send_from_directory("webapp", "index.html")
