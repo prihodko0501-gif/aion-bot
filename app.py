@@ -1,9 +1,24 @@
+from flask import Flask, render_template_string
+import os
+
+app = Flask(__name__)
+
+IMAGE_URL = "https://raw.githubusercontent.com/prihodko0501-gif/aion-bot/main/9C9D1C07-7426-4DDC-84DD-A76E6AC20138.png"
+
+
+@app.route("/")
+def home():
+    return "AION server running"
+
+
 @app.route("/app")
 def mini_app():
+
     html = f"""
     <html>
     <head>
         <meta name="viewport" content="width=device-width, initial-scale=1">
+
         <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
 
         <style>
@@ -64,4 +79,15 @@ def mini_app():
     </body>
     </html>
     """
+
     return render_template_string(html)
+
+
+@app.route("/webhook", methods=["POST"])
+def webhook():
+    return "ok", 200
+
+
+if __name__ == "__main__":
+    port = int(os.environ.get("PORT", 10000))
+    app.run(host="0.0.0.0", port=port)
