@@ -39,7 +39,7 @@ def webhook():
                 "photo": IMAGE_URL,
                 "caption": "Upgrade System"
             },
-            timeout=15
+            timeout=20
         )
 
     return jsonify({"ok": True}), 200
