@@ -14,12 +14,7 @@
       --muted:#9aa9c4;
       --accent:#7fc6ff;
     }
-
-    *{
-      box-sizing:border-box;
-      -webkit-tap-highlight-color:transparent;
-    }
-
+    *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
     body{
       margin:0;
       font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif;
@@ -29,226 +24,58 @@
       color:var(--text);
       min-height:100vh;
     }
-
-    .wrap{
-      max-width:460px;
-      margin:0 auto;
-      padding:24px 16px 40px;
-    }
-
-    .brand{
-      text-align:center;
-      margin:20px 0 22px;
-    }
-
-    .brand h1{
-      margin:0;
-      font-size:58px;
-      font-weight:300;
-      letter-spacing:6px;
-    }
-
-    .brand p{
-      margin:8px 0 0;
-      font-size:12px;
-      letter-spacing:5px;
-      color:var(--muted);
-      text-transform:uppercase;
-    }
-
-    .tabs{
-      display:flex;
-      gap:12px;
-      margin-bottom:18px;
-    }
-
+    .wrap{max-width:460px;margin:0 auto;padding:24px 16px 40px}
+    .brand{text-align:center;margin:20px 0 22px}
+    .brand h1{margin:0;font-size:58px;font-weight:300;letter-spacing:6px}
+    .brand p{margin:8px 0 0;font-size:12px;letter-spacing:5px;color:var(--muted);text-transform:uppercase}
+    .tabs{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:18px}
     .tab{
-      flex:1;
-      border:none;
-      border-radius:18px;
-      padding:18px 12px;
-      background:rgba(16,26,52,.9);
-      color:var(--text);
-      font-size:18px;
-      cursor:pointer;
-      border:1px solid transparent;
+      border:none;border-radius:18px;padding:18px 12px;background:rgba(16,26,52,.9);
+      color:var(--text);font-size:18px;cursor:pointer;border:1px solid transparent
     }
-
-    .tab.active{
-      border:1px solid var(--accent);
-      box-shadow:0 0 0 1px rgba(127,198,255,.15) inset;
-    }
-
-    .section{
-      display:none;
-    }
-
-    .section.active{
-      display:block;
-    }
-
+    .tab.active{border:1px solid var(--accent);box-shadow:0 0 0 1px rgba(127,198,255,.15) inset}
+    .section{display:none}.section.active{display:block}
     .card{
-      background:rgba(16,26,52,.9);
-      border:1px solid rgba(34,52,93,.9);
-      border-radius:28px;
-      padding:26px;
-      margin-bottom:18px;
-      box-shadow:0 0 30px rgba(0,0,0,.12);
+      background:rgba(16,26,52,.9);border:1px solid rgba(34,52,93,.9);border-radius:28px;
+      padding:26px;margin-bottom:18px;box-shadow:0 0 30px rgba(0,0,0,.12)
     }
-
-    .hero{
-      min-height:220px;
-      display:flex;
-      flex-direction:column;
-      justify-content:center;
-      align-items:center;
-      text-align:center;
+    .hero{min-height:220px;display:flex;flex-direction:column;justify-content:center;align-items:center;text-align:center}
+    .label{font-size:12px;letter-spacing:5px;color:var(--muted);text-transform:uppercase;margin-bottom:18px}
+    .hero-value{font-size:72px;line-height:1;font-weight:300;margin:0 0 18px}
+    .sub{color:var(--muted);font-size:17px}
+    .grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+    .metric-card{min-height:160px;display:flex;flex-direction:column;justify-content:space-between}
+    .metric-title{font-size:12px;letter-spacing:5px;color:var(--muted);text-transform:uppercase}
+    .metric-value{font-size:44px;font-weight:300;line-height:1.1;word-break:break-word}
+    .sleep-score{text-align:center;margin-bottom:22px}
+    .sleep-score .big{font-size:88px;line-height:1;font-weight:300;margin:0}
+    .sleep-score .state{font-size:20px;color:var(--text);margin-top:10px}
+    .rows{margin-top:8px}
+    .row{display:flex;justify-content:space-between;align-items:flex-start;gap:16px;padding:16px 0;border-top:1px solid rgba(255,255,255,.06);font-size:18px}
+    .row:first-child{border-top:none}
+    .row small{display:block;color:var(--muted);font-size:14px;margin-top:4px}
+    .history-buttons{display:flex;gap:10px;margin-bottom:14px}
+    .history-btn{flex:1;border:none;border-radius:14px;padding:12px 10px;background:rgba(16,26,52,.9);color:var(--text);font-size:16px;border:1px solid transparent;cursor:pointer}
+    .history-btn.active{border:1px solid var(--accent)}
+    .history-list{display:flex;flex-direction:column;gap:10px}
+    .history-item{display:flex;justify-content:space-between;align-items:center;padding:14px 0;border-top:1px solid rgba(255,255,255,.06);font-size:17px}
+    .history-item:first-child{border-top:none}
+    .empty,.error{text-align:center;padding:18px 0;font-size:17px}
+    .empty{color:var(--muted)}
+    .error{color:#ffb4b4}
+    .form-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+    .field{display:flex;flex-direction:column;gap:8px;margin-bottom:12px}
+    .field label{font-size:13px;color:var(--muted);letter-spacing:1px}
+    .field input{
+      width:100%;padding:14px 14px;border-radius:14px;border:1px solid var(--line);
+      background:#0b1530;color:var(--text);font-size:18px
     }
-
-    .label{
-      font-size:12px;
-      letter-spacing:5px;
-      color:var(--muted);
-      text-transform:uppercase;
-      margin-bottom:18px;
+    .btn{
+      width:100%;padding:16px;border:none;border-radius:16px;background:#15315f;color:#fff;
+      font-size:18px;cursor:pointer;margin-top:6px
     }
-
-    .hero-value{
-      font-size:72px;
-      line-height:1;
-      font-weight:300;
-      margin:0 0 18px;
-    }
-
-    .sub{
-      color:var(--muted);
-      font-size:17px;
-    }
-
-    .grid{
-      display:grid;
-      grid-template-columns:1fr 1fr;
-      gap:16px;
-    }
-
-    .metric-card{
-      min-height:160px;
-      display:flex;
-      flex-direction:column;
-      justify-content:space-between;
-    }
-
-    .metric-title{
-      font-size:12px;
-      letter-spacing:5px;
-      color:var(--muted);
-      text-transform:uppercase;
-    }
-
-    .metric-value{
-      font-size:44px;
-      font-weight:300;
-      line-height:1.1;
-      word-break:break-word;
-    }
-
-    .sleep-score{
-      text-align:center;
-      margin-bottom:22px;
-    }
-
-    .sleep-score .big{
-      font-size:88px;
-      line-height:1;
-      font-weight:300;
-      margin:0;
-    }
-
-    .sleep-score .state{
-      font-size:20px;
-      color:var(--text);
-      margin-top:10px;
-    }
-
-    .rows{
-      margin-top:8px;
-    }
-
-    .row{
-      display:flex;
-      justify-content:space-between;
-      align-items:flex-start;
-      gap:16px;
-      padding:16px 0;
-      border-top:1px solid rgba(255,255,255,.06);
-      font-size:18px;
-    }
-
-    .row:first-child{
-      border-top:none;
-    }
-
-    .row small{
-      display:block;
-      color:var(--muted);
-      font-size:14px;
-      margin-top:4px;
-    }
-
-    .history-buttons{
-      display:flex;
-      gap:10px;
-      margin-bottom:14px;
-    }
-
-    .history-btn{
-      flex:1;
-      border:none;
-      border-radius:14px;
-      padding:12px 10px;
-      background:rgba(16,26,52,.9);
-      color:var(--text);
-      font-size:16px;
-      border:1px solid transparent;
-      cursor:pointer;
-    }
-
-    .history-btn.active{
-      border:1px solid var(--accent);
-    }
-
-    .history-list{
-      display:flex;
-      flex-direction:column;
-      gap:10px;
-    }
-
-    .history-item{
-      display:flex;
-      justify-content:space-between;
-      align-items:center;
-      padding:14px 0;
-      border-top:1px solid rgba(255,255,255,.06);
-      font-size:17px;
-    }
-
-    .history-item:first-child{
-      border-top:none;
-    }
-
-    .empty{
-      color:var(--muted);
-      text-align:center;
-      padding:18px 0;
-      font-size:17px;
-    }
-
-    .error{
-      color:#ffb4b4;
-      text-align:center;
-      padding:18px 0;
-      font-size:16px;
-    }
+    .note{color:var(--muted);font-size:14px;margin-top:10px;line-height:1.4}
+    .success{color:#9ae6b4;text-align:center;padding-top:10px}
   </style>
 </head>
 <body>
@@ -262,6 +89,7 @@
       <button class="tab active" data-tab="dashboard">Dashboard</button>
       <button class="tab" data-tab="sleep">Sleep</button>
       <button class="tab" data-tab="history">History</button>
+      <button class="tab" data-tab="input">Input</button>
     </div>
 
     <section id="dashboard" class="section active">
@@ -272,61 +100,24 @@
       </div>
 
       <div class="grid">
-        <div class="card metric-card">
-          <div class="metric-title">Sleep</div>
-          <div id="sleepMetric" class="metric-value">—</div>
-        </div>
-
-        <div class="card metric-card">
-          <div class="metric-title">Stress</div>
-          <div id="stressMetric" class="metric-value">—</div>
-        </div>
-
-        <div class="card metric-card">
-          <div class="metric-title">Recovery</div>
-          <div id="recoveryMetric" class="metric-value">—</div>
-        </div>
-
-        <div class="card metric-card">
-          <div class="metric-title">Pressure</div>
-          <div id="pressureMetric" class="metric-value">—</div>
-        </div>
+        <div class="card metric-card"><div class="metric-title">Sleep</div><div id="sleepMetric" class="metric-value">—</div></div>
+        <div class="card metric-card"><div class="metric-title">Stress</div><div id="stressMetric" class="metric-value">—</div></div>
+        <div class="card metric-card"><div class="metric-title">Recovery</div><div id="recoveryMetric" class="metric-value">—</div></div>
+        <div class="card metric-card"><div class="metric-title">Pressure</div><div id="pressureMetric" class="metric-value">—</div></div>
       </div>
     </section>
 
     <section id="sleep" class="section">
       <div class="card">
         <div class="label">Sleep Score</div>
-
         <div class="sleep-score">
           <div id="sleepScore" class="big">—</div>
           <div id="sleepState" class="state">Нет данных</div>
         </div>
-
         <div class="rows">
-          <div class="row">
-            <div>
-              Sleep Duration
-              <small>Полная длительность</small>
-            </div>
-            <div id="sleepDuration">—</div>
-          </div>
-
-          <div class="row">
-            <div>
-              Time to Fall Asleep
-              <small>Время засыпания</small>
-            </div>
-            <div id="sleepLatency">—</div>
-          </div>
-
-          <div class="row">
-            <div>
-              Sleep Stability
-              <small>Стабильность сна</small>
-            </div>
-            <div id="sleepStability">—</div>
-          </div>
+          <div class="row"><div>Sleep Duration<small>Полная длительность</small></div><div id="sleepDuration">—</div></div>
+          <div class="row"><div>Time to Fall Asleep<small>Время засыпания</small></div><div id="sleepLatency">—</div></div>
+          <div class="row"><div>Sleep Stability<small>Стабильность сна</small></div><div id="sleepStability">—</div></div>
         </div>
       </div>
     </section>
@@ -337,73 +128,84 @@
         <button class="history-btn" data-days="30">30 дней</button>
         <button class="history-btn" data-days="90">90 дней</button>
       </div>
-
       <div class="card">
-        <div id="historyRows" class="history-list">
-          <div class="empty">Загрузка...</div>
+        <div id="historyRows" class="history-list"><div class="empty">Загрузка...</div></div>
+      </div>
+    </section>
+
+    <section id="input" class="section">
+      <div class="card">
+        <div class="label">New Entry</div>
+
+        <div class="form-grid">
+          <div class="field">
+            <label>Sleep %</label>
+            <input id="f_sleep_score" type="number" placeholder="92">
+          </div>
+          <div class="field">
+            <label>Stress %</label>
+            <input id="f_stress_score" type="number" placeholder="27">
+          </div>
+          <div class="field">
+            <label>Recovery %</label>
+            <input id="f_recovery_score" type="number" placeholder="78">
+          </div>
+          <div class="field">
+            <label>Systolic</label>
+            <input id="f_systolic" type="number" placeholder="124">
+          </div>
+          <div class="field">
+            <label>Diastolic</label>
+            <input id="f_diastolic" type="number" placeholder="76">
+          </div>
+          <div class="field">
+            <label>Sleep Duration (min)</label>
+            <input id="f_sleep_duration" type="number" placeholder="445">
+          </div>
+          <div class="field">
+            <label>Sleep Latency (min)</label>
+            <input id="f_sleep_latency" type="number" placeholder="5">
+          </div>
+          <div class="field">
+            <label>Sleep Stability %</label>
+            <input id="f_sleep_stability" type="number" placeholder="94">
+          </div>
         </div>
+
+        <button class="btn" id="saveEntryBtn">Сохранить запись</button>
+        <div class="note">После сохранения AION пересчитает BioTime и обновит Dashboard, Sleep и History.</div>
+        <div id="saveResult"></div>
       </div>
     </section>
   </div>
 
   <script>
     const tg = window.Telegram?.WebApp;
-    if (tg) {
-      tg.ready();
-      tg.expand();
-    }
+    if (tg) { tg.ready(); tg.expand(); }
 
     const API_BASE = "https://aion-bot.onrender.com";
+    const USER_ID = 1;
 
     function setText(id, value) {
       const el = document.getElementById(id);
-      if (!el) return;
-      el.textContent = value ?? "—";
+      if (el) el.textContent = value ?? "—";
     }
 
-    function normalizeDashboard(json) {
-      if (!json) return null;
-      if (json.data) return json.data;
-      return json;
-    }
-
-    function normalizeSleep(json) {
-      if (!json) return null;
-      if (json.data) return json.data;
-      return json;
-    }
-
-    function normalizeHistory(json) {
-      if (!json) return [];
-      if (Array.isArray(json.data)) return json.data;
-      if (Array.isArray(json)) return json;
-      return [];
-    }
+    function normalizeDashboard(json){ return json?.data ?? json ?? null; }
+    function normalizeSleep(json){ return json?.data ?? json ?? null; }
+    function normalizeHistory(json){ return Array.isArray(json?.data) ? json.data : []; }
 
     async function loadDashboard() {
       try {
-        const res = await fetch(`${API_BASE}/api/dashboard`, {
-          method: "GET",
-          cache: "no-store"
-        });
-
-        const json = await res.json();
-        const data = normalizeDashboard(json);
-
-        if (!data) {
-          setText("biotime", "—");
-          setText("entryDate", "Нет данных");
-          return;
-        }
-
-        setText("biotime", data.biotime ?? "—");
-        setText("entryDate", data.entry_date ? `Дата: ${data.entry_date}` : "Данные загружены");
-        setText("sleepMetric", data.sleep != null ? `${data.sleep}%` : "—");
-        setText("stressMetric", data.stress != null ? `${data.stress}%` : "—");
-        setText("recoveryMetric", data.recovery != null ? `${data.recovery}%` : "—");
-        setText("pressureMetric", data.pressure ?? "—");
-      } catch (e) {
-        console.error("Dashboard error:", e);
+        const res = await fetch(`${API_BASE}/api/dashboard?user_id=${USER_ID}`, { cache: "no-store" });
+        const data = normalizeDashboard(await res.json());
+        setText("biotime", data?.biotime ?? "—");
+        setText("entryDate", data?.entry_date ? `Дата: ${data.entry_date}` : "Данные загружены");
+        setText("sleepMetric", data?.sleep != null ? `${data.sleep}%` : "—");
+        setText("stressMetric", data?.stress != null ? `${data.stress}%` : "—");
+        setText("recoveryMetric", data?.recovery != null ? `${data.recovery}%` : "—");
+        setText("pressureMetric", data?.pressure ?? "—");
+      } catch {
         setText("entryDate", "Ошибка загрузки");
       }
     }
@@ -418,63 +220,83 @@
 
     async function loadSleep() {
       try {
-        const res = await fetch(`${API_BASE}/api/sleep`, {
-          method: "GET",
-          cache: "no-store"
-        });
-
-        const json = await res.json();
-        const data = normalizeSleep(json);
-
-        if (!data) {
-          setText("sleepScore", "—");
-          setText("sleepState", "Нет данных");
-          return;
-        }
-
-        setText("sleepScore", data.score ?? "—");
-        setText("sleepState", sleepStateByScore(data.score));
-        setText("sleepDuration", data.duration ?? "—");
-        setText("sleepLatency", data.latency_minutes != null ? `${data.latency_minutes} min` : (data.latency ?? "—"));
-        setText("sleepStability", data.stability ?? "—");
-      } catch (e) {
-        console.error("Sleep error:", e);
+        const res = await fetch(`${API_BASE}/api/sleep?user_id=${USER_ID}`, { cache: "no-store" });
+        const data = normalizeSleep(await res.json());
+        setText("sleepScore", data?.score ?? "—");
+        setText("sleepState", sleepStateByScore(data?.score));
+        setText("sleepDuration", data?.duration ?? "—");
+        setText("sleepLatency", data?.latency_minutes != null ? `${data.latency_minutes} min` : "—");
+        setText("sleepStability", data?.stability != null ? `${data.stability}%` : "—");
+      } catch {
         setText("sleepState", "Ошибка загрузки");
       }
     }
 
     async function loadHistory(days = 7) {
-      const historyRows = document.getElementById("historyRows");
-      historyRows.innerHTML = `<div class="empty">Загрузка...</div>`;
-
+      const box = document.getElementById("historyRows");
+      box.innerHTML = `<div class="empty">Загрузка...</div>`;
       try {
-        const res = await fetch(`${API_BASE}/api/history?days=${days}`, {
-          method: "GET",
-          cache: "no-store"
-        });
-
-        const json = await res.json();
-        const rows = normalizeHistory(json);
-
+        const res = await fetch(`${API_BASE}/api/history?user_id=${USER_ID}&days=${days}`, { cache: "no-store" });
+        const rows = normalizeHistory(await res.json());
         if (!rows.length) {
-          historyRows.innerHTML = `<div class="empty">Нет данных за ${days} дней</div>`;
+          box.innerHTML = `<div class="empty">Нет данных за ${days} дней</div>`;
           return;
         }
-
-        historyRows.innerHTML = "";
-
+        box.innerHTML = "";
         rows.forEach((row) => {
           const div = document.createElement("div");
           div.className = "history-item";
-          div.innerHTML = `
-            <div>${row.date ?? "—"}</div>
-            <div>${row.biotime ?? "—"}</div>
-          `;
-          historyRows.appendChild(div);
+          div.innerHTML = `<div>${row.date ?? "—"}</div><div>${row.biotime ?? "—"}</div>`;
+          box.appendChild(div);
         });
+      } catch {
+        box.innerHTML = `<div class="error">Ошибка загрузки истории</div>`;
+      }
+    }
+
+    async function saveEntry() {
+      const payload = {
+        user_id: USER_ID,
+        sleep_score: document.getElementById("f_sleep_score").value || null,
+        stress_score: document.getElementById("f_stress_score").value || null,
+        recovery_score: document.getElementById("f_recovery_score").value || null,
+        systolic: document.getElementById("f_systolic").value || null,
+        diastolic: document.getElementById("f_diastolic").value || null,
+        sleep_duration_minutes: document.getElementById("f_sleep_duration").value || null,
+        sleep_latency_minutes: document.getElementById("f_sleep_latency").value || null,
+        sleep_stability: document.getElementById("f_sleep_stability").value || null
+      };
+
+      const resultBox = document.getElementById("saveResult");
+      resultBox.className = "";
+      resultBox.textContent = "Сохранение...";
+
+      try {
+        const res = await fetch(`${API_BASE}/api/entry`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload)
+        });
+
+        const json = await res.json();
+
+        if (!res.ok || !json.ok) {
+          resultBox.className = "error";
+          resultBox.textContent = "Ошибка сохранения";
+          return;
+        }
+
+        resultBox.className = "success";
+        resultBox.textContent = `Сохранено. BioTime: ${json.saved.biotime}`;
+
+        await loadDashboard();
+        await loadSleep();
+        await loadHistory(7);
+
+        document.querySelector('.tab[data-tab="dashboard"]').click();
       } catch (e) {
-        console.error("History error:", e);
-        historyRows.innerHTML = `<div class="error">Ошибка загрузки истории</div>`;
+        resultBox.className = "error";
+        resultBox.textContent = "Ошибка соединения";
       }
     }
 
@@ -482,7 +304,6 @@
       btn.addEventListener("click", () => {
         document.querySelectorAll(".tab").forEach((b) => b.classList.remove("active"));
         document.querySelectorAll(".section").forEach((s) => s.classList.remove("active"));
-
         btn.classList.add("active");
         document.getElementById(btn.dataset.tab).classList.add("active");
       });
@@ -495,6 +316,8 @@
         loadHistory(btn.dataset.days);
       });
     });
+
+    document.getElementById("saveEntryBtn").addEventListener("click", saveEntry);
 
     loadDashboard();
     loadSleep();
