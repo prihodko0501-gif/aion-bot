@@ -17,7 +17,12 @@ def main_menu(webapp_url=None):
     ]
 
     if webapp_url:
-        rows.append([{"text": "📱 Mini App", "web_app": {"url": webapp_url}}])
+        rows.append([
+            {
+                "text": "📱 Mini App",
+                "web_app": {"url": webapp_url}
+            }
+        ])
 
     return {"inline_keyboard": rows}
 
