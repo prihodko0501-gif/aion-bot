@@ -1,1 +1,219 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>AION Mini App</title>
+  <script src="https://telegram.org/js/telegram-web-app.js"></script>
+  <style>
+    body{
+      margin:0;
+      font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+      background:#08101f;
+      color:#fff;
+    }
+    .wrap{max-width:460px;margin:0 auto;padding:18px}
+    .title{text-align:center;font-size:34px;letter-spacing:4px;margin-top:10px}
+    .sub{text-align:center;color:#9fb0c7;font-size:12px;letter-spacing:3px;margin-bottom:20px}
+    .card{
+      background:#101a2e;
+      border:1px solid #22304b;
+      border-radius:22px;
+      padding:18px;
+      margin-bottom:14px;
+    }
+    .hero{text-align:center}
+    .hero .value{font-size:54px;margin:10px 0}
+    .grid{
+      display:grid;
+      grid-template-columns:1fr 1fr;
+      gap:12px;
+    }
+    .label{
+      color:#8ea2be;
+      font-size:12px;
+      text-transform:uppercase;
+      letter-spacing:2px;
+      margin-bottom:8px;
+    }
+    .metric{
+      font-size:28px;
+    }
+    .tabs{
+      display:flex;
+      gap:8px;
+      margin-bottom:14px;
+    }
+    .tab{
+      flex:1;
+      padding:12px;
+      border:none;
+      border-radius:12px;
+      background:#101a2e;
+      color:#fff;
+    }
+    .tab.active{
+      outline:1px solid #6ec8ff;
+    }
+    .section{display:none}
+    .section.active{display:block}
+    .history-buttons{
+      display:flex;
+      gap:8px;
+      margin-bottom:12px;
+    }
+    .history-btn{
+      flex:1;
+      padding:10px;
+      border:none;
+      border-radius:10px;
+      background:#101a2e;
+      color:#fff;
+    }
+    .row{
+      display:flex;
+      justify-content:space-between;
+      padding:10px 0;
+      border-bottom:1px solid rgba(255,255,255,.06);
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="title">AION</div>
+    <div class="sub">BIOLOGICAL UPGRADE SYSTEM</div>
 
+    <div class="tabs">
+      <button class="tab active" data-tab="dashboard">Dashboard</button>
+      <button class="tab" data-tab="sleep">Sleep</button>
+      <button class="tab" data-tab="history">History</button>
+    </div>
+
+    <section id="dashboard" class="section active">
+      <div class="card hero">
+        <div class="label">BioTime</div>
+        <div id="biotime" class="value">—</div>
+        <div id="entryDate">Нет данных</div>
+      </div>
+
+      <div class="grid">
+        <div class="card">
+          <div class="label">Sleep</div>
+          <div id="sleepMetric" class="metric">—</div>
+        </div>
+        <div class="card">
+          <div class="label">Stress</div>
+          <div id="stressMetric" class="metric">—</div>
+        </div>
+        <div class="card">
+          <div class="label">Recovery</div>
+          <div id="recoveryMetric" class="metric">—</div>
+        </div>
+        <div class="card">
+          <div class="label">Pressure</div>
+          <div id="pressureMetric" class="metric">—</div>
+        </div>
+      </div>
+    </section>
+
+    <section id="sleep" class="section">
+      <div class="card">
+        <div class="label">Sleep Score</div>
+        <div id="sleepScore" class="value">—</div>
+        <div class="row"><span>Duration</span><span id="sleepDuration">—</span></div>
+        <div class="row"><span>Latency</span><span id="sleepLatency">—</span></div>
+        <div class="row"><span>Stability</span><span id="sleepStability">—</span></div>
+      </div>
+    </section>
+
+    <section id="history" class="section">
+      <div class="history-buttons">
+        <button class="history-btn" data-days="7">7 дней</button>
+        <button class="history-btn" data-days="30">30 дней</button>
+        <button class="history-btn" data-days="90">90 дней</button>
+      </div>
+      <div class="card">
+        <div id="historyRows"></div>
+      </div>
+    </section>
+  </div>
+
+  <script>
+    const tg = window.Telegram?.WebApp;
+    if (tg) { tg.ready(); tg.expand(); }
+
+    const params = new URLSearchParams(window.location.search);
+    const userId = params.get("user_id") || "1";
+
+    function setText(id, value) {
+      document.getElementById(id).textContent = value ?? "—";
+    }
+
+    async function loadDashboard() {
+      const res = await fetch(`/api/dashboard?user_id=${userId}`);
+      const json = await res.json();
+      const d = json.data;
+
+      if (!d) return;
+
+      setText("biotime", d.biotime);
+      setText("entryDate", d.entry_date ? `Дата: ${d.entry_date}` : "Нет данных");
+      setText("sleepMetric", d.sleep != null ? d.sleep + "%" : "—");
+      setText("stressMetric", d.stress != null ? d.stress + "%" : "—");
+      setText("recoveryMetric", d.recovery != null ? d.recovery + "%" : "—");
+      setText("pressureMetric", d.pressure || "—");
+    }
+
+    async function loadSleep() {
+      const res = await fetch(`/api/sleep?user_id=${userId}`);
+      const json = await res.json();
+      const d = json.data;
+
+      if (!d) return;
+
+      setText("sleepScore", d.score);
+      setText("sleepDuration", d.duration || "—");
+      setText("sleepLatency", d.latency_minutes != null ? d.latency_minutes + " min" : "—");
+      setText("sleepStability", d.stability != null ? d.stability : "—");
+    }
+
+    async function loadHistory(days = 7) {
+      const res = await fetch(`/api/history?user_id=${userId}&days=${days}`);
+      const json = await res.json();
+      const rows = json.data || [];
+      const box = document.getElementById("historyRows");
+
+      box.innerHTML = "";
+
+      if (!rows.length) {
+        box.innerHTML = "<div>Нет данных</div>";
+        return;
+      }
+
+      for (const r of rows) {
+        const div = document.createElement("div");
+        div.className = "row";
+        div.innerHTML = `<span>${r.date}</span><span>${r.biotime ?? "—"}</span>`;
+        box.appendChild(div);
+      }
+    }
+
+    document.querySelectorAll(".tab").forEach(btn => {
+      btn.addEventListener("click", () => {
+        document.querySelectorAll(".tab").forEach(x => x.classList.remove("active"));
+        document.querySelectorAll(".section").forEach(x => x.classList.remove("active"));
+        btn.classList.add("active");
+        document.getElementById(btn.dataset.tab).classList.add("active");
+      });
+    });
+
+    document.querySelectorAll(".history-btn").forEach(btn => {
+      btn.addEventListener("click", () => loadHistory(btn.dataset.days));
+    });
+
+    loadDashboard();
+    loadSleep();
+    loadHistory(7);
+  </script>
+</body>
+</html>
