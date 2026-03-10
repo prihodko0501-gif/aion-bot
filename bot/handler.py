@@ -1,6 +1,7 @@
 import os
 import time
 import threading
+import requests
 
 from bot.api import (
     send_message,
@@ -40,6 +41,7 @@ from core.biotime import (
 )
 
 WEBAPP_URL = os.getenv("WEBAPP_URL", "").strip() or None
+AION_API_ENTRY_URL = "https://aion-bot.onrender.com/api/entry"
 
 STEP_BT_SLEEP_HOURS = "bt_sleep_hours"
 STEP_BT_LATENCY_MIN = "bt_latency_min"
@@ -58,6 +60,45 @@ WIZ_ORDER = [
     STEP_BT_ENERGY,
     STEP_BT_PRESSURE,
 ]
+
+
+def push_result_to_aion(payload, biotime):
+    """
+    Отправляет результат расчёта из Telegram-бота в AION Mini App backend.
+    """
+    try:
+        pressure_raw = payload.get("pressure")
+        pressure = None
+
+        if isinstance(pressure_raw, dict):
+            sys_v = pressure_raw.get("sys")
+            dia_v = pressure_raw.get("dia")
+            if sys_v is not None and dia_v is not None:
+                pressure = f"{sys_v}/{dia_v}"
+        elif isinstance(pressure_raw, str):
+            pressure = pressure_raw
+
+        sleep_hours = float(payload.get("sleep_hours") or 0)
+        morning_feel = float(payload.get("morning_feel") or 0)
+        energy = float(payload.get("energy") or 0)
+
+        # MVP-конверсия в проценты для Mini App
+        sleep_score = round(min(100, max(0, (sleep_hours / 8.0) * 100)))
+        stress_score = round(min(100, max(0, 100 - (energy * 10))))
+        recovery_score = round(min(100, max(0, ((morning_feel * 0.6) + (energy * 0.4)) * 10)))
+
+        api_payload = {
+            "sleep": sleep_score,
+            "stress": stress_score,
+            "recovery": recovery_score,
+            "pressure": pressure,
+            "biotime_from_bot": round(float(biotime), 1),
+        }
+
+        requests.post(AION_API_ENTRY_URL, json=api_payload, timeout=10)
+
+    except Exception as e:
+        print("PUSH TO AION ERROR:", repr(e))
 
 
 def prompt(step: str):
@@ -368,6 +409,8 @@ def handle_message(message):
         )
     except Exception as e:
         print("SAVE ENTRY ERROR:", repr(e))
+
+    push_result_to_aion(payload, biotime)
 
     core_animation_async(chat_id, message_id, final_text)
     clear_state(chat_id)
