@@ -11,7 +11,7 @@ API = f"https://api.telegram.org/bot{TOKEN}" if TOKEN else None
 WEBAPP_URL = "https://aion-bot.onrender.com/miniapp"
 
 # ---------------------------
-# DEMO DATA STORE
+# MEMORY STORE (текущий MVP)
 # ---------------------------
 
 data_store = {
@@ -25,18 +25,111 @@ data_store = {
 history_store = []
 
 
+# ---------------------------
+# HELPERS
+# ---------------------------
+
+def clamp(value, low, high):
+    return max(low, min(high, value))
+
+
+def parse_float(value):
+    if value in (None, "", "null"):
+        return None
+    try:
+        return float(value)
+    except Exception:
+        return None
+
+
+def parse_int(value):
+    if value in (None, "", "null"):
+        return None
+    try:
+        return int(value)
+    except Exception:
+        return None
+
+
+def parse_pressure_string(value):
+    """
+    Принимает строку вида '124/76'
+    Возвращает (124, 76) или (None, None)
+    """
+    if not value:
+        return None, None
+
+    value = str(value).strip().replace(" ", "")
+    if "/" not in value:
+        return None, None
+
+    parts = value.split("/")
+    if len(parts) != 2:
+        return None, None
+
+    sys_val = parse_int(parts[0])
+    dia_val = parse_int(parts[1])
+    return sys_val, dia_val
+
+
+def pressure_penalty(systolic, diastolic):
+    penalty = 0.0
+
+    if systolic is None or diastolic is None:
+        return 0.0
+
+    if systolic >= 140:
+        penalty += 1.2
+    elif systolic >= 130:
+        penalty += 0.6
+    elif systolic < 100:
+        penalty += 0.4
+
+    if diastolic >= 90:
+        penalty += 0.8
+    elif diastolic >= 85:
+        penalty += 0.4
+    elif diastolic < 60:
+        penalty += 0.3
+
+    return round(penalty, 2)
+
+
+def compute_biotime(sleep, stress, recovery, pressure=None):
+    """
+    Простой расчёт для MVP по текущему этапу.
+    Проценты 0-100 → шкала 0-10.
+    """
+
+    sleep = float(sleep or 0)
+    stress = float(stress or 0)
+    recovery = float(recovery or 0)
+
+    sleep10 = sleep / 10.0
+    stress10 = stress / 10.0
+    recovery10 = recovery / 10.0
+
+    systolic, diastolic = parse_pressure_string(pressure)
+    p_penalty = pressure_penalty(systolic, diastolic)
+
+    biotime = round((sleep10 * 1.2 + recovery10 * 1.2 - stress10) - p_penalty, 1)
+    biotime = clamp(biotime, 0, 12)
+
+    return biotime
+
+
 def add_history_entry(biotime, sleep, stress, recovery, pressure, dt=None):
     if dt is None:
         dt = datetime.utcnow()
 
     history_store.append({
         "date": dt.strftime("%Y-%m-%d"),
+        "created_at": dt.isoformat(),
         "biotime": biotime,
         "sleep": sleep,
         "stress": stress,
         "recovery": recovery,
         "pressure": pressure,
-        "created_at": dt.isoformat(),
     })
 
 
@@ -57,6 +150,23 @@ def seed_demo_history():
     for i, row in enumerate(demo):
         dt = base - timedelta(days=(len(demo) - 1 - i))
         add_history_entry(*row, dt=dt)
+
+
+def refresh_dashboard_from_last_history():
+    if not history_store:
+        data_store["biotime"] = None
+        data_store["sleep"] = None
+        data_store["stress"] = None
+        data_store["recovery"] = None
+        data_store["pressure"] = None
+        return
+
+    last = history_store[-1]
+    data_store["biotime"] = last["biotime"]
+    data_store["sleep"] = last["sleep"]
+    data_store["stress"] = last["stress"]
+    data_store["recovery"] = last["recovery"]
+    data_store["pressure"] = last["pressure"]
 
 
 # ---------------------------
@@ -117,6 +227,69 @@ def api_history():
 
 
 # ---------------------------
+# REAL ENTRY API
+# ---------------------------
+
+@app.route("/api/entry", methods=["POST"])
+def api_entry():
+    payload = request.get_json(silent=True) or {}
+
+    sleep = parse_float(payload.get("sleep"))
+    if sleep is None:
+        sleep = parse_float(payload.get("sleep_score"))
+
+    stress = parse_float(payload.get("stress"))
+    if stress is None:
+        stress = parse_float(payload.get("stress_score"))
+
+    recovery = parse_float(payload.get("recovery"))
+    if recovery is None:
+        recovery = parse_float(payload.get("recovery_score"))
+
+    pressure = payload.get("pressure")
+
+    # Поддержка варианта systolic/diastolic
+    if not pressure:
+        systolic = parse_int(payload.get("systolic"))
+        diastolic = parse_int(payload.get("diastolic"))
+        if systolic is not None and diastolic is not None:
+            pressure = f"{systolic}/{diastolic}"
+
+    if sleep is None or stress is None or recovery is None:
+        return jsonify({
+            "ok": False,
+            "error": "sleep, stress, recovery are required"
+        }), 400
+
+    biotime = compute_biotime(sleep, stress, recovery, pressure)
+
+    data_store["biotime"] = biotime
+    data_store["sleep"] = sleep
+    data_store["stress"] = stress
+    data_store["recovery"] = recovery
+    data_store["pressure"] = pressure
+
+    add_history_entry(
+        biotime=biotime,
+        sleep=sleep,
+        stress=stress,
+        recovery=recovery,
+        pressure=pressure,
+    )
+
+    return jsonify({
+        "ok": True,
+        "data": {
+            "biotime": biotime,
+            "sleep": sleep,
+            "stress": stress,
+            "recovery": recovery,
+            "pressure": pressure,
+        }
+    })
+
+
+# ---------------------------
 # DEMO SEED
 # ---------------------------
 
@@ -129,6 +302,7 @@ def api_demo_seed():
     data_store["pressure"] = "124/76"
 
     seed_demo_history()
+    refresh_dashboard_from_last_history()
 
     return jsonify({
         "status": "demo data inserted",
