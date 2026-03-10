@@ -8,12 +8,10 @@ app = Flask(__name__)
 
 TELEGRAM_TOKEN = os.environ.get("TELEGRAM_TOKEN")
 API = f"https://api.telegram.org/bot{TELEGRAM_TOKEN}" if TELEGRAM_TOKEN else None
-
 BASE_URL = "https://aion-bot.onrender.com"
 
-
 # -----------------------------
-# IN-MEMORY MVP STORE
+# MVP STORE
 # -----------------------------
 
 data_store = {
@@ -164,7 +162,7 @@ def seed_demo_history():
 
 
 # -----------------------------
-# ROOT
+# ROUTES
 # -----------------------------
 
 @app.route("/")
@@ -172,18 +170,10 @@ def home():
     return "AION is alive 🚀", 200
 
 
-# -----------------------------
-# MINI APP
-# -----------------------------
-
 @app.route("/miniapp")
 def miniapp():
     return send_from_directory("templates", "miniapp.html")
 
-
-# -----------------------------
-# DASHBOARD API
-# -----------------------------
 
 @app.route("/api/dashboard")
 def api_dashboard():
@@ -197,10 +187,6 @@ def api_dashboard():
         }
     })
 
-
-# -----------------------------
-# HISTORY API
-# -----------------------------
 
 @app.route("/api/history")
 def api_history():
@@ -220,10 +206,6 @@ def api_history():
     })
 
 
-# -----------------------------
-# DEMO SEED
-# -----------------------------
-
 @app.route("/api/demo-seed")
 def api_demo_seed():
     seed_demo_history()
@@ -239,10 +221,6 @@ def api_demo_seed():
         }
     })
 
-
-# -----------------------------
-# REAL ENTRY API
-# -----------------------------
 
 @app.route("/api/entry", methods=["POST"])
 def api_entry():
@@ -302,10 +280,6 @@ def api_entry():
     })
 
 
-# -----------------------------
-# TELEGRAM WEBHOOK
-# -----------------------------
-
 @app.route("/webhook", methods=["POST"])
 def webhook():
     data = request.get_json(silent=True)
@@ -355,7 +329,7 @@ def webhook():
 
 
 # -----------------------------
-# SERVER START
+# START
 # -----------------------------
 
 if __name__ == "__main__":
