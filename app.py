@@ -1,9 +1,9 @@
 import os
 from datetime import datetime, timedelta
 
+import psycopg
 import requests
 from flask import Flask, jsonify, request, send_from_directory
-import psycopg
 
 app = Flask(__name__)
 
