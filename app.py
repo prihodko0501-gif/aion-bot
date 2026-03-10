@@ -3,26 +3,42 @@ from datetime import datetime, timedelta
 
 import requests
 from flask import Flask, jsonify, request, send_from_directory
+import psycopg
 
 app = Flask(__name__)
 
 TELEGRAM_TOKEN = os.environ.get("TELEGRAM_TOKEN")
 API = f"https://api.telegram.org/bot{TELEGRAM_TOKEN}" if TELEGRAM_TOKEN else None
-BASE_URL = "https://aion-bot.onrender.com"
+BASE_URL = os.environ.get("BASE_URL", "https://aion-bot.onrender.com")
+DATABASE_URL = os.environ.get("DATABASE_URL")
+
 
 # -----------------------------
-# MVP STORE
+# DB
 # -----------------------------
 
-data_store = {
-    "biotime": None,
-    "sleep": None,
-    "stress": None,
-    "recovery": None,
-    "pressure": None,
-}
+def get_db_connection():
+    if not DATABASE_URL:
+        raise RuntimeError("DATABASE_URL is not set")
+    return psycopg.connect(DATABASE_URL)
 
-history_store = []
+
+def init_db():
+    with get_db_connection() as conn:
+        with conn.cursor() as cur:
+            cur.execute("""
+                CREATE TABLE IF NOT EXISTS biotime_entries (
+                    id BIGSERIAL PRIMARY KEY,
+                    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+                    entry_date DATE NOT NULL DEFAULT CURRENT_DATE,
+                    biotime NUMERIC(6, 2),
+                    sleep NUMERIC(6, 2),
+                    stress NUMERIC(6, 2),
+                    recovery NUMERIC(6, 2),
+                    pressure VARCHAR(20)
+                );
+            """)
+        conn.commit()
 
 
 # -----------------------------
@@ -108,40 +124,96 @@ def compute_biotime(sleep, stress, recovery, pressure=None):
     return biotime
 
 
-def add_history_entry(biotime, sleep, stress, recovery, pressure, dt=None):
-    if dt is None:
-        dt = datetime.utcnow()
+def serialize_entry(row):
+    if not row:
+        return {
+            "biotime": None,
+            "sleep": None,
+            "stress": None,
+            "recovery": None,
+            "pressure": None,
+            "date": None,
+            "created_at": None,
+        }
 
-    history_store.append({
-        "date": dt.strftime("%Y-%m-%d"),
-        "created_at": dt.isoformat(),
-        "biotime": biotime,
-        "sleep": sleep,
-        "stress": stress,
-        "recovery": recovery,
-        "pressure": pressure,
-    })
+    created_at = row["created_at"]
+    entry_date = row["entry_date"]
+
+    return {
+        "biotime": float(row["biotime"]) if row["biotime"] is not None else None,
+        "sleep": float(row["sleep"]) if row["sleep"] is not None else None,
+        "stress": float(row["stress"]) if row["stress"] is not None else None,
+        "recovery": float(row["recovery"]) if row["recovery"] is not None else None,
+        "pressure": row["pressure"],
+        "date": entry_date.isoformat() if entry_date else None,
+        "created_at": created_at.isoformat() if created_at else None,
+    }
 
 
-def refresh_dashboard_from_last_history():
-    if not history_store:
-        data_store["biotime"] = None
-        data_store["sleep"] = None
-        data_store["stress"] = None
-        data_store["recovery"] = None
-        data_store["pressure"] = None
-        return
+def insert_entry(biotime, sleep, stress, recovery, pressure, entry_date=None, created_at=None):
+    with get_db_connection() as conn:
+        with conn.cursor(row_factory=psycopg.rows.dict_row) as cur:
+            if entry_date is None:
+                entry_date = datetime.utcnow().date()
 
-    last = history_store[-1]
-    data_store["biotime"] = last["biotime"]
-    data_store["sleep"] = last["sleep"]
-    data_store["stress"] = last["stress"]
-    data_store["recovery"] = last["recovery"]
-    data_store["pressure"] = last["pressure"]
+            if created_at is None:
+                cur.execute("""
+                    INSERT INTO biotime_entries (
+                        entry_date, biotime, sleep, stress, recovery, pressure
+                    )
+                    VALUES (%s, %s, %s, %s, %s, %s)
+                    RETURNING id, created_at, entry_date, biotime, sleep, stress, recovery, pressure
+                """, (entry_date, biotime, sleep, stress, recovery, pressure))
+            else:
+                cur.execute("""
+                    INSERT INTO biotime_entries (
+                        created_at, entry_date, biotime, sleep, stress, recovery, pressure
+                    )
+                    VALUES (%s, %s, %s, %s, %s, %s, %s)
+                    RETURNING id, created_at, entry_date, biotime, sleep, stress, recovery, pressure
+                """, (created_at, entry_date, biotime, sleep, stress, recovery, pressure))
+
+            row = cur.fetchone()
+        conn.commit()
+    return row
+
+
+def get_latest_entry():
+    with get_db_connection() as conn:
+        with conn.cursor(row_factory=psycopg.rows.dict_row) as cur:
+            cur.execute("""
+                SELECT id, created_at, entry_date, biotime, sleep, stress, recovery, pressure
+                FROM biotime_entries
+                ORDER BY created_at DESC, id DESC
+                LIMIT 1
+            """)
+            return cur.fetchone()
+
+
+def get_history(days=7):
+    with get_db_connection() as conn:
+        with conn.cursor(row_factory=psycopg.rows.dict_row) as cur:
+            cur.execute("""
+                SELECT id, created_at, entry_date, biotime, sleep, stress, recovery, pressure
+                FROM biotime_entries
+                ORDER BY created_at DESC, id DESC
+                LIMIT %s
+            """, (days,))
+            rows = cur.fetchall()
+
+    rows.reverse()
+    return rows
+
+
+def clear_all_entries():
+    with get_db_connection() as conn:
+        with conn.cursor() as cur:
+            cur.execute("TRUNCATE TABLE biotime_entries RESTART IDENTITY;")
+        conn.commit()
 
 
 def seed_demo_history():
-    history_store.clear()
+    clear_all_entries()
 
     base = datetime.utcnow()
     demo_rows = [
@@ -156,9 +228,9 @@ def seed_demo_history():
 
     for i, row in enumerate(demo_rows):
         dt = base - timedelta(days=(len(demo_rows) - 1 - i))
-        add_history_entry(*row, dt=dt)
-
-    refresh_dashboard_from_last_history()
+        entry_date = dt.date()
+        created_at = dt
+        insert_entry(*row, entry_date=entry_date, created_at=created_at)
 
 
 # -----------------------------
@@ -177,13 +249,18 @@ def miniapp():
 
 @app.route("/api/dashboard")
 def api_dashboard():
+    row = get_latest_entry()
+    entry = serialize_entry(row)
+
     return jsonify({
         "data": {
-            "biotime": data_store["biotime"],
-            "sleep": data_store["sleep"],
-            "stress": data_store["stress"],
-            "recovery": data_store["recovery"],
-            "pressure": data_store["pressure"],
+            "biotime": entry["biotime"],
+            "sleep": entry["sleep"],
+            "stress": entry["stress"],
+            "recovery": entry["recovery"],
+            "pressure": entry["pressure"],
+            "date": entry["date"],
+            "created_at": entry["created_at"],
         }
     })
 
@@ -198,26 +275,30 @@ def api_history():
     if days not in (7, 30, 90):
         days = 7
 
-    rows = history_store[-days:]
+    rows = get_history(days)
 
     return jsonify({
         "days": days,
-        "data": rows
+        "data": [serialize_entry(row) for row in rows]
     })
 
 
 @app.route("/api/demo-seed")
 def api_demo_seed():
     seed_demo_history()
+    row = get_latest_entry()
+    entry = serialize_entry(row)
 
     return jsonify({
         "status": "demo data inserted",
         "data": {
-            "biotime": data_store["biotime"],
-            "sleep": data_store["sleep"],
-            "stress": data_store["stress"],
-            "recovery": data_store["recovery"],
-            "pressure": data_store["pressure"],
+            "biotime": entry["biotime"],
+            "sleep": entry["sleep"],
+            "stress": entry["stress"],
+            "recovery": entry["recovery"],
+            "pressure": entry["pressure"],
+            "date": entry["date"],
+            "created_at": entry["created_at"],
         }
     })
 
@@ -253,29 +334,25 @@ def api_entry():
         }), 400
 
     biotime = compute_biotime(sleep, stress, recovery, pressure)
-
-    data_store["biotime"] = biotime
-    data_store["sleep"] = sleep
-    data_store["stress"] = stress
-    data_store["recovery"] = recovery
-    data_store["pressure"] = pressure
-
-    add_history_entry(
+    row = insert_entry(
         biotime=biotime,
         sleep=sleep,
         stress=stress,
         recovery=recovery,
         pressure=pressure,
     )
+    entry = serialize_entry(row)
 
     return jsonify({
         "ok": True,
         "data": {
-            "biotime": biotime,
-            "sleep": sleep,
-            "stress": stress,
-            "recovery": recovery,
-            "pressure": pressure,
+            "biotime": entry["biotime"],
+            "sleep": entry["sleep"],
+            "stress": entry["stress"],
+            "recovery": entry["recovery"],
+            "pressure": entry["pressure"],
+            "date": entry["date"],
+            "created_at": entry["created_at"],
         }
     })
 
@@ -331,6 +408,8 @@ def webhook():
 # -----------------------------
 # START
 # -----------------------------
+
+init_db()
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 10000))
