@@ -5,874 +5,306 @@
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
   <title>AION</title>
   <script src="https://telegram.org/js/telegram-web-app.js"></script>
-  <style>
-    :root{
-      --bg-top:#0a1a45;
-      --bg-bottom:#010816;
-      --panel:rgba(8,20,54,.90);
-      --panel-2:rgba(9,23,61,.96);
-      --line:rgba(129,215,255,.14);
-      --line-strong:rgba(129,215,255,.42);
-      --text:#edf4ff;
-      --muted:#9fb2d6;
-      --glow:#7ed4ff;
-      --glow2:#4b8dff;
-      --shadow:0 14px 40px rgba(0,0,0,.36);
-    }
-
-    *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
-    html,body{
-      margin:0;padding:0;min-height:100%;
-      font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif;
-      color:var(--text);
-      background:
-        radial-gradient(circle at 50% -10%, rgba(72,131,255,.35) 0%, transparent 34%),
-        radial-gradient(circle at 80% 8%, rgba(127,212,255,.18) 0%, transparent 20%),
-        linear-gradient(180deg,var(--bg-top) 0%, var(--bg-bottom) 100%);
-      overflow-x:hidden;
-    }
-
-    body::before{
-      content:"";
-      position:fixed;
-      inset:0;
-      pointer-events:none;
-      opacity:.35;
-      z-index:0;
-      background:
-        radial-gradient(circle at 14% 22%, rgba(255,255,255,.8) 0 1px, transparent 2px),
-        radial-gradient(circle at 78% 18%, rgba(255,255,255,.6) 0 1px, transparent 2px),
-        radial-gradient(circle at 88% 36%, rgba(255,255,255,.45) 0 1px, transparent 2px),
-        radial-gradient(circle at 10% 68%, rgba(255,255,255,.35) 0 1px, transparent 2px),
-        radial-gradient(circle at 92% 86%, rgba(255,255,255,.25) 0 1px, transparent 2px);
-    }
-
-    .app{
-      position:relative;
-      z-index:1;
-      max-width:460px;
-      margin:0 auto;
-      min-height:100vh;
-      padding:18px 16px 26px;
-    }
-
-    .screen{display:none;animation:fade .22s ease}
-    .screen.active{display:block}
-
-    @keyframes fade{
-      from{opacity:.2;transform:translateY(12px)}
-      to{opacity:1;transform:none}
-    }
-
-    .topbar{
-      display:flex;
-      align-items:center;
-      justify-content:space-between;
-      margin-bottom:8px;
-    }
-
-    .circle{
-      width:42px;
-      height:42px;
-      border-radius:50%;
-      border:1px solid rgba(255,255,255,.12);
-      background:rgba(8,18,46,.34);
-      color:#fff;
-      display:flex;
-      align-items:center;
-      justify-content:center;
-      box-shadow:0 0 0 1px rgba(255,255,255,.02) inset;
-      font-size:22px;
-    }
-
-    .circle.backtxt{
-      font-size:14px;
-      padding:0 12px;
-      width:auto;
-      border-radius:999px;
-    }
-
-    .logo-area{
-      text-align:center;
-      padding:6px 0 8px;
-    }
-
-    .symbol{
-      width:126px;
-      height:148px;
-      margin:0 auto 10px;
-      position:relative;
-      filter:drop-shadow(0 0 26px rgba(126,214,255,.24));
-    }
-
-    .symbol::before{
-      content:"";
-      position:absolute;
-      inset:0;
-      clip-path:polygon(50% 0%, 92% 100%, 73% 100%, 50% 47%, 27% 100%, 8% 100%);
-      background:linear-gradient(180deg,#e2f9ff 0%, #97ddff 28%, #559eff 62%, #d4fcff 100%);
-    }
-
-    .symbol::after{
-      content:"";
-      position:absolute;
-      left:18px; right:18px; top:19px; bottom:19px;
-      clip-path:polygon(50% 0%, 88% 100%, 68% 100%, 50% 57%, 32% 100%, 12% 100%);
-      background:linear-gradient(180deg, rgba(4,23,79,.96) 0%, rgba(0,15,55,.90) 100%);
-      box-shadow:inset 0 0 20px rgba(255,255,255,.06);
-    }
-
-    .brand{
-      font-size:54px;
-      font-weight:300;
-      letter-spacing:10px;
-      line-height:1;
-      margin:0;
-    }
-
-    .sub{
-      margin-top:12px;
-      font-size:12px;
-      letter-spacing:7px;
-      color:var(--muted);
-      text-transform:uppercase;
-    }
-
-    .pill,.cta{
-      width:100%;
-      height:60px;
-      border:none;
-      border-radius:999px;
-      color:#fff;
-      font-size:20px;
-      background:linear-gradient(180deg, rgba(20,51,124,.94), rgba(7,20,55,.98));
-      border:1px solid rgba(127,210,255,.42);
-      box-shadow:0 0 0 1px rgba(126,214,255,.08) inset, 0 0 20px rgba(67,125,255,.18);
-    }
-
-    .pill{margin:18px 0 18px}
-
-    .card{
-      background:
-        radial-gradient(circle at 50% 120%, rgba(107,201,255,.14), transparent 44%),
-        linear-gradient(180deg, rgba(9,23,62,.96) 0%, rgba(7,18,47,.98) 100%);
-      border:1px solid var(--line);
-      border-radius:34px;
-      box-shadow:var(--shadow);
-      overflow:hidden;
-    }
-
-    .biotime-card{
-      padding:22px;
-      min-height:194px;
-      position:relative;
-      margin-bottom:18px;
-    }
-
-    .biotime-card::after{
-      content:"";
-      position:absolute;
-      left:-8%; right:-8%; bottom:-10px;
-      height:120px;
-      background:radial-gradient(ellipse at center, rgba(122,208,255,.30), rgba(122,208,255,0) 64%);
-      filter:blur(12px);
-    }
-
-    .label{
-      font-size:12px;
-      letter-spacing:8px;
-      color:var(--muted);
-      text-transform:uppercase;
-    }
-
-    .bio-num{
-      margin-top:20px;
-      font-size:76px;
-      line-height:1;
-      font-weight:300;
-      position:relative;
-      z-index:1;
-    }
-
-    .muted{color:var(--muted)}
-
-    .modules-title{
-      text-align:center;
-      font-size:14px;
-      letter-spacing:7px;
-      color:var(--muted);
-      text-transform:uppercase;
-      margin:18px 0 12px;
-    }
-
-    .modules-grid{
-      display:grid;
-      grid-template-columns:1fr 1fr;
-      gap:16px;
-    }
-
-    .module{
-      min-height:152px;
-      padding:18px;
-      border:none;
-      text-align:center;
-      cursor:pointer;
-      color:#fff;
-      background:
-        radial-gradient(circle at 50% 12%, rgba(255,255,255,.06), transparent 34%),
-        linear-gradient(180deg, rgba(9,23,62,.96) 0%, rgba(7,18,47,.98) 100%);
-      border:1px solid rgba(127,210,255,.14);
-      border-radius:28px;
-      box-shadow:var(--shadow);
-    }
-
-    .module .ico{
-      font-size:38px;
-      margin-top:8px;
-      margin-bottom:18px;
-      opacity:.95;
-    }
-
-    .module .name{
-      font-size:16px;
-      letter-spacing:5px;
-      text-transform:uppercase;
-    }
-
-    .bottom{
-      position:sticky;
-      bottom:10px;
-      margin-top:18px;
-      padding:10px 8px;
-      display:grid;
-      grid-template-columns:repeat(5,1fr);
-      gap:6px;
-      border-radius:28px;
-      background:rgba(5,15,42,.92);
-      border:1px solid rgba(126,214,255,.14);
-      box-shadow:0 14px 32px rgba(0,0,0,.34);
-      backdrop-filter:blur(10px);
-      z-index:4;
-    }
-
-    .nav{
-      min-height:58px;
-      border:none;
-      border-radius:20px;
-      background:transparent;
-      color:#c5d6f4;
-      display:flex;
-      flex-direction:column;
-      align-items:center;
-      justify-content:center;
-      gap:5px;
-      font-size:12px;
-    }
-
-    .nav .i{
-      font-size:20px;
-      line-height:1;
-    }
-
-    .nav.active{
-      color:#fff;
-      background:linear-gradient(180deg, rgba(28,58,133,.75), rgba(9,22,58,.90));
-      box-shadow:0 0 0 1px rgba(126,214,255,.16) inset, 0 0 18px rgba(76,147,255,.18);
-    }
-
-    .title{
-      text-align:center;
-      font-size:32px;
-      letter-spacing:5px;
-      font-weight:300;
-      margin:4px 0 6px;
-      text-transform:uppercase;
-    }
-
-    .subtitle{
-      text-align:center;
-      color:var(--muted);
-      font-size:13px;
-      margin-bottom:18px;
-    }
-
-    .score-card{
-      padding:22px 18px;
-      text-align:center;
-      margin-bottom:16px;
-    }
-
-    .score-number{
-      font-size:78px;
-      font-weight:300;
-      line-height:1;
-      margin-top:4px;
-    }
-
-    .score-grade{
-      font-size:18px;
-      color:var(--muted);
-      margin-top:8px;
-      margin-bottom:18px;
-    }
-
-    .chart{
-      border-radius:24px;
-      padding:14px;
-      border:1px solid rgba(126,214,255,.12);
-      background:rgba(3,15,43,.56);
-      text-align:left;
-    }
-
-    .chart-title{
-      text-align:center;
-      font-size:12px;
-      letter-spacing:6px;
-      color:var(--muted);
-      text-transform:uppercase;
-      margin-bottom:10px;
-    }
-
-    .bars{
-      height:126px;
-      display:flex;
-      align-items:flex-end;
-      gap:6px;
-      position:relative;
-      margin-bottom:12px;
-    }
-
-    .bars::before{
-      content:"";
-      position:absolute;
-      left:0; right:0; top:22px; bottom:24px;
-      background:linear-gradient(
-        180deg,
-        transparent 0%, transparent 24%,
-        rgba(255,255,255,.05) 24%, rgba(255,255,255,.05) 25%,
-        transparent 25%, transparent 49%,
-        rgba(255,255,255,.05) 49%, rgba(255,255,255,.05) 50%,
-        transparent 50%, transparent 74%,
-        rgba(255,255,255,.05) 74%, rgba(255,255,255,.05) 75%,
-        transparent 75%
-      );
-    }
-
-    .bar{
-      flex:1;
-      min-width:8px;
-      border-radius:8px 8px 0 0;
-      background:linear-gradient(180deg,#86dcff 0%, #5a9dff 100%);
-      box-shadow:0 0 12px rgba(95,182,255,.18);
-      position:relative;
-      z-index:1;
-    }
-
-    .line{
-      position:absolute;
-      left:4px; right:4px; bottom:34px;
-      height:0;
-      border-top:2px solid rgba(131,224,255,.92);
-      transform:skewY(-8deg);
-      box-shadow:0 0 12px rgba(112,212,255,.62);
-      z-index:2;
-    }
-
-    .axis{
-      display:flex;
-      justify-content:space-between;
-      color:var(--muted);
-      font-size:11px;
-    }
-
-    .stat-list{
-      display:flex;
-      flex-direction:column;
-      gap:12px;
-    }
-
-    .stat{
-      display:flex;
-      justify-content:space-between;
-      gap:12px;
-      align-items:center;
-      padding:16px 18px;
-      border-radius:22px;
-      border:1px solid rgba(126,214,255,.12);
-      background:linear-gradient(180deg, rgba(9,23,62,.96) 0%, rgba(7,18,47,.98) 100%);
-      box-shadow:var(--shadow);
-    }
-
-    .stat .t{font-size:18px}
-    .stat .s{font-size:12px;color:var(--muted);margin-top:4px}
-    .stat .v{font-size:22px}
-
-    .panel{
-      padding:18px;
-      margin-bottom:16px;
-    }
-
-    .input-grid{
-      display:flex;
-      flex-direction:column;
-      gap:14px;
-    }
-
-    .field label{
-      display:block;
-      margin-bottom:8px;
-      font-size:12px;
-      letter-spacing:4px;
-      color:var(--muted);
-      text-transform:uppercase;
-    }
-
-    .field input{
-      width:100%;
-      height:54px;
-      border:none;
-      outline:none;
-      border-radius:18px;
-      padding:0 16px;
-      font-size:18px;
-      color:#fff;
-      background:rgba(255,255,255,.06);
-      border:1px solid rgba(126,214,255,.14);
-    }
-
-    .row2{
-      display:grid;
-      grid-template-columns:1fr 1fr;
-      gap:12px;
-    }
-
-    .save-status{
-      min-height:22px;
-      margin-top:12px;
-      text-align:center;
-      font-size:14px;
-      color:var(--muted);
-    }
-
-    .save-status.ok{color:#9df0c1}
-    .save-status.err{color:#ffb8b8}
-
-    .history-filter{
-      display:flex;
-      gap:10px;
-      margin-bottom:14px;
-    }
-
-    .history-filter button{
-      flex:1;
-      height:44px;
-      border:none;
-      border-radius:16px;
-      background:rgba(10,21,56,.90);
-      color:#fff;
-      border:1px solid transparent;
-    }
-
-    .history-filter button.active{
-      border-color:var(--line-strong);
-    }
-
-    .history-list{
-      display:flex;
-      flex-direction:column;
-      gap:10px;
-    }
-
-    .history-item{
-      padding:16px 18px;
-      border-radius:24px;
-      background:linear-gradient(180deg, rgba(9,23,62,.96) 0%, rgba(7,18,47,.98) 100%);
-      border:1px solid rgba(126,214,255,.12);
-      box-shadow:var(--shadow);
-    }
-
-    .history-top{
-      display:flex;
-      justify-content:space-between;
-      gap:10px;
-      margin-bottom:10px;
-    }
-
-    .history-date{
-      color:var(--muted);
-      font-size:13px;
-    }
-
-    .empty{
-      padding:24px 16px;
-      text-align:center;
-      color:var(--muted);
-    }
-  </style>
+  <link rel="stylesheet" href="/app/assets/aion.css">
 </head>
 <body>
-  <div class="app">
+  <div class="app-shell">
 
     <section class="screen active" id="screen-home">
-      <div class="topbar">
-        <button class="circle">☰</button>
-        <button class="circle">👤</button>
+      <header class="topbar">
+        <button class="icon-btn">☰</button>
+        <button class="icon-btn">◯</button>
+      </header>
+
+      <div class="hero">
+        <div class="planet planet-home"></div>
+
+        <div class="logo-mark">
+          <div class="logo-outer"></div>
+          <div class="logo-inner"></div>
+          <div class="logo-core"></div>
+        </div>
+
+        <div class="brand">AION</div>
+        <div class="brand-sub">BIOLOGICAL UPGRADE SYSTEM</div>
+
+        <button class="cta enter-btn" id="enterBtn">
+          <span>ENTER SYSTEM</span>
+          <span>→</span>
+        </button>
+
+        <div class="glass-card biotime-card">
+          <div class="section-kicker">BIO TIME</div>
+          <div class="biotime-value" id="homeBiotime">—</div>
+          <div class="wave-glow"></div>
+        </div>
       </div>
 
-      <div class="logo-area">
-        <div class="symbol"></div>
-        <h1 class="brand">AION</h1>
-        <div class="sub">Biological Upgrade System</div>
-      </div>
-
-      <button class="pill" id="enterBtn">ENTER SYSTEM →</button>
-
-      <div class="card biotime-card">
-        <div class="label">Bio Time</div>
-        <div class="bio-num" id="homeBiotime">—</div>
-      </div>
-
-      <div class="bottom">
-        <button class="nav active" data-open="screen-home"><span class="i">⌂</span></button>
-        <button class="nav" data-open="screen-history"><span class="i">◷</span></button>
-        <button class="nav" data-open="screen-dashboard"><span class="i">✦</span></button>
-        <button class="nav" data-open="screen-sleep"><span class="i">∿</span></button>
-        <button class="nav"><span class="i">👤</span></button>
-      </div>
+      <nav class="bottom-nav">
+        <button class="nav-btn active" data-open="screen-home"><span class="nav-ico">⌂</span></button>
+        <button class="nav-btn" data-open="screen-history"><span class="nav-ico">◷</span></button>
+        <button class="nav-btn center-glow" data-open="screen-dashboard"><span class="nav-ico">▲</span></button>
+        <button class="nav-btn" data-open="screen-sleep"><span class="nav-ico">∿</span></button>
+        <button class="nav-btn"><span class="nav-ico">◯</span></button>
+      </nav>
     </section>
 
     <section class="screen" id="screen-dashboard">
-      <div class="topbar">
-        <button class="circle" data-open="screen-home">←</button>
-        <button class="circle">👤</button>
+      <header class="topbar">
+        <button class="icon-btn" data-open="screen-home">☰</button>
+        <button class="icon-btn">◯</button>
+      </header>
+
+      <div class="dashboard-head">
+        <div class="planet planet-modules"></div>
+
+        <div class="logo-mark small">
+          <div class="logo-outer"></div>
+          <div class="logo-inner"></div>
+          <div class="logo-core"></div>
+        </div>
+
+        <div class="brand brand-small">AION</div>
+        <div class="brand-sub brand-sub-small">BIOLOGICAL UPGRADE SYSTEM</div>
       </div>
 
-      <div class="logo-area" style="padding-top:0">
-        <div class="symbol" style="width:108px;height:124px;margin-bottom:4px;"></div>
-        <h2 class="brand" style="font-size:38px;">AION</h2>
-        <div class="sub">Biological Upgrade System</div>
-      </div>
+      <div class="modules-header">MODULES</div>
 
-      <div class="modules-title">Modules</div>
-
-      <div class="modules-grid" style="margin-bottom:16px;">
-        <button class="module" data-open="screen-sleep">
-          <div class="ico">☾</div>
-          <div class="name">Sleep</div>
+      <div class="modules-grid">
+        <button class="module-card" data-open="screen-sleep">
+          <div class="module-icon">☾</div>
+          <div class="module-title">SLEEP</div>
         </button>
-        <button class="module" data-open="screen-input">
-          <div class="ico">⌘</div>
-          <div class="name">Stress</div>
+
+        <button class="module-card" data-open="screen-input">
+          <div class="module-icon">⌘</div>
+          <div class="module-title">STRESS</div>
         </button>
-        <button class="module" data-open="screen-input">
-          <div class="ico">♡</div>
-          <div class="name">Recovery</div>
+
+        <button class="module-card" data-open="screen-input">
+          <div class="module-icon">♡</div>
+          <div class="module-title">RECOVERY</div>
         </button>
-        <button class="module">
-          <div class="ico">✚</div>
-          <div class="name">Longevity</div>
+
+        <button class="module-card">
+          <div class="module-icon">✚</div>
+          <div class="module-title">LONGEVITY</div>
         </button>
       </div>
 
-      <div class="modules-title" style="display:flex;align-items:center;justify-content:space-between;">
-        <span>Bio Time</span>
-        <span style="font-size:24px;line-height:1;">›</span>
+      <div class="modules-row-head">
+        <span>MODULES</span>
+        <span>›</span>
       </div>
 
-      <div class="card biotime-card" style="min-height:168px;">
-        <div class="label">Bio Time</div>
-        <div class="bio-num" id="dashBiotime">—</div>
-        <div class="muted" id="dashDate">Нет данных</div>
+      <div class="modules-grid mini-grid">
+        <button class="module-card mini" data-open="screen-sleep">
+          <div class="module-icon">☾</div>
+          <div class="module-title">SLEEP</div>
+        </button>
+
+        <button class="module-card mini" data-open="screen-input">
+          <div class="module-icon">⌘</div>
+          <div class="module-title">STRESS</div>
+        </button>
+
+        <button class="module-card mini" data-open="screen-input">
+          <div class="module-icon">♡</div>
+          <div class="module-title">RECOVERY</div>
+        </button>
       </div>
 
-      <div class="bottom">
-        <button class="nav" data-open="screen-home"><span class="i">⌂</span></button>
-        <button class="nav" data-open="screen-history"><span class="i">◷</span></button>
-        <button class="nav active" data-open="screen-dashboard"><span class="i">✦</span></button>
-        <button class="nav" data-open="screen-sleep"><span class="i">∿</span></button>
-        <button class="nav"><span class="i">👤</span></button>
-      </div>
+      <nav class="bottom-nav">
+        <button class="nav-btn" data-open="screen-home"><span class="nav-ico">⌂</span></button>
+        <button class="nav-btn" data-open="screen-history"><span class="nav-ico">◷</span></button>
+        <button class="nav-btn center-glow active" data-open="screen-dashboard"><span class="nav-ico">▲</span></button>
+        <button class="nav-btn" data-open="screen-sleep"><span class="nav-ico">∿</span></button>
+        <button class="nav-btn"><span class="nav-ico">◯</span></button>
+      </nav>
     </section>
 
     <section class="screen" id="screen-sleep">
-      <div class="topbar">
-        <button class="circle backtxt" data-open="screen-dashboard">Back</button>
-        <button class="circle">👤</button>
-      </div>
+      <header class="sleep-topbar">
+        <button class="back-btn" data-open="screen-dashboard">← Back</button>
+        <button class="icon-btn">◯</button>
+      </header>
 
-      <div class="title">Sleep</div>
-      <div class="subtitle">Optimization Program</div>
+      <div class="sleep-title">SLEEP</div>
+      <div class="sleep-subtitle">Optimization Program</div>
 
-      <div class="card score-card">
+      <div class="planet planet-sleep"></div>
+
+      <div class="glass-card sleep-score-card">
         <div class="score-number" id="sleepScoreValue">92</div>
         <div class="score-grade">Excellent</div>
 
-        <div class="chart">
-          <div class="chart-title">Sleep Score</div>
-          <div class="bars">
-            <div class="bar" style="height:48%"></div>
-            <div class="bar" style="height:58%"></div>
-            <div class="bar" style="height:54%"></div>
-            <div class="bar" style="height:43%"></div>
-            <div class="bar" style="height:39%"></div>
-            <div class="bar" style="height:45%"></div>
-            <div class="bar" style="height:36%"></div>
-            <div class="bar" style="height:63%"></div>
-            <div class="bar" style="height:60%"></div>
-            <div class="bar" style="height:72%"></div>
-            <div class="bar" style="height:66%"></div>
-            <div class="bar" style="height:53%"></div>
-            <div class="bar" style="height:42%"></div>
-            <div class="bar" style="height:34%"></div>
-            <div class="line"></div>
+        <div class="chart-card">
+          <div class="chart-title">SLEEP SCORE</div>
+
+          <div class="chart-scale">
+            <span>90%</span>
+            <span>80%</span>
+            <span>97%</span>
+            <span>110%</span>
+            <span>110%</span>
           </div>
-          <div class="axis">
-            <span>Awake</span><span>REM</span><span>Light</span><span>Deep</span><span>Sleep</span>
+
+          <div class="bars-wrap">
+            <div class="bars-bg"></div>
+            <div class="bars">
+              <span class="bar" style="height:42%"></span>
+              <span class="bar" style="height:56%"></span>
+              <span class="bar" style="height:48%"></span>
+              <span class="bar" style="height:44%"></span>
+              <span class="bar" style="height:39%"></span>
+              <span class="bar" style="height:37%"></span>
+              <span class="bar accent" style="height:52%"></span>
+              <span class="bar" style="height:68%"></span>
+              <span class="bar" style="height:61%"></span>
+              <span class="bar" style="height:54%"></span>
+              <span class="bar" style="height:74%"></span>
+              <span class="bar" style="height:70%"></span>
+              <span class="bar" style="height:58%"></span>
+              <span class="bar" style="height:50%"></span>
+              <span class="bar" style="height:28%"></span>
+              <span class="bar" style="height:24%"></span>
+            </div>
+            <svg class="curve" viewBox="0 0 100 40" preserveAspectRatio="none">
+              <path d="M2 35 C15 34, 24 33, 34 30 C45 28, 53 26, 63 22 C73 18, 82 14, 98 9" />
+            </svg>
+          </div>
+
+          <div class="chart-axis">
+            <span>Awale</span>
+            <span>REM</span>
+            <span>Light</span>
+            <span>Deep</span>
+            <span>SLEEP</span>
           </div>
         </div>
       </div>
 
-      <div class="stat-list">
-        <div class="stat">
-          <div><div class="t">Sleep Duration</div><div class="s">Past</div></div>
-          <div class="v">7h 25m</div>
+      <div class="metric-list">
+        <div class="metric-row">
+          <div>
+            <div class="metric-title">Sleep Duration</div>
+            <div class="metric-sub">Past</div>
+          </div>
+          <div class="metric-value">7h 25m ›</div>
         </div>
-        <div class="stat">
-          <div><div class="t">Time to Fall Asleep</div><div class="s">Normal</div></div>
-          <div class="v">5m</div>
+
+        <div class="metric-row">
+          <div>
+            <div class="metric-title">Time to Fall Asleep</div>
+            <div class="metric-sub">Normal</div>
+          </div>
+          <div class="metric-value">5m ›</div>
         </div>
-        <div class="stat">
-          <div><div class="t">Sleep Stability</div><div class="s">Optimal</div></div>
-          <div class="v">94%</div>
+
+        <div class="metric-row">
+          <div>
+            <div class="metric-title">Sleep Stability</div>
+            <div class="metric-sub">Optimal</div>
+          </div>
+          <div class="metric-value">94% ›</div>
         </div>
       </div>
 
-      <button class="cta" data-open="screen-input" style="margin-top:18px;">START ANALYSIS →</button>
+      <button class="cta start-analysis" data-open="screen-input">
+        <span>START ANALYSIS</span>
+        <span>→</span>
+      </button>
 
-      <div class="bottom">
-        <button class="nav" data-open="screen-home"><span class="i">⌂</span></button>
-        <button class="nav" data-open="screen-history"><span class="i">◷</span></button>
-        <button class="nav" data-open="screen-dashboard"><span class="i">✦</span></button>
-        <button class="nav active" data-open="screen-sleep"><span class="i">∿</span></button>
-        <button class="nav"><span class="i">👤</span></button>
-      </div>
+      <nav class="bottom-nav">
+        <button class="nav-btn" data-open="screen-home"><span class="nav-ico">⌂</span></button>
+        <button class="nav-btn"><span class="nav-ico">◷</span></button>
+        <button class="nav-btn center-glow active" data-open="screen-dashboard"><span class="nav-ico">▲</span></button>
+        <button class="nav-btn" data-open="screen-sleep"><span class="nav-ico">∿</span></button>
+        <button class="nav-btn"><span class="nav-ico">◯</span></button>
+      </nav>
     </section>
 
     <section class="screen" id="screen-input">
-      <div class="topbar">
-        <button class="circle" data-open="screen-dashboard">←</button>
-        <button class="circle">👤</button>
-      </div>
+      <header class="sleep-topbar">
+        <button class="back-btn" data-open="screen-dashboard">← Back</button>
+        <button class="icon-btn">◯</button>
+      </header>
 
-      <div class="title" style="font-size:28px;">AION Input</div>
-      <div class="subtitle">Real data → PostgreSQL</div>
+      <div class="sleep-title">AION INPUT</div>
+      <div class="sleep-subtitle">Real data → PostgreSQL</div>
 
-      <div class="card panel">
-        <div class="input-grid">
-          <div class="field">
-            <label>Sleep</label>
-            <input id="sleepInput" inputmode="decimal" placeholder="Например 92">
-          </div>
-          <div class="field">
-            <label>Stress</label>
-            <input id="stressInput" inputmode="decimal" placeholder="Например 28">
-          </div>
-          <div class="field">
-            <label>Recovery</label>
-            <input id="recoveryInput" inputmode="decimal" placeholder="Например 81">
-          </div>
-          <div class="row2">
-            <div class="field">
-              <label>Systolic</label>
-              <input id="systolicInput" inputmode="numeric" placeholder="124">
-            </div>
-            <div class="field">
-              <label>Diastolic</label>
-              <input id="diastolicInput" inputmode="numeric" placeholder="76">
-            </div>
-          </div>
-          <button class="cta" id="saveBtn">SAVE & CALCULATE</button>
-          <div class="save-status" id="saveStatus"></div>
+      <div class="glass-card input-card">
+        <div class="field">
+          <label>SLEEP</label>
+          <input id="sleepInput" placeholder="92">
         </div>
+
+        <div class="field">
+          <label>STRESS</label>
+          <input id="stressInput" placeholder="27">
+        </div>
+
+        <div class="field">
+          <label>RECOVERY</label>
+          <input id="recoveryInput" placeholder="78">
+        </div>
+
+        <div class="field-grid">
+          <div class="field">
+            <label>SYSTOLIC</label>
+            <input id="systolicInput" placeholder="124">
+          </div>
+          <div class="field">
+            <label>DIASTOLIC</label>
+            <input id="diastolicInput" placeholder="76">
+          </div>
+        </div>
+
+        <button class="cta save-btn" id="saveBtn">
+          <span>SAVE & CALCULATE</span>
+          <span>→</span>
+        </button>
+
+        <div class="save-status" id="saveStatus"></div>
       </div>
 
-      <div class="card panel" style="text-align:center;">
-        <div class="label">BioTime</div>
-        <div class="bio-num" id="resultBiotime">—</div>
-        <div class="muted" id="resultDate">Введи данные и сохрани</div>
-      </div>
-
-      <div class="bottom">
-        <button class="nav" data-open="screen-home"><span class="i">⌂</span></button>
-        <button class="nav" data-open="screen-history"><span class="i">◷</span></button>
-        <button class="nav" data-open="screen-dashboard"><span class="i">✦</span></button>
-        <button class="nav active" data-open="screen-input"><span class="i">∿</span></button>
-        <button class="nav"><span class="i">👤</span></button>
+      <div class="glass-card result-card">
+        <div class="section-kicker">BIO TIME</div>
+        <div class="result-value" id="resultBiotime">—</div>
+        <div class="result-date" id="resultDate">Введи данные и сохрани</div>
       </div>
     </section>
 
     <section class="screen" id="screen-history">
-      <div class="topbar">
-        <button class="circle" data-open="screen-dashboard">←</button>
-        <button class="circle">👤</button>
-      </div>
+      <header class="sleep-topbar">
+        <button class="back-btn" data-open="screen-dashboard">← Back</button>
+        <button class="icon-btn">◯</button>
+      </header>
 
-      <div class="title" style="font-size:28px;">History</div>
-      <div class="subtitle">Biological metrics timeline</div>
+      <div class="sleep-title">HISTORY</div>
+      <div class="sleep-subtitle">Biological metrics timeline</div>
 
-      <div class="history-filter">
-        <button class="historyBtn active" data-days="7">7 дней</button>
-        <button class="historyBtn" data-days="30">30 дней</button>
-        <button class="historyBtn" data-days="90">90 дней</button>
+      <div class="history-filters">
+        <button class="filter-btn active historyBtn" data-days="7">7 дней</button>
+        <button class="filter-btn historyBtn" data-days="30">30 дней</button>
+        <button class="filter-btn historyBtn" data-days="90">90 дней</button>
       </div>
 
       <div class="history-list" id="historyList">
-        <div class="empty">Загрузка...</div>
+        <div class="history-empty">Загрузка...</div>
       </div>
 
-      <div class="bottom">
-        <button class="nav" data-open="screen-home"><span class="i">⌂</span></button>
-        <button class="nav active" data-open="screen-history"><span class="i">◷</span></button>
-        <button class="nav" data-open="screen-dashboard"><span class="i">✦</span></button>
-        <button class="nav" data-open="screen-input"><span class="i">∿</span></button>
-        <button class="nav"><span class="i">👤</span></button>
-      </div>
+      <nav class="bottom-nav">
+        <button class="nav-btn" data-open="screen-home"><span class="nav-ico">⌂</span></button>
+        <button class="nav-btn active" data-open="screen-history"><span class="nav-ico">◷</span></button>
+        <button class="nav-btn center-glow" data-open="screen-dashboard"><span class="nav-ico">▲</span></button>
+        <button class="nav-btn" data-open="screen-sleep"><span class="nav-ico">∿</span></button>
+        <button class="nav-btn"><span class="nav-ico">◯</span></button>
+      </nav>
     </section>
 
   </div>
 
-  <script>
-    const tg = window.Telegram && window.Telegram.WebApp ? window.Telegram.WebApp : null;
-    if (tg) { tg.ready(); tg.expand(); }
-
-    const API = window.location.origin;
-    let currentDays = 7;
-
-    function showScreen(id){
-      document.querySelectorAll(".screen").forEach(el => el.classList.remove("active"));
-      const target = document.getElementById(id);
-      if (target) target.classList.add("active");
-      if (id === "screen-history") loadHistory(currentDays);
-      if (id === "screen-home" || id === "screen-dashboard") loadDashboard();
-    }
-
-    document.getElementById("enterBtn").addEventListener("click", () => showScreen("screen-dashboard"));
-    document.querySelectorAll("[data-open]").forEach(btn => {
-      btn.addEventListener("click", () => showScreen(btn.dataset.open));
-    });
-
-    function setText(id, value){
-      const el = document.getElementById(id);
-      if (el) el.textContent = value ?? "—";
-    }
-
-    async function loadDashboard(){
-      try{
-        const res = await fetch(API + "/api/dashboard", { cache: "no-store" });
-        const json = await res.json();
-        const d = json.data || json || {};
-        const bt = d.biotime != null ? d.biotime : "—";
-        setText("homeBiotime", bt);
-        setText("dashBiotime", bt);
-        setText("dashDate", d.biotime != null ? (d.date || "Данные загружены") : "Нет данных");
-        if (d.sleep != null) setText("sleepScoreValue", Math.round(Number(d.sleep)));
-      } catch(e){
-        setText("dashDate", "Ошибка загрузки");
-      }
-    }
-
-    async function loadHistory(days = 7){
-      currentDays = Number(days);
-      const list = document.getElementById("historyList");
-      list.innerHTML = '<div class="empty">Загрузка...</div>';
-      try{
-        const res = await fetch(API + "/api/history?days=" + currentDays, { cache: "no-store" });
-        const json = await res.json();
-        const rows = Array.isArray(json.data) ? json.data : [];
-        if (!rows.length){
-          list.innerHTML = '<div class="empty">Нет данных за ' + currentDays + ' дней</div>';
-          return;
-        }
-        list.innerHTML = "";
-        rows.slice().reverse().forEach(row => {
-          const item = document.createElement("div");
-          item.className = "history-item";
-          item.innerHTML = `
-            <div class="history-top">
-              <div>
-                <div style="font-size:20px;">BioTime ${row.biotime ?? "—"}</div>
-                <div class="history-date">${row.date ?? "—"}</div>
-              </div>
-              <div class="history-date">${row.pressure ?? "—"}</div>
-            </div>
-            <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;">
-              <div>Sleep<br><strong>${row.sleep ?? "—"}</strong></div>
-              <div>Stress<br><strong>${row.stress ?? "—"}</strong></div>
-              <div>Recovery<br><strong>${row.recovery ?? "—"}</strong></div>
-            </div>
-          `;
-          list.appendChild(item);
-        });
-      } catch(e){
-        list.innerHTML = '<div class="empty">Ошибка загрузки истории</div>';
-      }
-    }
-
-    document.querySelectorAll(".historyBtn").forEach(btn => {
-      btn.addEventListener("click", () => {
-        document.querySelectorAll(".historyBtn").forEach(b => b.classList.remove("active"));
-        btn.classList.add("active");
-        loadHistory(btn.dataset.days);
-      });
-    });
-
-    document.getElementById("saveBtn").addEventListener("click", async () => {
-      const saveStatus = document.getElementById("saveStatus");
-      saveStatus.className = "save-status";
-      saveStatus.textContent = "Сохранение...";
-
-      const sleep = document.getElementById("sleepInput").value.trim();
-      const stress = document.getElementById("stressInput").value.trim();
-      const recovery = document.getElementById("recoveryInput").value.trim();
-      const systolic = document.getElementById("systolicInput").value.trim();
-      const diastolic = document.getElementById("diastolicInput").value.trim();
-
-      const payload = { sleep, stress, recovery };
-      if (systolic && diastolic) {
-        payload.systolic = systolic;
-        payload.diastolic = diastolic;
-      }
-
-      try{
-        const res = await fetch(API + "/api/entry", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(payload)
-        });
-        const json = await res.json();
-        if (!res.ok || !json.ok) throw new Error(json.error || "Ошибка сохранения");
-        const d = json.data || {};
-        setText("resultBiotime", d.biotime ?? "—");
-        setText("resultDate", "Данные сохранены");
-        saveStatus.className = "save-status ok";
-        saveStatus.textContent = "Сохранено в PostgreSQL";
-        await loadDashboard();
-        await loadHistory(currentDays);
-      } catch(e){
-        saveStatus.className = "save-status err";
-        saveStatus.textContent = e.message || "Ошибка";
-      }
-    });
-
-    loadDashboard();
-    loadHistory(7);
-  </script>
+  <script src="/app/assets/aion.js"></script>
 </body>
 </html>
-"""
-
-miniapp_bp = Blueprint("miniapp", __name__)
-
-@miniapp_bp.get("/app")
-def miniapp_home():
-    return Response(MINIAPP_HTML, mimetype="text/html")
