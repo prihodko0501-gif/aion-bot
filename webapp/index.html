@@ -1,310 +1,370 @@
-<!doctype html>
-<html lang="ru">
+<!DOCTYPE html>
+<html lang="en">
+
 <head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-  <title>AION</title>
-  <script src="https://telegram.org/js/telegram-web-app.js"></script>
-  <link rel="stylesheet" href="/app/assets/aion.css">
+
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<title>AION</title>
+
+<link rel="stylesheet" href="/app/aion.css">
+
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+
 </head>
+
 <body>
-  <div class="app-shell">
 
-    <section class="screen active" id="screen-home">
-      <header class="topbar">
-        <button class="icon-btn">☰</button>
-        <button class="icon-btn">◯</button>
-      </header>
+<div class="app-shell">
 
-      <div class="hero">
-        <div class="planet planet-home"></div>
+<!-- SCREEN 1 -->
 
-        <div class="logo-mark">
-          <div class="logo-outer"></div>
-          <div class="logo-inner"></div>
-          <div class="logo-core"></div>
-        </div>
+<div class="screen active" id="screen-home">
 
-        <div class="brand">AION</div>
-        <div class="brand-sub">BIOLOGICAL UPGRADE SYSTEM</div>
+<div class="hero">
 
-        <button class="cta enter-btn" id="enterBtn">
-          <span>ENTER SYSTEM</span>
-          <span>→</span>
-        </button>
+<div class="planet planet-home"></div>
 
-        <div class="glass-card biotime-card">
-          <div class="section-kicker">BIO TIME</div>
-          <div class="biotime-value" id="homeBiotime">—</div>
-          <div class="wave-glow"></div>
-        </div>
-      </div>
+<div class="logo-mark">
 
-      <nav class="bottom-nav">
-        <button class="nav-btn active" data-open="screen-home"><span class="nav-ico">⌂</span></button>
-        <button class="nav-btn" data-open="screen-history"><span class="nav-ico">◷</span></button>
-        <button class="nav-btn center-glow" data-open="screen-dashboard"><span class="nav-ico">▲</span></button>
-        <button class="nav-btn" data-open="screen-sleep"><span class="nav-ico">∿</span></button>
-        <button class="nav-btn"><span class="nav-ico">◯</span></button>
-      </nav>
-    </section>
+<div class="logo-outer"></div>
+<div class="logo-inner"></div>
+<div class="logo-core"></div>
 
-    <section class="screen" id="screen-dashboard">
-      <header class="topbar">
-        <button class="icon-btn" data-open="screen-home">☰</button>
-        <button class="icon-btn">◯</button>
-      </header>
+</div>
 
-      <div class="dashboard-head">
-        <div class="planet planet-modules"></div>
+<div class="brand">AION</div>
 
-        <div class="logo-mark small">
-          <div class="logo-outer"></div>
-          <div class="logo-inner"></div>
-          <div class="logo-core"></div>
-        </div>
+<div class="brand-sub">
+BIOLOGICAL UPGRADE SYSTEM
+</div>
 
-        <div class="brand brand-small">AION</div>
-        <div class="brand-sub brand-sub-small">BIOLOGICAL UPGRADE SYSTEM</div>
-      </div>
+<button class="cta enter-btn" id="enterBtn">
 
-      <div class="modules-header">MODULES</div>
+ENTER SYSTEM →
 
-      <div class="modules-grid">
-        <button class="module-card" data-open="screen-sleep">
-          <div class="module-icon">☾</div>
-          <div class="module-title">SLEEP</div>
-        </button>
+</button>
 
-        <button class="module-card" data-open="screen-input">
-          <div class="module-icon">⌘</div>
-          <div class="module-title">STRESS</div>
-        </button>
+</div>
 
-        <button class="module-card" data-open="screen-input">
-          <div class="module-icon">♡</div>
-          <div class="module-title">RECOVERY</div>
-        </button>
 
-        <button class="module-card">
-          <div class="module-icon">✚</div>
-          <div class="module-title">LONGEVITY</div>
-        </button>
-      </div>
+<div class="glass-card biotime-card">
 
-      <div class="modules-row-head">
-        <span>MODULES</span>
-        <span>›</span>
-      </div>
+<div class="section-kicker">
 
-      <div class="modules-grid mini-grid">
-        <button class="module-card mini" data-open="screen-sleep">
-          <div class="module-icon">☾</div>
-          <div class="module-title">SLEEP</div>
-        </button>
+BIO TIME
 
-        <button class="module-card mini" data-open="screen-input">
-          <div class="module-icon">⌘</div>
-          <div class="module-title">STRESS</div>
-        </button>
+</div>
 
-        <button class="module-card mini" data-open="screen-input">
-          <div class="module-icon">♡</div>
-          <div class="module-title">RECOVERY</div>
-        </button>
-      </div>
+<div class="biotime-value" id="homeBiotime">
 
-      <nav class="bottom-nav">
-        <button class="nav-btn" data-open="screen-home"><span class="nav-ico">⌂</span></button>
-        <button class="nav-btn" data-open="screen-history"><span class="nav-ico">◷</span></button>
-        <button class="nav-btn center-glow active" data-open="screen-dashboard"><span class="nav-ico">▲</span></button>
-        <button class="nav-btn" data-open="screen-sleep"><span class="nav-ico">∿</span></button>
-        <button class="nav-btn"><span class="nav-ico">◯</span></button>
-      </nav>
-    </section>
+8.4
 
-    <section class="screen" id="screen-sleep">
-      <header class="sleep-topbar">
-        <button class="back-btn" data-open="screen-dashboard">← Back</button>
-        <button class="icon-btn">◯</button>
-      </header>
+</div>
 
-      <div class="sleep-title">SLEEP</div>
-      <div class="sleep-subtitle">Optimization Program</div>
+<div class="wave-glow"></div>
 
-      <div class="planet planet-sleep"></div>
+</div>
 
-      <div class="glass-card sleep-score-card">
-        <div class="score-number" id="sleepScoreValue">92</div>
-        <div class="score-grade">Excellent</div>
+</div>
 
-        <div class="chart-card">
-          <div class="chart-title">SLEEP SCORE</div>
 
-          <div class="chart-scale">
-            <span>90%</span>
-            <span>80%</span>
-            <span>97%</span>
-            <span>110%</span>
-            <span>110%</span>
-          </div>
+<!-- SCREEN 2 -->
 
-          <div class="bars-wrap">
-            <div class="bars-bg"></div>
-            <div class="bars">
-              <span class="bar" style="height:42%"></span>
-              <span class="bar" style="height:56%"></span>
-              <span class="bar" style="height:48%"></span>
-              <span class="bar" style="height:44%"></span>
-              <span class="bar" style="height:39%"></span>
-              <span class="bar" style="height:37%"></span>
-              <span class="bar accent" style="height:52%"></span>
-              <span class="bar" style="height:68%"></span>
-              <span class="bar" style="height:61%"></span>
-              <span class="bar" style="height:54%"></span>
-              <span class="bar" style="height:74%"></span>
-              <span class="bar" style="height:70%"></span>
-              <span class="bar" style="height:58%"></span>
-              <span class="bar" style="height:50%"></span>
-              <span class="bar" style="height:28%"></span>
-              <span class="bar" style="height:24%"></span>
-            </div>
-            <svg class="curve" viewBox="0 0 100 40" preserveAspectRatio="none">
-              <path d="M2 35 C15 34, 24 33, 34 30 C45 28, 53 26, 63 22 C73 18, 82 14, 98 9" />
-            </svg>
-          </div>
+<div class="screen" id="screen-dashboard">
 
-          <div class="chart-axis">
-            <span>Awale</span>
-            <span>REM</span>
-            <span>Light</span>
-            <span>Deep</span>
-            <span>SLEEP</span>
-          </div>
-        </div>
-      </div>
+<div class="dashboard-head">
 
-      <div class="metric-list">
-        <div class="metric-row">
-          <div>
-            <div class="metric-title">Sleep Duration</div>
-            <div class="metric-sub">Past</div>
-          </div>
-          <div class="metric-value">7h 25m ›</div>
-        </div>
+<div class="planet planet-modules"></div>
 
-        <div class="metric-row">
-          <div>
-            <div class="metric-title">Time to Fall Asleep</div>
-            <div class="metric-sub">Normal</div>
-          </div>
-          <div class="metric-value">5m ›</div>
-        </div>
+<div class="logo-mark small">
 
-        <div class="metric-row">
-          <div>
-            <div class="metric-title">Sleep Stability</div>
-            <div class="metric-sub">Optimal</div>
-          </div>
-          <div class="metric-value">94% ›</div>
-        </div>
-      </div>
+<div class="logo-outer"></div>
+<div class="logo-inner"></div>
+<div class="logo-core"></div>
 
-      <button class="cta start-analysis" data-open="screen-input">
-        <span>START ANALYSIS</span>
-        <span>→</span>
-      </button>
+</div>
 
-      <nav class="bottom-nav">
-        <button class="nav-btn" data-open="screen-home"><span class="nav-ico">⌂</span></button>
-        <button class="nav-btn"><span class="nav-ico">◷</span></button>
-        <button class="nav-btn center-glow active" data-open="screen-dashboard"><span class="nav-ico">▲</span></button>
-        <button class="nav-btn" data-open="screen-sleep"><span class="nav-ico">∿</span></button>
-        <button class="nav-btn"><span class="nav-ico">◯</span></button>
-      </nav>
-    </section>
+<div class="brand brand-small">
 
-    <section class="screen" id="screen-input">
-      <header class="sleep-topbar">
-        <button class="back-btn" data-open="screen-dashboard">← Back</button>
-        <button class="icon-btn">◯</button>
-      </header>
+AION
 
-      <div class="sleep-title">AION INPUT</div>
-      <div class="sleep-subtitle">Real data → PostgreSQL</div>
+</div>
 
-      <div class="glass-card input-card">
-        <div class="field">
-          <label>SLEEP</label>
-          <input id="sleepInput" placeholder="92">
-        </div>
+<div class="brand-sub-small">
 
-        <div class="field">
-          <label>STRESS</label>
-          <input id="stressInput" placeholder="27">
-        </div>
+BIOLOGICAL UPGRADE SYSTEM
 
-        <div class="field">
-          <label>RECOVERY</label>
-          <input id="recoveryInput" placeholder="78">
-        </div>
+</div>
 
-        <div class="field-grid">
-          <div class="field">
-            <label>SYSTOLIC</label>
-            <input id="systolicInput" placeholder="124">
-          </div>
-          <div class="field">
-            <label>DIASTOLIC</label>
-            <input id="diastolicInput" placeholder="76">
-          </div>
-        </div>
+</div>
 
-        <button class="cta save-btn" id="saveBtn">
-          <span>SAVE & CALCULATE</span>
-          <span>→</span>
-        </button>
 
-        <div class="save-status" id="saveStatus"></div>
-      </div>
+<div class="modules-header">
 
-      <div class="glass-card result-card">
-        <div class="section-kicker">BIO TIME</div>
-        <div class="result-value" id="resultBiotime">—</div>
-        <div class="result-date" id="resultDate">Введи данные и сохрани</div>
-      </div>
-    </section>
+MODULES
 
-    <section class="screen" id="screen-history">
-      <header class="sleep-topbar">
-        <button class="back-btn" data-open="screen-dashboard">← Back</button>
-        <button class="icon-btn">◯</button>
-      </header>
+</div>
 
-      <div class="sleep-title">HISTORY</div>
-      <div class="sleep-subtitle">Biological metrics timeline</div>
 
-      <div class="history-filters">
-        <button class="filter-btn active historyBtn" data-days="7">7 дней</button>
-        <button class="filter-btn historyBtn" data-days="30">30 дней</button>
-        <button class="filter-btn historyBtn" data-days="90">90 дней</button>
-      </div>
+<div class="modules-grid">
 
-      <div class="history-list" id="historyList">
-        <div class="history-empty">Загрузка...</div>
-      </div>
+<button class="module-card" data-open="screen-sleep">
 
-      <nav class="bottom-nav">
-        <button class="nav-btn" data-open="screen-home"><span class="nav-ico">⌂</span></button>
-        <button class="nav-btn active" data-open="screen-history"><span class="nav-ico">◷</span></button>
-        <button class="nav-btn center-glow" data-open="screen-dashboard"><span class="nav-ico">▲</span></button>
-        <button class="nav-btn" data-open="screen-sleep"><span class="nav-ico">∿</span></button>
-        <button class="nav-btn"><span class="nav-ico">◯</span></button>
-      </nav>
-    </section>
+<div class="module-icon">
 
-  </div>
+🌙
 
-  <script src="/app/assets/aion.js"></script>
+</div>
+
+<div class="module-title">
+
+SLEEP
+
+</div>
+
+</button>
+
+
+<button class="module-card">
+
+<div class="module-icon">
+
+🧠
+
+</div>
+
+<div class="module-title">
+
+STRESS
+
+</div>
+
+</button>
+
+
+<button class="module-card">
+
+<div class="module-icon">
+
+❤️
+
+</div>
+
+<div class="module-title">
+
+RECOVERY
+
+</div>
+
+</button>
+
+
+<button class="module-card">
+
+<div class="module-icon">
+
+➕
+
+</div>
+
+<div class="module-title">
+
+LONGEVITY
+
+</div>
+
+</button>
+
+</div>
+
+
+</div>
+
+
+<!-- SCREEN 3 -->
+
+<div class="screen" id="screen-sleep">
+
+<div class="sleep-topbar">
+
+<button class="back-btn" data-open="screen-dashboard">
+
+← Back
+
+</button>
+
+</div>
+
+
+<div class="sleep-title">
+
+SLEEP
+
+</div>
+
+<div class="sleep-subtitle">
+
+Optimization Program
+
+</div>
+
+
+<div class="glass-card sleep-score-card">
+
+<div class="score-number" id="sleepScoreValue">
+
+92
+
+</div>
+
+<div class="score-grade">
+
+Excellent
+
+</div>
+
+</div>
+
+
+<div class="metric-list">
+
+<div class="metric-row">
+
+<div>
+
+<div class="metric-title">
+
+Sleep Duration
+
+</div>
+
+<div class="metric-sub">
+
+Fact
+
+</div>
+
+</div>
+
+<div class="metric-value">
+
+7h 25m
+
+</div>
+
+</div>
+
+
+<div class="metric-row">
+
+<div>
+
+<div class="metric-title">
+
+Time to Fall Asleep
+
+</div>
+
+<div class="metric-sub">
+
+Normal
+
+</div>
+
+</div>
+
+<div class="metric-value">
+
+5m
+
+</div>
+
+</div>
+
+
+<div class="metric-row">
+
+<div>
+
+<div class="metric-title">
+
+Sleep Stability
+
+</div>
+
+<div class="metric-sub">
+
+Optimal
+
+</div>
+
+</div>
+
+<div class="metric-value">
+
+94%
+
+</div>
+
+</div>
+
+</div>
+
+
+<button class="cta start-analysis">
+
+START ANALYSIS →
+
+</button>
+
+
+</div>
+
+
+<!-- NAVIGATION -->
+
+<div class="bottom-nav">
+
+<button class="nav-btn active">
+
+<span class="nav-ico">🏠</span>
+
+</button>
+
+<button class="nav-btn">
+
+<span class="nav-ico">⏱</span>
+
+</button>
+
+<button class="nav-btn center-glow">
+
+<span class="nav-ico">A</span>
+
+</button>
+
+<button class="nav-btn">
+
+<span class="nav-ico">❤️</span>
+
+</button>
+
+<button class="nav-btn">
+
+<span class="nav-ico">👤</span>
+
+</button>
+
+</div>
+
+
+</div>
+
+
+<script src="/app/aion.js"></script>
+
 </body>
+
 </html>
