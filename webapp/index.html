@@ -1,223 +1,401 @@
 <!DOCTYPE html>
 <html lang="ru">
-
 <head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AION</title>
+  <script src="https://telegram.org/js/telegram-web-app.js"></script>
+  <style>
+    :root{
+      --bg1:#040b22;
+      --bg2:#020613;
+      --line:rgba(122,160,255,.16);
+      --glass:rgba(6,14,35,.50);
+      --text:#eef5ff;
+      --muted:rgba(228,236,255,.72);
+      --glow:#79c8ff;
+    }
 
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+    *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+    html,body{
+      margin:0;
+      padding:0;
+      min-height:100%;
+      background:#020613;
+      color:var(--text);
+      font-family:Arial,Helvetica,sans-serif;
+      overflow-x:hidden;
+    }
 
-<title>AION</title>
+    body{
+      background:
+        radial-gradient(circle at 50% 12%, rgba(42,88,255,.18), transparent 22%),
+        radial-gradient(circle at 50% 100%, rgba(85,185,255,.14), transparent 28%),
+        linear-gradient(180deg,#0a1d4a 0%, #06122b 34%, #020613 76%, #01030a 100%);
+    }
 
-<script src="https://telegram.org/js/telegram-web-app.js"></script>
+    .screen{
+      position:relative;
+      min-height:100vh;
+      overflow:hidden;
+      padding:24px 24px 150px;
+    }
 
-<style>
+    .stars,
+    .stars2{
+      position:absolute;
+      inset:0;
+      pointer-events:none;
+    }
 
-body{
-margin:0;
-font-family:Arial,Helvetica,sans-serif;
-background:#020617;
-color:white;
-overflow-x:hidden;
-}
+    .stars::before{
+      content:"";
+      position:absolute;
+      inset:0;
+      background:
+        radial-gradient(circle at 12% 24%, rgba(255,255,255,.85) 0 2px, transparent 3px),
+        radial-gradient(circle at 84% 29%, rgba(255,255,255,.70) 0 2px, transparent 3px),
+        radial-gradient(circle at 18% 46%, rgba(255,255,255,.45) 0 2px, transparent 3px),
+        radial-gradient(circle at 74% 56%, rgba(255,255,255,.42) 0 2px, transparent 3px),
+        radial-gradient(circle at 26% 68%, rgba(255,255,255,.30) 0 2px, transparent 3px),
+        radial-gradient(circle at 68% 73%, rgba(255,255,255,.26) 0 2px, transparent 3px);
+      opacity:.85;
+    }
 
-.container{
-padding:20px;
-text-align:center;
-}
+    .orb{
+      position:absolute;
+      border-radius:50%;
+      border:1px solid rgba(128,168,255,.08);
+      pointer-events:none;
+    }
 
-.topbar{
-display:flex;
-justify-content:space-between;
-align-items:center;
-margin-bottom:40px;
-}
+    .orb-1{
+      width:120vw;
+      height:120vw;
+      right:-42vw;
+      top:8vh;
+      border-left-color:transparent;
+      border-bottom-color:transparent;
+    }
 
-.icon{
-width:50px;
-height:50px;
-border-radius:50%;
-border:1px solid rgba(255,255,255,0.1);
-display:flex;
-align-items:center;
-justify-content:center;
-}
+    .orb-2{
+      width:92vw;
+      height:92vw;
+      right:-28vw;
+      top:20vh;
+      border-left-color:transparent;
+      border-bottom-color:transparent;
+      opacity:.7;
+    }
 
-.icon img{
-width:28px;
-}
+    .bottom-glow{
+      position:absolute;
+      left:-8vw;
+      right:-8vw;
+      bottom:-10vh;
+      height:28vh;
+      border-top:1px solid rgba(132,194,255,.18);
+      border-radius:50%;
+      box-shadow:0 -20px 40px rgba(89,180,255,.10);
+      pointer-events:none;
+    }
 
-.logo{
-margin-top:40px;
-}
+    .topbar{
+      position:relative;
+      z-index:5;
+      display:flex;
+      justify-content:space-between;
+      align-items:center;
+      margin-bottom:18px;
+    }
 
-.logo img{
-width:140px;
-}
+    .time{
+      position:absolute;
+      top:8px;
+      left:6px;
+      font-size:18px;
+      font-weight:500;
+      letter-spacing:.04em;
+      opacity:.98;
+      display:none;
+    }
 
-.title{
-font-size:36px;
-letter-spacing:12px;
-margin-top:20px;
-}
+    .icon-btn{
+      width:48px;
+      height:48px;
+      border-radius:50%;
+      border:1px solid rgba(135,165,255,.14);
+      background:rgba(255,255,255,.02);
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      backdrop-filter:blur(10px);
+      box-shadow:inset 0 0 18px rgba(98,140,255,.03);
+      padding:0;
+    }
 
-.subtitle{
-letter-spacing:8px;
-opacity:0.7;
-margin-top:10px;
-}
+    .icon-btn img{
+      width:25px;
+      height:25px;
+      object-fit:contain;
+    }
 
-.enter{
-margin-top:40px;
-padding:22px;
-border-radius:40px;
-background:linear-gradient(180deg,#1e3a8a,#020617);
-border:1px solid rgba(255,255,255,0.2);
-font-size:20px;
-}
+    .hero{
+      position:relative;
+      z-index:4;
+      display:flex;
+      flex-direction:column;
+      align-items:center;
+      text-align:center;
+      margin-top:10px;
+    }
 
-.card{
-margin-top:40px;
-padding:40px;
-border-radius:30px;
-background:rgba(0,0,0,0.4);
-border:1px solid rgba(255,255,255,0.1);
-}
+    .logo-mark{
+      width:min(42vw,230px);
+      max-width:230px;
+      display:block;
+      filter:drop-shadow(0 0 18px rgba(120,194,255,.15));
+    }
 
-.biotime{
-font-size:120px;
-font-weight:200;
-}
+    .brand{
+      margin-top:12px;
+      font-size:clamp(56px,10vw,84px);
+      letter-spacing:.14em;
+      font-weight:300;
+      line-height:1;
+    }
 
-.wave{
-margin-top:20px;
-}
+    .subtitle{
+      margin-top:22px;
+      font-size:clamp(11px,2.4vw,18px);
+      letter-spacing:.42em;
+      color:var(--muted);
+      white-space:nowrap;
+    }
 
-.wave img{
-width:100%;
-opacity:0.8;
-}
+    .enter{
+      margin-top:34px;
+      width:min(94%,700px);
+      height:76px;
+      border-radius:40px;
+      border:1px solid rgba(120,155,255,.22);
+      background:linear-gradient(180deg, rgba(29,57,124,.56), rgba(8,18,48,.58));
+      color:var(--text);
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      gap:16px;
+      font-size:clamp(18px,4vw,28px);
+      letter-spacing:.08em;
+      box-shadow:
+        inset 0 0 0 1px rgba(130,170,255,.03),
+        0 0 22px rgba(76,140,255,.10),
+        0 10px 25px rgba(0,0,0,.25);
+    }
 
-.bottom{
-position:fixed;
-bottom:20px;
-left:20px;
-right:20px;
-height:80px;
-background:rgba(0,0,0,0.6);
-border-radius:30px;
-display:flex;
-align-items:center;
-justify-content:space-around;
-border:1px solid rgba(255,255,255,0.1);
-}
+    .enter .arrow{font-size:1.15em;}
 
-.bottom img{
-width:26px;
-}
+    .card{
+      position:relative;
+      z-index:4;
+      width:min(96%,740px);
+      min-height:292px;
+      margin:34px auto 0;
+      border-radius:34px;
+      border:1px solid rgba(125,162,255,.14);
+      background:linear-gradient(180deg, rgba(5,15,40,.60), rgba(2,8,24,.72));
+      overflow:hidden;
+      box-shadow:
+        inset 0 0 28px rgba(62,112,255,.04),
+        0 20px 48px rgba(0,0,0,.28);
+    }
 
-.center{
-position:absolute;
-bottom:35px;
-left:50%;
-transform:translateX(-50%);
-width:80px;
-height:80px;
-border-radius:50%;
-background:rgba(255,255,255,0.1);
-display:flex;
-align-items:center;
-justify-content:center;
-}
+    .card-title{
+      margin-top:34px;
+      text-align:center;
+      color:var(--muted);
+      letter-spacing:.52em;
+      font-size:clamp(15px,2.6vw,23px);
+    }
 
-.center img{
-width:45px;
-}
+    .biotime{
+      margin-top:18px;
+      text-align:center;
+      font-size:clamp(98px,19vw,165px);
+      font-weight:300;
+      line-height:1;
+    }
 
-</style>
+    .wave-wrap{
+      position:absolute;
+      left:0;
+      right:0;
+      bottom:16px;
+      height:96px;
+      overflow:hidden;
+    }
 
+    .wave-wrap img{
+      width:100%;
+      height:100%;
+      object-fit:contain;
+      opacity:.95;
+      filter:drop-shadow(0 0 10px rgba(123,212,255,.42));
+    }
+
+    .nav{
+      position:fixed;
+      left:16px;
+      right:16px;
+      bottom:14px;
+      z-index:10;
+      height:88px;
+      border-radius:32px;
+      border:1px solid rgba(120,155,255,.14);
+      background:linear-gradient(180deg, rgba(8,18,46,.84), rgba(2,8,22,.94));
+      display:flex;
+      align-items:center;
+      justify-content:space-around;
+      backdrop-filter:blur(16px);
+      box-shadow:
+        0 14px 30px rgba(0,0,0,.28),
+        inset 0 0 24px rgba(86,132,255,.05);
+    }
+
+    .nav-item{
+      width:56px;
+      height:56px;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      opacity:.98;
+    }
+
+    .nav-item img{
+      width:29px;
+      height:29px;
+      object-fit:contain;
+    }
+
+    .nav-center{
+      position:absolute;
+      left:50%;
+      transform:translateX(-50%);
+      bottom:10px;
+      width:104px;
+      height:104px;
+      border-radius:50%;
+      background:
+        radial-gradient(circle at 50% 34%, rgba(176,228,255,.24), rgba(89,120,255,.18) 42%, rgba(10,21,52,.95) 76%);
+      box-shadow:
+        0 0 0 10px rgba(97,125,255,.05),
+        0 0 26px rgba(92,168,255,.24),
+        inset 0 0 35px rgba(130,180,255,.13);
+      display:flex;
+      align-items:center;
+      justify-content:center;
+    }
+
+    .nav-center img{
+      width:46px;
+      height:46px;
+      object-fit:contain;
+      filter:drop-shadow(0 0 10px rgba(127,194,255,.34));
+    }
+
+    .domain-pill{
+      position:fixed;
+      left:50%;
+      transform:translateX(-50%);
+      bottom:112px;
+      z-index:7;
+      padding:10px 26px;
+      border-radius:22px;
+      border:1px solid rgba(140,160,255,.12);
+      background:rgba(20,28,54,.68);
+      color:rgba(248,250,255,.92);
+      font-size:16px;
+      letter-spacing:.02em;
+      backdrop-filter:blur(8px);
+    }
+
+    @media (max-width:430px){
+      .screen{padding:20px 20px 148px;}
+      .subtitle{letter-spacing:.28em;}
+      .enter{height:68px;}
+      .card{min-height:254px;}
+      .nav{height:82px;}
+      .nav-center{width:94px;height:94px;}
+      .domain-pill{bottom:104px;font-size:15px;padding:9px 22px;}
+    }
+  </style>
 </head>
-
 <body>
+  <div class="screen">
+    <div class="stars"></div>
+    <div class="orb orb-1"></div>
+    <div class="orb orb-2"></div>
+    <div class="bottom-glow"></div>
 
-<div class="container">
+    <div class="topbar">
+      <button class="icon-btn" aria-label="Menu">
+        <img src="/static/icons/69A9028D-D1C7-4A3B-9737-7BB2C78C9A4B.png" alt="">
+      </button>
+      <button class="icon-btn" aria-label="Profile">
+        <img src="/static/icons/9CD4F665-6854-48E7-AA1C-0F27B9CE18D8.png" alt="">
+      </button>
+    </div>
 
-<div class="topbar">
+    <section class="hero">
+      <img class="logo-mark" src="/static/icons/582850EE-D506-43BA-8CC4-707742E51051.png" alt="AION">
+      <div class="brand">AION</div>
+      <div class="subtitle">BIOLOGICAL UPGRADE SYSTEM</div>
 
-<div class="icon">
-<img src="static/icons/menu.png">
-</div>
+      <div class="enter">
+        <span>ENTER SYSTEM</span>
+        <span class="arrow">→</span>
+      </div>
+    </section>
 
-<div class="icon">
-<img src="static/icons/profile.png">
-</div>
+    <section class="card">
+      <div class="card-title">BIO TIME</div>
+      <div class="biotime">8.4</div>
+      <div class="wave-wrap">
+        <img src="/static/icons/CDF3E249-46E2-48AD-875C-8717A17008F8.png" alt="">
+      </div>
+    </section>
 
-</div>
+    <div class="domain-pill">app.aion-live.com</div>
 
+    <nav class="nav">
+      <div class="nav-item">
+        <img src="/static/icons/7E47B3E8-5C29-425C-9460-4A803D990D2A.png" alt="">
+      </div>
+      <div class="nav-item">
+        <img src="/static/icons/F128B05A-2517-4019-B6B8-4B2E193DFE39.png" alt="">
+      </div>
 
-<div class="logo">
-<img src="static/icons/aion.png">
-</div>
+      <div class="nav-center">
+        <img src="/static/icons/582850EE-D506-43BA-8CC4-707742E51051.png" alt="">
+      </div>
 
-<div class="title">
-AION
-</div>
+      <div class="nav-item">
+        <img src="/static/icons/CDF3E249-46E2-48AD-875C-8717A17008F8.png" alt="">
+      </div>
+      <div class="nav-item">
+        <img src="/static/icons/9CD4F665-6854-48E7-AA1C-0F27B9CE18D8.png" alt="">
+      </div>
+    </nav>
+  </div>
 
-<div class="subtitle">
-BIOLOGICAL UPGRADE SYSTEM
-</div>
-
-<div class="enter">
-ENTER SYSTEM →
-</div>
-
-
-<div class="card">
-
-<div style="letter-spacing:10px;margin-bottom:20px;">
-BIO TIME
-</div>
-
-<div class="biotime">
-8.4
-</div>
-
-<div class="wave">
-<img src="static/icons/wave.png">
-</div>
-
-</div>
-
-</div>
-
-
-<div class="bottom">
-
-<img src="static/icons/home.png">
-
-<img src="static/icons/time.png">
-
-<div class="center">
-<img src="static/icons/a.png">
-</div>
-
-<img src="static/icons/health.png">
-
-<img src="static/icons/profile.png">
-
-</div>
-
-
-<script>
-
-const tg = window.Telegram.WebApp;
-
-tg.ready();
-tg.expand();
-
-tg.setHeaderColor("#020617");
-tg.setBackgroundColor("#020617");
-
-</script>
-
+  <script>
+    const tg = window.Telegram && window.Telegram.WebApp ? window.Telegram.WebApp : null;
+    if (tg) {
+      tg.ready();
+      tg.expand();
+      try { tg.setHeaderColor("#040b22"); } catch(e) {}
+      try { tg.setBackgroundColor("#040b22"); } catch(e) {}
+    }
+  </script>
 </body>
 </html>
