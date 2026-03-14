@@ -2,6 +2,7 @@
 <html lang="ru">
 
 <head>
+
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
@@ -32,32 +33,42 @@ margin-bottom:40px;
 }
 
 .icon{
-width:40px;
-height:40px;
+width:50px;
+height:50px;
 border-radius:50%;
 border:1px solid rgba(255,255,255,0.1);
 display:flex;
 align-items:center;
 justify-content:center;
-font-size:20px;
+}
+
+.icon img{
+width:28px;
 }
 
 .logo{
-font-size:120px;
-font-weight:300;
-letter-spacing:20px;
 margin-top:40px;
+}
+
+.logo img{
+width:140px;
+}
+
+.title{
+font-size:36px;
+letter-spacing:12px;
+margin-top:20px;
 }
 
 .subtitle{
 letter-spacing:8px;
 opacity:0.7;
-margin-bottom:40px;
+margin-top:10px;
 }
 
 .enter{
-margin-top:30px;
-padding:20px;
+margin-top:40px;
+padding:22px;
 border-radius:40px;
 background:linear-gradient(180deg,#1e3a8a,#020617);
 border:1px solid rgba(255,255,255,0.2);
@@ -77,6 +88,15 @@ font-size:120px;
 font-weight:200;
 }
 
+.wave{
+margin-top:20px;
+}
+
+.wave img{
+width:100%;
+opacity:0.8;
+}
+
 .bottom{
 position:fixed;
 bottom:20px;
@@ -91,8 +111,8 @@ justify-content:space-around;
 border:1px solid rgba(255,255,255,0.1);
 }
 
-.bottom div{
-font-size:22px;
+.bottom img{
+width:26px;
 }
 
 .center{
@@ -107,7 +127,10 @@ background:rgba(255,255,255,0.1);
 display:flex;
 align-items:center;
 justify-content:center;
-font-size:30px;
+}
+
+.center img{
+width:45px;
 }
 
 </style>
@@ -119,13 +142,25 @@ font-size:30px;
 <div class="container">
 
 <div class="topbar">
-<div class="icon">≡</div>
-<div class="icon">●</div>
+
+<div class="icon">
+<img src="static/icons/menu.png">
 </div>
 
-<div class="logo">A</div>
+<div class="icon">
+<img src="static/icons/profile.png">
+</div>
 
-<div style="font-size:40px;letter-spacing:15px;">AION</div>
+</div>
+
+
+<div class="logo">
+<img src="static/icons/aion.png">
+</div>
+
+<div class="title">
+AION
+</div>
 
 <div class="subtitle">
 BIOLOGICAL UPGRADE SYSTEM
@@ -134,6 +169,7 @@ BIOLOGICAL UPGRADE SYSTEM
 <div class="enter">
 ENTER SYSTEM →
 </div>
+
 
 <div class="card">
 
@@ -145,23 +181,31 @@ BIO TIME
 8.4
 </div>
 
+<div class="wave">
+<img src="static/icons/wave.png">
 </div>
 
 </div>
+
+</div>
+
 
 <div class="bottom">
 
-<div>⌂</div>
-<div>⟳</div>
+<img src="static/icons/home.png">
+
+<img src="static/icons/time.png">
 
 <div class="center">
-A
+<img src="static/icons/a.png">
 </div>
 
-<div>≈</div>
-<div>•</div>
+<img src="static/icons/health.png">
+
+<img src="static/icons/profile.png">
 
 </div>
+
 
 <script>
 
