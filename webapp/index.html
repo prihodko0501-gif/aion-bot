@@ -1,113 +1,40 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>AION</title>
-
-<style>
-
-body{
-margin:0;
-font-family:Arial, Helvetica, sans-serif;
-background:#020817;
-color:white;
-display:flex;
-align-items:center;
-justify-content:center;
-height:100vh;
-overflow:hidden;
-}
-
-.container{
-text-align:center;
-}
-
-.logo{
-font-size:48px;
-font-weight:700;
-letter-spacing:8px;
-margin-bottom:10px;
-}
-
-.subtitle{
-font-size:14px;
-opacity:0.6;
-margin-bottom:40px;
-}
-
-.button{
-padding:16px 32px;
-border-radius:30px;
-background:#0b1f3a;
-border:1px solid #2f7df6;
-color:white;
-font-size:16px;
-cursor:pointer;
-}
-
-.button:hover{
-background:#12305a;
-}
-
-.biotime{
-margin-top:40px;
-font-size:34px;
-font-weight:600;
-}
-
-.footer{
-position:fixed;
-bottom:0;
-left:0;
-right:0;
-height:70px;
-background:#050d1f;
-display:flex;
-justify-content:space-around;
-align-items:center;
-}
-
-.footer div{
-opacity:0.7;
-}
-
-</style>
+<link rel="stylesheet" href="/webapp/aion.css">
 </head>
 
-<body>
+<body class="aion-bg">
 
 <div class="container">
 
-<div class="logo">AION</div>
+<div class="logo">
+AION
+</div>
 
 <div class="subtitle">
 BIOLOGICAL UPGRADE SYSTEM
 </div>
 
-<button class="button">
+<button class="enter-btn" onclick="enterSystem()">
 ENTER SYSTEM →
 </button>
 
-<div class="biotime">
-BIO TIME 8.4
+<div class="biotime-card">
+<div class="biotime-label">
+BIO TIME
+</div>
+
+<div id="biotime" class="biotime-value">
+8.4
+</div>
 </div>
 
 </div>
 
-<div class="footer">
-
-<div>HOME</div>
-<div>DATA</div>
-<div>AION</div>
-<div>HEALTH</div>
-<div>PROFILE</div>
-
-</div>
-
-<div style="position:fixed;bottom:6px;left:10px;color:#7fd6ff;font-size:10px;z-index:9999;">
-TEST DEPLOY 17:45
-</div>
+<script src="/webapp/aion.js"></script>
 
 </body>
 </html>
