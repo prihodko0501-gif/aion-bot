@@ -1,416 +1,372 @@
-import os
-from datetime import datetime, timedelta
-
-import psycopg
-import requests
-from flask import Flask, jsonify, request, send_from_directory
+from flask import Flask
 
 app = Flask(__name__)
 
-TELEGRAM_TOKEN = os.environ.get("TELEGRAM_TOKEN")
-API = f"https://api.telegram.org/bot{TELEGRAM_TOKEN}" if TELEGRAM_TOKEN else None
-BASE_URL = os.environ.get("BASE_URL", "https://aion-bot.onrender.com")
-DATABASE_URL = os.environ.get("DATABASE_URL")
-
-
-# -----------------------------
-# DB
-# -----------------------------
-
-def get_db_connection():
-    if not DATABASE_URL:
-        raise RuntimeError("DATABASE_URL is not set")
-    return psycopg.connect(DATABASE_URL)
-
-
-def init_db():
-    with get_db_connection() as conn:
-        with conn.cursor() as cur:
-            cur.execute("""
-                CREATE TABLE IF NOT EXISTS biotime_entries (
-                    id BIGSERIAL PRIMARY KEY,
-                    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-                    entry_date DATE NOT NULL DEFAULT CURRENT_DATE,
-                    biotime NUMERIC(6, 2),
-                    sleep NUMERIC(6, 2),
-                    stress NUMERIC(6, 2),
-                    recovery NUMERIC(6, 2),
-                    pressure VARCHAR(20)
-                );
-            """)
-        conn.commit()
-
-
-# -----------------------------
-# HELPERS
-# -----------------------------
-
-def clamp(value, low, high):
-    return max(low, min(high, value))
-
-
-def parse_float(value):
-    if value in (None, "", "null"):
-        return None
-    try:
-        return float(value)
-    except Exception:
-        return None
-
-
-def parse_int(value):
-    if value in (None, "", "null"):
-        return None
-    try:
-        return int(value)
-    except Exception:
-        return None
-
-
-def parse_pressure_string(value):
-    if not value:
-        return None, None
-
-    value = str(value).strip().replace(" ", "")
-    if "/" not in value:
-        return None, None
-
-    parts = value.split("/")
-    if len(parts) != 2:
-        return None, None
-
-    sys_val = parse_int(parts[0])
-    dia_val = parse_int(parts[1])
-    return sys_val, dia_val
-
-
-def pressure_penalty(systolic, diastolic):
-    penalty = 0.0
-
-    if systolic is None or diastolic is None:
-        return 0.0
-
-    if systolic >= 140:
-        penalty += 1.2
-    elif systolic >= 130:
-        penalty += 0.6
-    elif systolic < 100:
-        penalty += 0.4
-
-    if diastolic >= 90:
-        penalty += 0.8
-    elif diastolic >= 85:
-        penalty += 0.4
-    elif diastolic < 60:
-        penalty += 0.3
-
-    return round(penalty, 2)
-
-
-def compute_biotime(sleep, stress, recovery, pressure=None):
-    sleep = float(sleep or 0)
-    stress = float(stress or 0)
-    recovery = float(recovery or 0)
-
-    sleep10 = sleep / 10.0
-    stress10 = stress / 10.0
-    recovery10 = recovery / 10.0
-
-    systolic, diastolic = parse_pressure_string(pressure)
-    p_penalty = pressure_penalty(systolic, diastolic)
-
-    biotime = round((sleep10 * 1.2 + recovery10 * 1.2 - stress10) - p_penalty, 1)
-    biotime = clamp(biotime, 0, 12)
-    return biotime
-
-
-def serialize_entry(row):
-    if not row:
-        return {
-            "biotime": None,
-            "sleep": None,
-            "stress": None,
-            "recovery": None,
-            "pressure": None,
-            "date": None,
-            "created_at": None,
-        }
-
-    created_at = row["created_at"]
-    entry_date = row["entry_date"]
-
-    return {
-        "biotime": float(row["biotime"]) if row["biotime"] is not None else None,
-        "sleep": float(row["sleep"]) if row["sleep"] is not None else None,
-        "stress": float(row["stress"]) if row["stress"] is not None else None,
-        "recovery": float(row["recovery"]) if row["recovery"] is not None else None,
-        "pressure": row["pressure"],
-        "date": entry_date.isoformat() if entry_date else None,
-        "created_at": created_at.isoformat() if created_at else None,
+HTML = """
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>AION</title>
+  <style>
+    :root{
+      --bg1:#020814;
+      --bg2:#04142c;
+      --line:rgba(116,170,255,.18);
+      --glow:rgba(88,170,255,.35);
+      --text:#eef6ff;
+      --muted:#9db2d1;
+      --panel:rgba(5,14,30,.72);
+      --panel2:rgba(6,18,40,.88);
+      --blue1:#7fd6ff;
+      --blue2:#5f9dff;
+      --blue3:#1a5dff;
     }
 
+    *{
+      box-sizing:border-box;
+      -webkit-tap-highlight-color:transparent;
+    }
 
-def insert_entry(biotime, sleep, stress, recovery, pressure, entry_date=None, created_at=None):
-    with get_db_connection() as conn:
-        with conn.cursor(row_factory=psycopg.rows.dict_row) as cur:
-            if entry_date is None:
-                entry_date = datetime.utcnow().date()
+    html,body{
+      margin:0;
+      width:100%;
+      min-height:100%;
+      background:
+        radial-gradient(1200px 800px at 50% -10%, #0c2f70 0%, rgba(12,47,112,0) 45%),
+        radial-gradient(700px 700px at 100% 10%, rgba(76,125,255,.16) 0%, rgba(76,125,255,0) 45%),
+        linear-gradient(180deg, var(--bg2) 0%, var(--bg1) 58%, #01050d 100%);
+      color:var(--text);
+      font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif;
+      overflow-x:hidden;
+    }
 
-            if created_at is None:
-                cur.execute("""
-                    INSERT INTO biotime_entries (
-                        entry_date, biotime, sleep, stress, recovery, pressure
-                    )
-                    VALUES (%s, %s, %s, %s, %s, %s)
-                    RETURNING id, created_at, entry_date, biotime, sleep, stress, recovery, pressure
-                """, (entry_date, biotime, sleep, stress, recovery, pressure))
-            else:
-                cur.execute("""
-                    INSERT INTO biotime_entries (
-                        created_at, entry_date, biotime, sleep, stress, recovery, pressure
-                    )
-                    VALUES (%s, %s, %s, %s, %s, %s, %s)
-                    RETURNING id, created_at, entry_date, biotime, sleep, stress, recovery, pressure
-                """, (created_at, entry_date, biotime, sleep, stress, recovery, pressure))
+    body{
+      display:flex;
+      justify-content:center;
+    }
 
-            row = cur.fetchone()
-        conn.commit()
-    return row
+    .app{
+      position:relative;
+      width:100%;
+      max-width:430px;
+      min-height:100vh;
+      padding:18px 16px 130px;
+      overflow:hidden;
+    }
 
+    .stars, .stars:before, .stars:after{
+      position:absolute;
+      inset:0;
+      content:"";
+      background-image:
+        radial-gradient(circle at 12% 18%, rgba(255,255,255,.65) 0 1.2px, transparent 2px),
+        radial-gradient(circle at 18% 32%, rgba(255,255,255,.4) 0 1px, transparent 2px),
+        radial-gradient(circle at 84% 20%, rgba(255,255,255,.55) 0 1.2px, transparent 2px),
+        radial-gradient(circle at 78% 42%, rgba(255,255,255,.35) 0 1px, transparent 2px),
+        radial-gradient(circle at 88% 60%, rgba(255,255,255,.45) 0 1.1px, transparent 2px),
+        radial-gradient(circle at 10% 72%, rgba(255,255,255,.3) 0 1px, transparent 2px);
+      pointer-events:none;
+    }
 
-def get_latest_entry():
-    with get_db_connection() as conn:
-        with conn.cursor(row_factory=psycopg.rows.dict_row) as cur:
-            cur.execute("""
-                SELECT id, created_at, entry_date, biotime, sleep, stress, recovery, pressure
-                FROM biotime_entries
-                ORDER BY created_at DESC, id DESC
-                LIMIT 1
-            """)
-            return cur.fetchone()
+    .ring{
+      position:absolute;
+      right:-130px;
+      top:60px;
+      width:360px;
+      height:360px;
+      border-radius:50%;
+      border:1px solid rgba(120,160,255,.12);
+      box-shadow:
+        0 0 0 34px rgba(120,160,255,.05),
+        0 0 0 74px rgba(120,160,255,.025);
+      pointer-events:none;
+    }
 
+    .topbar{
+      display:flex;
+      justify-content:space-between;
+      align-items:center;
+      margin-bottom:28px;
+      position:relative;
+      z-index:2;
+    }
 
-def get_history(days=7):
-    with get_db_connection() as conn:
-        with conn.cursor(row_factory=psycopg.rows.dict_row) as cur:
-            cur.execute("""
-                SELECT id, created_at, entry_date, biotime, sleep, stress, recovery, pressure
-                FROM biotime_entries
-                ORDER BY created_at DESC, id DESC
-                LIMIT %s
-            """, (days,))
-            rows = cur.fetchall()
+    .icon-btn{
+      width:44px;
+      height:44px;
+      border-radius:50%;
+      border:1px solid rgba(140,190,255,.16);
+      background:rgba(8,18,34,.3);
+      color:#fff;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      font-size:24px;
+      box-shadow:
+        0 0 18px rgba(90,150,255,.08) inset,
+        0 0 24px rgba(30,80,180,.06);
+    }
 
-    rows.reverse()
-    return rows
+    .profile{
+      font-size:22px;
+      line-height:1;
+    }
 
+    .hero{
+      text-align:center;
+      position:relative;
+      z-index:2;
+    }
 
-def clear_all_entries():
-    with get_db_connection() as conn:
-        with conn.cursor() as cur:
-            cur.execute("TRUNCATE TABLE biotime_entries RESTART IDENTITY;")
-        conn.commit()
+    .logo-wrap{
+      margin:6px auto 10px;
+      width:170px;
+      height:210px;
+      position:relative;
+      filter:drop-shadow(0 0 24px rgba(120,190,255,.24));
+    }
 
+    .logo-main{
+      position:absolute;
+      inset:0;
+      margin:auto;
+      width:170px;
+      height:210px;
+      background:linear-gradient(180deg, #ddfbff 0%, #7bbaff 45%, #5b7dff 100%);
+      clip-path:polygon(50% 0%, 90% 92%, 70% 92%, 50% 35%, 30% 92%, 10% 92%);
+    }
 
-def seed_demo_history():
-    clear_all_entries()
+    .logo-inner{
+      position:absolute;
+      left:50%;
+      top:26%;
+      transform:translateX(-50%);
+      width:54px;
+      height:88px;
+      background:linear-gradient(180deg, #081932 0%, #0d2d66 100%);
+      clip-path:polygon(50% 0%, 100% 100%, 0% 100%);
+      box-shadow:0 0 24px rgba(60,100,255,.25);
+    }
 
-    base = datetime.utcnow()
-    demo_rows = [
-        (7.8, 88, 31, 74, "126/78"),
-        (8.0, 89, 30, 75, "125/78"),
-        (8.1, 90, 29, 76, "125/77"),
-        (8.2, 91, 28, 76, "124/77"),
-        (8.3, 91, 28, 77, "124/76"),
-        (8.4, 92, 27, 78, "124/76"),
-        (8.4, 92, 27, 78, "124/76"),
-    ]
+    .logo-core{
+      position:absolute;
+      left:50%;
+      top:58px;
+      transform:translateX(-50%);
+      width:18px;
+      height:18px;
+      border-radius:50%;
+      background:radial-gradient(circle, #e9ffff 0%, #b2eeff 45%, #69b7ff 70%, rgba(105,183,255,.2) 100%);
+      box-shadow:0 0 22px rgba(125,220,255,.85);
+    }
 
-    for i, row in enumerate(demo_rows):
-        dt = base - timedelta(days=(len(demo_rows) - 1 - i))
-        entry_date = dt.date()
-        created_at = dt
-        insert_entry(*row, entry_date=entry_date, created_at=created_at)
+    .brand{
+      font-size:64px;
+      letter-spacing:12px;
+      font-weight:300;
+      margin:0;
+    }
 
+    .sub{
+      margin-top:8px;
+      color:var(--muted);
+      letter-spacing:8px;
+      font-size:13px;
+      text-transform:uppercase;
+    }
 
-# -----------------------------
-# ROUTES
-# -----------------------------
+    .enter{
+      margin:28px auto 22px;
+      width:100%;
+      border-radius:999px;
+      padding:20px 24px;
+      border:1px solid rgba(96,170,255,.28);
+      background:linear-gradient(180deg, rgba(22,54,120,.8), rgba(5,18,52,.96));
+      box-shadow:
+        inset 0 0 18px rgba(120,190,255,.14),
+        0 0 18px rgba(25,80,200,.18);
+      color:#eef8ff;
+      font-size:22px;
+      letter-spacing:1px;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      gap:12px;
+    }
+
+    .card{
+      position:relative;
+      width:100%;
+      border-radius:30px;
+      padding:24px 22px;
+      background:linear-gradient(180deg, rgba(4,14,34,.94), rgba(1,8,22,.94));
+      border:1px solid rgba(82,130,255,.16);
+      box-shadow:
+        inset 0 0 30px rgba(80,120,255,.05),
+        0 10px 30px rgba(0,0,0,.26);
+      overflow:hidden;
+    }
+
+    .card::after{
+      content:"";
+      position:absolute;
+      left:10%;
+      right:10%;
+      bottom:28px;
+      height:3px;
+      border-radius:99px;
+      background:linear-gradient(90deg, rgba(80,180,255,0), rgba(120,220,255,.95), rgba(80,180,255,0));
+      box-shadow:0 0 20px rgba(120,220,255,.65);
+    }
+
+    .card-label{
+      color:var(--muted);
+      letter-spacing:10px;
+      font-size:12px;
+      text-transform:uppercase;
+      margin-bottom:18px;
+    }
+
+    .card-value{
+      font-size:96px;
+      line-height:1;
+      font-weight:300;
+      margin:0 0 50px;
+    }
+
+    .bottom-nav{
+      position:fixed;
+      left:50%;
+      transform:translateX(-50%);
+      bottom:14px;
+      width:calc(100% - 24px);
+      max-width:406px;
+      border-radius:34px;
+      padding:14px 16px;
+      background:linear-gradient(180deg, rgba(3,12,28,.98), rgba(0,7,18,.98));
+      border:1px solid rgba(96,150,255,.14);
+      box-shadow:
+        0 0 0 1px rgba(24,44,86,.15) inset,
+        0 12px 40px rgba(0,0,0,.46);
+      display:flex;
+      justify-content:space-between;
+      align-items:center;
+      z-index:5;
+    }
+
+    .nav-item{
+      width:62px;
+      height:62px;
+      border-radius:22px;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      color:#e8f3ff;
+      font-size:28px;
+      opacity:.92;
+    }
+
+    .nav-item.active{
+      background:linear-gradient(180deg, rgba(25,55,130,.92), rgba(9,22,68,.96));
+      border:1px solid rgba(115,180,255,.2);
+      box-shadow:inset 0 0 18px rgba(120,200,255,.16);
+    }
+
+    .nav-center{
+      width:104px;
+      height:104px;
+      border-radius:50%;
+      margin-top:-40px;
+      background:
+        radial-gradient(circle at 50% 42%, rgba(177,234,255,.9) 0%, rgba(112,194,255,.44) 18%, rgba(41,88,198,.36) 42%, rgba(8,20,56,.98) 74%);
+      border:1px solid rgba(120,190,255,.2);
+      box-shadow:
+        0 0 26px rgba(88,160,255,.28),
+        inset 0 0 26px rgba(160,230,255,.14);
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      position:relative;
+    }
+
+    .nav-center::after{
+      content:"";
+      position:absolute;
+      inset:22px;
+      border-radius:50%;
+      background:rgba(255,255,255,.02);
+      filter:blur(1px);
+    }
+
+    .nav-a{
+      position:relative;
+      width:30px;
+      height:36px;
+      background:linear-gradient(180deg, #f0fbff 0%, #98caff 50%, #678fff 100%);
+      clip-path:polygon(50% 0%, 100% 100%, 78% 100%, 50% 42%, 22% 100%, 0% 100%);
+      z-index:1;
+    }
+
+    .hint{
+      margin-top:18px;
+      text-align:center;
+      color:#88a7d0;
+      font-size:12px;
+      opacity:.7;
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <div class="stars"></div>
+    <div class="ring"></div>
+
+    <div class="topbar">
+      <div class="icon-btn">☰</div>
+      <div class="icon-btn profile">○</div>
+    </div>
+
+    <div class="hero">
+      <div class="logo-wrap">
+        <div class="logo-main"></div>
+        <div class="logo-inner"></div>
+        <div class="logo-core"></div>
+      </div>
+
+      <h1 class="brand">AION</h1>
+      <div class="sub">Biological Upgrade System</div>
+
+      <div class="enter">ENTER SYSTEM <span>→</span></div>
+
+      <div class="card">
+        <div class="card-label">BIO TIME</div>
+        <div class="card-value">8.4</div>
+      </div>
+
+      <div class="hint">AION Premium Preview</div>
+    </div>
+  </div>
+
+  <div class="bottom-nav">
+    <div class="nav-item active">⌂</div>
+    <div class="nav-item">◔</div>
+    <div class="nav-center"><div class="nav-a"></div></div>
+    <div class="nav-item">∿</div>
+    <div class="nav-item">○</div>
+  </div>
+</body>
+</html>
+"""
 
 @app.route("/")
 def home():
-    return "AION is alive 🚀", 200
+    return HTML
 
-
-@app.route("/miniapp")
+@app.route("/app")
 def miniapp():
-    return send_from_directory("templates", "miniapp.html")
-
-
-@app.route("/api/dashboard")
-def api_dashboard():
-    row = get_latest_entry()
-    entry = serialize_entry(row)
-
-    return jsonify({
-        "data": {
-            "biotime": entry["biotime"],
-            "sleep": entry["sleep"],
-            "stress": entry["stress"],
-            "recovery": entry["recovery"],
-            "pressure": entry["pressure"],
-            "date": entry["date"],
-            "created_at": entry["created_at"],
-        }
-    })
-
-
-@app.route("/api/history")
-def api_history():
-    try:
-        days = int(request.args.get("days", 7))
-    except Exception:
-        days = 7
-
-    if days not in (7, 30, 90):
-        days = 7
-
-    rows = get_history(days)
-
-    return jsonify({
-        "days": days,
-        "data": [serialize_entry(row) for row in rows]
-    })
-
-
-@app.route("/api/demo-seed")
-def api_demo_seed():
-    seed_demo_history()
-    row = get_latest_entry()
-    entry = serialize_entry(row)
-
-    return jsonify({
-        "status": "demo data inserted",
-        "data": {
-            "biotime": entry["biotime"],
-            "sleep": entry["sleep"],
-            "stress": entry["stress"],
-            "recovery": entry["recovery"],
-            "pressure": entry["pressure"],
-            "date": entry["date"],
-            "created_at": entry["created_at"],
-        }
-    })
-
-
-@app.route("/api/entry", methods=["POST"])
-def api_entry():
-    payload = request.get_json(silent=True) or {}
-
-    sleep = parse_float(payload.get("sleep"))
-    if sleep is None:
-        sleep = parse_float(payload.get("sleep_score"))
-
-    stress = parse_float(payload.get("stress"))
-    if stress is None:
-        stress = parse_float(payload.get("stress_score"))
-
-    recovery = parse_float(payload.get("recovery"))
-    if recovery is None:
-        recovery = parse_float(payload.get("recovery_score"))
-
-    pressure = payload.get("pressure")
-
-    if not pressure:
-        systolic = parse_int(payload.get("systolic"))
-        diastolic = parse_int(payload.get("diastolic"))
-        if systolic is not None and diastolic is not None:
-            pressure = f"{systolic}/{diastolic}"
-
-    if sleep is None or stress is None or recovery is None:
-        return jsonify({
-            "ok": False,
-            "error": "sleep, stress, recovery are required"
-        }), 400
-
-    biotime = compute_biotime(sleep, stress, recovery, pressure)
-    row = insert_entry(
-        biotime=biotime,
-        sleep=sleep,
-        stress=stress,
-        recovery=recovery,
-        pressure=pressure,
-    )
-    entry = serialize_entry(row)
-
-    return jsonify({
-        "ok": True,
-        "data": {
-            "biotime": entry["biotime"],
-            "sleep": entry["sleep"],
-            "stress": entry["stress"],
-            "recovery": entry["recovery"],
-            "pressure": entry["pressure"],
-            "date": entry["date"],
-            "created_at": entry["created_at"],
-        }
-    })
-
-
-@app.route("/webhook", methods=["POST"])
-def webhook():
-    data = request.get_json(silent=True)
-
-    if not data:
-        return {"ok": True}
-
-    message = data.get("message")
-    if not message:
-        return {"ok": True}
-
-    chat_id = message["chat"]["id"]
-    text = (message.get("text") or "").strip()
-
-    if text == "/start" and API:
-        try:
-            requests.post(
-                f"{API}/sendMessage",
-                json={
-                    "chat_id": chat_id,
-                    "text": "AION system online 🚀\n\nНажми кнопку ниже, чтобы открыть Mini App.",
-                    "reply_markup": {
-                        "inline_keyboard": [
-                            [
-                                {
-                                    "text": "🚀 Open AION",
-                                    "web_app": {
-                                        "url": f"{BASE_URL}/miniapp"
-                                    }
-                                }
-                            ],
-                            [
-                                {
-                                    "text": "📥 Загрузить demo data",
-                                    "url": f"{BASE_URL}/api/demo-seed"
-                                }
-                            ]
-                        ]
-                    }
-                },
-                timeout=15
-            )
-        except Exception as e:
-            print("sendMessage error:", repr(e))
-
-    return {"ok": True}
-
-
-# -----------------------------
-# START
-# -----------------------------
-
-init_db()
+    return HTML
 
 if __name__ == "__main__":
-    port = int(os.environ.get("PORT", 10000))
-    app.run(host="0.0.0.0", port=port)
+    app.run(host="0.0.0.0", port=10000)
