@@ -1,68 +1,179 @@
-<div class="aion-screen home-screen">
-  <div class="space-bg"></div>
-  <div class="orb orb-1"></div>
-  <div class="orb orb-2"></div>
+<!DOCTYPE html>
+<html lang="ru">
 
-  <header class="topbar">
-    <button class="icon-btn" aria-label="Menu">
-      <img src="/static/icons/69A9028D-D1C7-4A3B-9737-7BB2C78C9A4B.png" alt="Menu">
-    </button>
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-    <button class="icon-btn" aria-label="Profile">
-      <img src="/static/icons/9CD4F665-6854-48E7-AA1C-0F27B9CE18D8.png" alt="Profile">
-    </button>
-  </header>
+<title>AION</title>
 
-  <main class="home-content">
-    <section class="brand-block">
-      <div class="brand-mark-wrap">
-        <img
-          class="brand-mark"
-          src="/static/icons/582850EE-D506-43BA-8CC4-707742E51051.png"
-          alt="AION"
-        >
-      </div>
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
 
-      <div class="brand-name">AION</div>
-      <div class="brand-subtitle">BIOLOGICAL UPGRADE SYSTEM</div>
-    </section>
+<style>
 
-    <button class="enter-system-btn" id="enterSystemBtn">
-      <span>ENTER SYSTEM</span>
-      <span class="arrow">→</span>
-    </button>
+body{
+margin:0;
+font-family:Arial,Helvetica,sans-serif;
+background:#020617;
+color:white;
+overflow-x:hidden;
+}
 
-    <section class="bio-card">
-      <div class="bio-card-title">BIO TIME</div>
-      <div class="bio-card-value">8.4</div>
+.container{
+padding:20px;
+text-align:center;
+}
 
-      <div class="bio-wave">
-        <svg viewBox="0 0 600 120" preserveAspectRatio="none">
-          <path d="M0,84 C56,100 108,104 166,92 C224,80 276,53 334,51 C392,49 448,78 506,79 C542,79 572,72 600,58" />
-        </svg>
-      </div>
-    </section>
-  </main>
+.topbar{
+display:flex;
+justify-content:space-between;
+align-items:center;
+margin-bottom:40px;
+}
 
-  <nav class="bottom-nav">
-    <button class="nav-item active" aria-label="Home">
-      <img src="/static/icons/7E47B3E8-5C29-425C-9460-4A803D990D2A.png" alt="Home">
-    </button>
+.icon{
+width:40px;
+height:40px;
+border-radius:50%;
+border:1px solid rgba(255,255,255,0.1);
+display:flex;
+align-items:center;
+justify-content:center;
+font-size:20px;
+}
 
-    <button class="nav-item" aria-label="History">
-      <img src="/static/icons/F128B05A-2517-4019-B6B8-4B2E193DFE39.png" alt="History">
-    </button>
+.logo{
+font-size:120px;
+font-weight:300;
+letter-spacing:20px;
+margin-top:40px;
+}
 
-    <button class="nav-center" aria-label="AION Center">
-      <img src="/static/icons/582850EE-D506-43BA-8CC4-707742E51051.png" alt="AION Center">
-    </button>
+.subtitle{
+letter-spacing:8px;
+opacity:0.7;
+margin-bottom:40px;
+}
 
-    <button class="nav-item" aria-label="Wave">
-      <img src="/static/icons/CDF3E249-46E2-48AD-875C-8717A17008F8.png" alt="Wave">
-    </button>
+.enter{
+margin-top:30px;
+padding:20px;
+border-radius:40px;
+background:linear-gradient(180deg,#1e3a8a,#020617);
+border:1px solid rgba(255,255,255,0.2);
+font-size:20px;
+}
 
-    <button class="nav-item" aria-label="Profile">
-      <img src="/static/icons/9CD4F665-6854-48E7-AA1C-0F27B9CE18D8.png" alt="Profile">
-    </button>
-  </nav>
+.card{
+margin-top:40px;
+padding:40px;
+border-radius:30px;
+background:rgba(0,0,0,0.4);
+border:1px solid rgba(255,255,255,0.1);
+}
+
+.biotime{
+font-size:120px;
+font-weight:200;
+}
+
+.bottom{
+position:fixed;
+bottom:20px;
+left:20px;
+right:20px;
+height:80px;
+background:rgba(0,0,0,0.6);
+border-radius:30px;
+display:flex;
+align-items:center;
+justify-content:space-around;
+border:1px solid rgba(255,255,255,0.1);
+}
+
+.bottom div{
+font-size:22px;
+}
+
+.center{
+position:absolute;
+bottom:35px;
+left:50%;
+transform:translateX(-50%);
+width:80px;
+height:80px;
+border-radius:50%;
+background:rgba(255,255,255,0.1);
+display:flex;
+align-items:center;
+justify-content:center;
+font-size:30px;
+}
+
+</style>
+
+</head>
+
+<body>
+
+<div class="container">
+
+<div class="topbar">
+<div class="icon">≡</div>
+<div class="icon">●</div>
 </div>
+
+<div class="logo">A</div>
+
+<div style="font-size:40px;letter-spacing:15px;">AION</div>
+
+<div class="subtitle">
+BIOLOGICAL UPGRADE SYSTEM
+</div>
+
+<div class="enter">
+ENTER SYSTEM →
+</div>
+
+<div class="card">
+
+<div style="letter-spacing:10px;margin-bottom:20px;">
+BIO TIME
+</div>
+
+<div class="biotime">
+8.4
+</div>
+
+</div>
+
+</div>
+
+<div class="bottom">
+
+<div>⌂</div>
+<div>⟳</div>
+
+<div class="center">
+A
+</div>
+
+<div>≈</div>
+<div>•</div>
+
+</div>
+
+<script>
+
+const tg = window.Telegram.WebApp;
+
+tg.ready();
+tg.expand();
+
+tg.setHeaderColor("#020617");
+tg.setBackgroundColor("#020617");
+
+</script>
+
+</body>
+</html>
