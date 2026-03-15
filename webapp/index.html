@@ -476,24 +476,52 @@
 
     <section class="hero">
       <div class="logo-box">
-        <svg viewBox="0 0 220 280" xmlns="http://www.w3.org/2000/svg">
-          <defs>
-            <linearGradient id="g1" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stop-color="#ecfbff"/>
-              <stop offset="40%" stop-color="#9bdcff"/>
-              <stop offset="100%" stop-color="#6f82ff"/>
-            </linearGradient>
-            <radialGradient id="dotg" cx="50%" cy="50%" r="50%">
-              <stop offset="0%" stop-color="#ffffff"/>
-              <stop offset="55%" stop-color="#bce8ff"/>
-              <stop offset="100%" stop-color="#81b0ff"/>
-            </radialGradient>
-          </defs>
-          <path d="M110 8L192 232H160L110 96L60 232H28L110 8Z" fill="url(#g1)"/>
-          <path d="M110 98L154 188H136L110 132L84 188H66L110 98Z" fill="#11265a" opacity=".92"/>
-          <circle cx="110" cy="100" r="12" fill="url(#dotg)"/>
-        </svg>
-      </div>
+<svg viewBox="0 0 260 300" xmlns="http://www.w3.org/2000/svg">
+
+<defs>
+
+<linearGradient id="aionMain" x1="0%" y1="0%" x2="0%" y2="100%">
+<stop offset="0%" stop-color="#f6fbff"/>
+<stop offset="45%" stop-color="#9ed8ff"/>
+<stop offset="100%" stop-color="#3b6dff"/>
+</linearGradient>
+
+<radialGradient id="aionDot">
+<stop offset="0%" stop-color="#ffffff"/>
+<stop offset="60%" stop-color="#9bd8ff"/>
+<stop offset="100%" stop-color="#4a7dff"/>
+</radialGradient>
+
+</defs>
+
+<!-- левая сторона -->
+<path
+d="M130 10 L40 240 L80 240 L130 120 Z"
+fill="url(#aionMain)"
+/>
+
+<!-- правая сторона -->
+<path
+d="M130 10 L220 240 L180 240 L130 120 Z"
+fill="url(#aionMain)"
+/>
+
+<!-- внутренняя стрелка -->
+<path
+d="M130 120 L170 200 L150 200 L130 150 L110 200 L90 200 Z"
+fill="#0f2a60"
+/>
+
+<!-- центральная точка -->
+<circle
+cx="130"
+cy="120"
+r="11"
+fill="url(#aionDot)"
+/>
+
+</svg>
+</div>
 
       <div class="brand">AION</div>
       <div class="subtitle">BIOLOGICAL UPGRADE SYSTEM</div>
