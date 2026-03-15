@@ -7,16 +7,16 @@
   <script src="https://telegram.org/js/telegram-web-app.js"></script>
   <style>
     :root{
-      --bg-top:#071741;
-      --bg-mid:#041029;
-      --bg-bot:#020611;
-      --text:#eef4ff;
-      --muted:rgba(229,236,250,.76);
-      --line:rgba(129,161,255,.14);
-      --line-soft:rgba(140,200,255,.16);
-      --glass1:rgba(5,14,35,.50);
-      --glass2:rgba(2,8,22,.76);
-      --glow:#84cfff;
+      --bg-top:#061741;
+      --bg-mid:#031028;
+      --bg-bot:#01050f;
+      --text:#eef5ff;
+      --muted:rgba(231,238,255,.78);
+      --line:rgba(132,168,255,.16);
+      --line2:rgba(130,210,255,.18);
+      --glass1:rgba(6,14,35,.46);
+      --glass2:rgba(2,8,22,.78);
+      --glow:#8ad3ff;
     }
 
     *{
@@ -27,30 +27,30 @@
     html,body{
       margin:0;
       min-height:100%;
+      overflow-x:hidden;
       font-family:Arial,Helvetica,sans-serif;
       color:var(--text);
-      background:#020611;
-      overflow-x:hidden;
+      background:#01050f;
     }
 
     body{
       background:
-        radial-gradient(circle at 50% 10%, rgba(56,102,255,.13), transparent 24%),
-        radial-gradient(circle at 50% 100%, rgba(80,180,255,.10), transparent 28%),
-        linear-gradient(180deg,var(--bg-top) 0%, var(--bg-mid) 38%, var(--bg-bot) 80%, #01030a 100%);
+        radial-gradient(circle at 66% 12%, rgba(102,155,255,.16), transparent 22%),
+        radial-gradient(circle at 28% 46%, rgba(75,125,255,.08), transparent 18%),
+        radial-gradient(circle at 72% 78%, rgba(90,185,255,.08), transparent 24%),
+        linear-gradient(180deg, var(--bg-top) 0%, var(--bg-mid) 40%, var(--bg-bot) 82%, #000208 100%);
     }
 
     .screen{
       position:relative;
       min-height:100vh;
       overflow:hidden;
-      padding:22px 20px 136px;
+      padding:22px 20px 132px;
     }
 
     .nebula,
     .stars,
-    .stars2,
-    .stars3,
+    .stars-soft,
     .fog{
       position:absolute;
       inset:0;
@@ -62,11 +62,11 @@
       position:absolute;
       inset:-10%;
       background:
-        radial-gradient(circle at 66% 18%, rgba(119,180,255,.12), transparent 20%),
-        radial-gradient(circle at 28% 48%, rgba(86,123,255,.08), transparent 18%),
-        radial-gradient(circle at 70% 72%, rgba(77,147,255,.06), transparent 22%);
-      filter:blur(18px);
-      opacity:.9;
+        radial-gradient(circle at 72% 18%, rgba(154,214,255,.10), transparent 18%),
+        radial-gradient(circle at 62% 30%, rgba(112,168,255,.10), transparent 24%),
+        radial-gradient(circle at 22% 58%, rgba(78,106,255,.07), transparent 18%);
+      filter:blur(20px);
+      opacity:.95;
     }
 
     .stars::before{
@@ -74,75 +74,76 @@
       position:absolute;
       inset:0;
       background:
-        radial-gradient(circle at 10% 25%, rgba(255,255,255,.86) 0 2px, transparent 3px),
-        radial-gradient(circle at 85% 31%, rgba(255,255,255,.70) 0 2px, transparent 3px),
-        radial-gradient(circle at 17% 46%, rgba(255,255,255,.46) 0 2px, transparent 3px),
-        radial-gradient(circle at 74% 56%, rgba(255,255,255,.40) 0 2px, transparent 3px),
-        radial-gradient(circle at 24% 70%, rgba(255,255,255,.26) 0 2px, transparent 3px),
-        radial-gradient(circle at 67% 77%, rgba(255,255,255,.22) 0 2px, transparent 3px);
-      opacity:.92;
+        radial-gradient(circle at 10% 25%, rgba(255,255,255,.92) 0 2px, transparent 3px),
+        radial-gradient(circle at 86% 34%, rgba(255,255,255,.78) 0 2px, transparent 3px),
+        radial-gradient(circle at 18% 47%, rgba(255,255,255,.48) 0 2px, transparent 3px),
+        radial-gradient(circle at 73% 58%, rgba(255,255,255,.45) 0 2px, transparent 3px),
+        radial-gradient(circle at 24% 70%, rgba(255,255,255,.28) 0 2px, transparent 3px),
+        radial-gradient(circle at 67% 76%, rgba(255,255,255,.24) 0 2px, transparent 3px);
+      opacity:.95;
     }
 
-    .stars2::before{
+    .stars-soft::before{
       content:"";
       position:absolute;
       inset:0;
       background:
-        radial-gradient(circle at 35% 17%, rgba(255,255,255,.18) 0 1px, transparent 2px),
+        radial-gradient(circle at 38% 18%, rgba(255,255,255,.18) 0 1px, transparent 2px),
         radial-gradient(circle at 58% 23%, rgba(255,255,255,.16) 0 1px, transparent 2px),
         radial-gradient(circle at 30% 58%, rgba(255,255,255,.16) 0 1px, transparent 2px),
-        radial-gradient(circle at 82% 65%, rgba(255,255,255,.14) 0 1px, transparent 2px),
-        radial-gradient(circle at 62% 41%, rgba(255,255,255,.14) 0 1px, transparent 2px);
-      opacity:.72;
+        radial-gradient(circle at 82% 65%, rgba(255,255,255,.15) 0 1px, transparent 2px),
+        radial-gradient(circle at 64% 42%, rgba(255,255,255,.14) 0 1px, transparent 2px),
+        radial-gradient(circle at 46% 34%, rgba(255,255,255,.14) 0 1px, transparent 2px);
+      opacity:.75;
     }
 
     .arc{
       position:absolute;
       border-radius:50%;
-      border:1px solid rgba(130,162,255,.08);
+      border:1px solid rgba(132,167,255,.08);
       pointer-events:none;
     }
 
     .arc1{
-      width:126vw;
-      height:126vw;
-      right:-48vw;
+      width:124vw;
+      height:124vw;
+      right:-47vw;
       top:8vh;
       border-left-color:transparent;
       border-bottom-color:transparent;
     }
 
     .arc2{
-      width:98vw;
-      height:98vw;
-      right:-31vw;
-      top:20vh;
+      width:96vw;
+      height:96vw;
+      right:-30vw;
+      top:21vh;
       border-left-color:transparent;
       border-bottom-color:transparent;
-      opacity:.72;
+      opacity:.74;
     }
 
     .arc3{
-      width:154vw;
-      height:154vw;
-      left:-28vw;
+      width:156vw;
+      height:156vw;
+      left:-30vw;
       bottom:-82vh;
       border-right-color:transparent;
       border-bottom-color:transparent;
-      border-top-color:rgba(135,205,255,.18);
-      box-shadow:0 -14px 34px rgba(89,179,255,.10);
+      border-top-color:rgba(143,214,255,.20);
+      box-shadow:0 -18px 40px rgba(98,186,255,.10);
     }
 
     .fog::before{
       content:"";
       position:absolute;
-      left:-10%;
-      right:-10%;
+      left:-14%;
+      right:-14%;
       bottom:-6%;
       height:24%;
-      border-top:1px solid rgba(144,210,255,.18);
+      border-top:1px solid rgba(142,214,255,.18);
       border-radius:50%;
-      box-shadow:0 -18px 40px rgba(79,171,255,.10);
+      box-shadow:0 -22px 48px rgba(87,178,255,.12);
       opacity:.95;
     }
 
@@ -152,29 +153,29 @@
       display:flex;
       justify-content:space-between;
       align-items:center;
-      margin-bottom:8px;
+      margin-bottom:6px;
     }
 
     .icon-btn{
-      width:46px;
-      height:46px;
+      width:48px;
+      height:48px;
       border-radius:50%;
-      border:1px solid rgba(139,168,255,.14);
+      border:1px solid rgba(138,166,255,.16);
       background:rgba(255,255,255,.015);
-      backdrop-filter:blur(8px);
       display:flex;
       align-items:center;
       justify-content:center;
-      box-shadow:inset 0 0 18px rgba(110,145,255,.04);
+      backdrop-filter:blur(10px);
+      box-shadow:inset 0 0 18px rgba(122,162,255,.04);
     }
 
     .icon-btn svg{
-      width:23px;
-      height:23px;
+      width:24px;
+      height:24px;
       fill:none;
-      stroke:#f3f7ff;
+      stroke:#f4f7ff;
       stroke-width:1.8;
-      opacity:.96;
+      opacity:.98;
     }
 
     .hero{
@@ -184,15 +185,15 @@
       flex-direction:column;
       align-items:center;
       text-align:center;
-      margin-top:4px;
+      margin-top:2px;
     }
 
     .logo-box{
-      width:min(36vw,192px);
-      max-width:192px;
+      width:min(37vw,198px);
+      max-width:198px;
       filter:
-        drop-shadow(0 0 10px rgba(116,194,255,.16))
-        drop-shadow(0 0 22px rgba(82,122,255,.08));
+        drop-shadow(0 0 12px rgba(122,196,255,.18))
+        drop-shadow(0 0 28px rgba(90,132,255,.10));
     }
 
     .logo-box svg{
@@ -203,32 +204,33 @@
 
     .brand{
       margin-top:6px;
-      font-size:clamp(54px,9vw,78px);
+      font-size:clamp(54px,9vw,79px);
       line-height:1;
       letter-spacing:.14em;
       font-weight:300;
     }
 
     .subtitle{
-      margin-top:16px;
+      margin-top:18px;
       color:var(--muted);
       font-size:clamp(10px,2.15vw,16px);
-      letter-spacing:.34em;
+      letter-spacing:.33em;
       white-space:nowrap;
     }
 
     .enter{
       margin-top:34px;
       width:min(68%,550px);
-      min-width:260px;
+      min-width:262px;
       height:58px;
       border-radius:34px;
-      border:1px solid rgba(127,159,255,.20);
-      background:linear-gradient(180deg, rgba(25,50,117,.52), rgba(8,18,45,.58));
+      border:1px solid rgba(127,159,255,.22);
+      background:
+        linear-gradient(180deg, rgba(28,54,122,.58), rgba(7,18,46,.62));
       box-shadow:
         inset 0 0 0 1px rgba(130,168,255,.02),
-        0 0 16px rgba(77,142,255,.07),
-        0 10px 20px rgba(0,0,0,.22);
+        0 0 20px rgba(77,142,255,.08),
+        0 10px 22px rgba(0,0,0,.24);
       display:flex;
       align-items:center;
       justify-content:center;
@@ -236,6 +238,20 @@
       font-size:clamp(16px,3.1vw,22px);
       letter-spacing:.08em;
       position:relative;
+      overflow:hidden;
+    }
+
+    .enter::before{
+      content:"";
+      position:absolute;
+      top:0;
+      bottom:0;
+      width:28%;
+      left:-30%;
+      background:linear-gradient(90deg, transparent, rgba(255,255,255,.10), transparent);
+      transform:skewX(-24deg);
+      animation:sweep 4.8s linear infinite;
+      opacity:.6;
     }
 
     .enter::after{
@@ -245,29 +261,40 @@
       right:15%;
       bottom:-1px;
       height:1px;
-      background:linear-gradient(90deg, transparent, rgba(132,214,255,.90), transparent);
-      box-shadow:0 0 12px rgba(118,205,255,.38);
-      opacity:.9;
+      background:linear-gradient(90deg, transparent, rgba(132,214,255,.95), transparent);
+      box-shadow:0 0 14px rgba(118,205,255,.40);
+      opacity:.95;
     }
 
-    .enter span:last-child{
-      font-size:1.14em;
+    @keyframes sweep{
+      0%{left:-35%}
+      60%{left:120%}
+      100%{left:120%}
     }
 
     .card{
       position:relative;
       z-index:4;
       width:min(72%,600px);
-      min-width:300px;
-      min-height:220px;
-      margin:36px auto 0;
-      border-radius:28px;
-      border:1px solid rgba(124,160,255,.12);
-      background:linear-gradient(180deg, rgba(5,14,37,.48), rgba(2,8,22,.72));
+      min-width:304px;
+      min-height:228px;
+      margin:44px auto 0;
+      border-radius:30px;
+      border:1px solid rgba(124,160,255,.14);
+      background:linear-gradient(180deg, rgba(5,14,37,.50), rgba(2,8,22,.74));
       box-shadow:
+        0 0 30px rgba(120,200,255,.10),
         inset 0 0 24px rgba(64,113,255,.04),
-        0 18px 36px rgba(0,0,0,.24);
+        0 18px 38px rgba(0,0,0,.26);
       overflow:hidden;
+    }
+
+    .card::before{
+      content:"";
+      position:absolute;
+      inset:0;
+      background:radial-gradient(circle at 50% 110%, rgba(82,176,255,.10), transparent 34%);
+      pointer-events:none;
     }
 
     .card-title{
@@ -279,9 +306,9 @@
     }
 
     .biotime{
-      margin-top:16px;
+      margin-top:12px;
       text-align:center;
-      font-size:clamp(82px,14vw,138px);
+      font-size:clamp(94px,15vw,146px);
       font-weight:300;
       line-height:1;
     }
@@ -290,7 +317,7 @@
       position:absolute;
       left:0;
       right:0;
-      bottom:12px;
+      bottom:16px;
       height:62px;
     }
 
@@ -301,12 +328,28 @@
 
     .wave path{
       fill:none;
-      stroke:#86d3ff;
-      stroke-width:4;
+      stroke:#89d5ff;
+      stroke-width:3.2;
       stroke-linecap:round;
       filter:
-        drop-shadow(0 0 7px rgba(125,214,255,.82))
-        drop-shadow(0 0 10px rgba(78,145,255,.30));
+        drop-shadow(0 0 6px rgba(125,214,255,.84))
+        drop-shadow(0 0 10px rgba(78,145,255,.28));
+    }
+
+    .domain{
+      position:fixed;
+      left:50%;
+      transform:translateX(-50%);
+      bottom:86px;
+      z-index:7;
+      padding:10px 24px;
+      border-radius:19px;
+      border:1px solid rgba(139,160,255,.10);
+      background:rgba(18,27,54,.64);
+      color:rgba(245,248,255,.92);
+      font-size:14px;
+      backdrop-filter:blur(8px);
+      box-shadow:0 0 18px rgba(97,160,255,.08);
     }
 
     .nav{
@@ -315,7 +358,7 @@
       right:18px;
       bottom:18px;
       z-index:8;
-      height:62px;
+      height:64px;
       border-radius:26px;
       border:1px solid rgba(122,158,255,.12);
       background:linear-gradient(180deg, rgba(8,18,44,.82), rgba(2,8,22,.93));
@@ -324,7 +367,7 @@
       align-items:center;
       justify-content:space-around;
       box-shadow:
-        0 10px 22px rgba(0,0,0,.22),
+        0 12px 24px rgba(0,0,0,.22),
         inset 0 0 18px rgba(84,128,255,.05);
     }
 
@@ -350,8 +393,8 @@
       left:50%;
       transform:translateX(-50%);
       bottom:4px;
-      width:76px;
-      height:76px;
+      width:78px;
+      height:78px;
       border-radius:50%;
       display:flex;
       align-items:center;
@@ -360,7 +403,7 @@
         radial-gradient(circle at 50% 34%, rgba(177,229,255,.18), rgba(90,120,255,.16) 42%, rgba(10,21,52,.95) 76%);
       box-shadow:
         0 0 0 6px rgba(97,125,255,.05),
-        0 0 16px rgba(92,168,255,.18),
+        0 0 18px rgba(92,168,255,.18),
         inset 0 0 24px rgba(130,180,255,.10);
     }
 
@@ -370,26 +413,11 @@
       filter:drop-shadow(0 0 7px rgba(127,194,255,.30));
     }
 
-    .domain{
-      position:fixed;
-      left:50%;
-      transform:translateX(-50%);
-      bottom:88px;
-      z-index:7;
-      padding:9px 22px;
-      border-radius:18px;
-      border:1px solid rgba(139,160,255,.10);
-      background:rgba(18,27,54,.64);
-      color:rgba(245,248,255,.92);
-      font-size:14px;
-      backdrop-filter:blur(8px);
-    }
-
     @media (max-width:430px){
       .screen{padding:20px 20px 128px}
       .subtitle{letter-spacing:.24em}
       .enter{width:min(72%,520px);height:56px}
-      .card{width:min(78%,580px);min-height:210px}
+      .card{width:min(78%,580px);min-height:218px}
       .domain{bottom:84px}
     }
   </style>
@@ -398,8 +426,7 @@
   <div class="screen">
     <div class="nebula"></div>
     <div class="stars"></div>
-    <div class="stars2"></div>
-    <div class="stars3"></div>
+    <div class="stars-soft"></div>
     <div class="arc arc1"></div>
     <div class="arc arc2"></div>
     <div class="arc arc3"></div>
@@ -427,14 +454,14 @@
         <svg viewBox="0 0 220 280" xmlns="http://www.w3.org/2000/svg">
           <defs>
             <linearGradient id="g1" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stop-color="#e7f8ff"/>
-              <stop offset="42%" stop-color="#97d7ff"/>
-              <stop offset="100%" stop-color="#6f7dff"/>
+              <stop offset="0%" stop-color="#ecfbff"/>
+              <stop offset="40%" stop-color="#9bdcff"/>
+              <stop offset="100%" stop-color="#6f82ff"/>
             </linearGradient>
             <radialGradient id="dotg" cx="50%" cy="50%" r="50%">
               <stop offset="0%" stop-color="#ffffff"/>
-              <stop offset="55%" stop-color="#b7e4ff"/>
-              <stop offset="100%" stop-color="#79abff"/>
+              <stop offset="55%" stop-color="#bce8ff"/>
+              <stop offset="100%" stop-color="#81b0ff"/>
             </radialGradient>
           </defs>
           <path d="M110 8L192 232H160L110 96L60 232H28L110 8Z" fill="url(#g1)"/>
@@ -457,7 +484,7 @@
       <div class="biotime">8.4</div>
       <div class="wave">
         <svg viewBox="0 0 600 120" preserveAspectRatio="none">
-          <path d="M0,88 C58,102 110,104 164,93 C218,82 270,58 330,55 C390,52 448,78 505,82 C541,84 573,78 600,65"></path>
+          <path d="M0,90 C58,102 110,104 164,94 C220,83 272,60 330,58 C388,56 448,78 505,82 C541,84 573,79 600,68"></path>
         </svg>
       </div>
     </section>
@@ -483,14 +510,14 @@
         <svg class="mini" viewBox="0 0 220 280" xmlns="http://www.w3.org/2000/svg">
           <defs>
             <linearGradient id="g2" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stop-color="#e7f8ff"/>
-              <stop offset="42%" stop-color="#97d7ff"/>
-              <stop offset="100%" stop-color="#6f7dff"/>
+              <stop offset="0%" stop-color="#ecfbff"/>
+              <stop offset="40%" stop-color="#9bdcff"/>
+              <stop offset="100%" stop-color="#6f82ff"/>
             </linearGradient>
             <radialGradient id="dotg2" cx="50%" cy="50%" r="50%">
               <stop offset="0%" stop-color="#ffffff"/>
-              <stop offset="55%" stop-color="#b7e4ff"/>
-              <stop offset="100%" stop-color="#79abff"/>
+              <stop offset="55%" stop-color="#bce8ff"/>
+              <stop offset="100%" stop-color="#81b0ff"/>
             </radialGradient>
           </defs>
           <path d="M110 8L192 232H160L110 96L60 232H28L110 8Z" fill="url(#g2)"/>
