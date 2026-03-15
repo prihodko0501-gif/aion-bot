@@ -4,9 +4,9 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>AION · Biological Upgrade</title>
-    <!-- Подключаем Telegram Web App SDK -->
+    <!-- Обязательно подключаем Telegram Web App SDK -->
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
-    <!-- Google Fonts для красивого шрифта -->
+    <!-- Шрифт Inter (опционально) -->
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
         * {
@@ -16,7 +16,7 @@
         }
 
         body {
-            font-family: 'Inter', sans-serif;
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
             background: #0b0d10;
             color: #fff;
             min-height: 100vh;
@@ -24,7 +24,7 @@
             align-items: center;
             justify-content: center;
             padding: 16px;
-            /* Плавный переход для фона, если используем тему Telegram */
+            /* поддерживаем тему Telegram */
             background: var(--tg-theme-bg-color, #0b0d10);
             color: var(--tg-theme-text-color, #fff);
         }
@@ -41,7 +41,7 @@
             border: 1px solid rgba(0, 255, 196, 0.15);
         }
 
-        /* Время */
+        /* Время (как на картинке — 17:00) */
         .time {
             font-size: 15px;
             font-weight: 500;
@@ -51,7 +51,7 @@
             text-transform: uppercase;
         }
 
-        /* Главный заголовок AION */
+        /* Заголовок AION */
         .main-title {
             font-size: 56px;
             font-weight: 700;
@@ -65,7 +65,7 @@
             letter-spacing: -1px;
         }
 
-        /* Подзаголовок */
+        /* Подзаголовок BIOLOGICAL UPGRADE SYSTEM */
         .subtitle {
             font-size: 16px;
             font-weight: 500;
@@ -77,7 +77,7 @@
             padding-left: 12px;
         }
 
-        /* Кнопка входа */
+        /* Кнопка ENTER SYSTEM → */
         .enter-button {
             display: flex;
             align-items: center;
@@ -111,7 +111,7 @@
             margin-left: 8px;
         }
 
-        /* Блок BIO TIME */
+        /* Блок BIO TIME 8.4 */
         .bio-time {
             display: flex;
             align-items: baseline;
@@ -147,38 +147,16 @@
             letter-spacing: 0.5px;
             text-transform: lowercase;
         }
-
-        /* Адаптация под тёмную тему Telegram (если используется) */
-        .tg-theme {
-            background: var(--tg-theme-bg-color, #0b0d10);
-            color: var(--tg-theme-text-color, #fff);
-        }
-
-        /* Просто дополнительные штрихи */
-        .glow {
-            position: relative;
-        }
-        .glow::after {
-            content: '';
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            width: 100%;
-            height: 100%;
-            background: radial-gradient(circle at center, rgba(74,255,216,0.15) 0%, transparent 70%);
-            transform: translate(-50%, -50%);
-            z-index: -1;
-            pointer-events: none;
-        }
     </style>
 </head>
 <body>
     <div class="container">
-        <!-- Время 17:00 (статичное, можно заменить на динамическое) -->
+        <!-- Время 17:00 (как на скриншоте) -->
         <div class="time">17:00</div>
 
-        <!-- Основной контент -->
+        <!-- AION -->
         <div class="main-title">AION</div>
+        <!-- BIOLOGICAL UPGRADE SYSTEM (с пробелами, как на картинке) -->
         <div class="subtitle">BIOLOGICAL UPGRADE SYSTEM</div>
 
         <!-- Кнопка ENTER SYSTEM → -->
@@ -187,45 +165,40 @@
             <span>→</span>
         </button>
 
-        <!-- Блок BIO TIME 8.4 -->
+        <!-- BIO TIME 8.4 -->
         <div class="bio-time">
             <span class="bio-time-label">BIO TIME</span>
             <span class="bio-time-value">8.4</span>
         </div>
 
-        <!-- Ссылка на сайт (просто текст, без активной ссылки) -->
+        <!-- Ссылка на сайт (просто текст, не кликабельный) -->
         <div class="site-link">app.aion-live.com</div>
     </div>
 
     <script>
-        // Инициализация Telegram Web App
+        // Инициализация Telegram Mini App
         const tg = window.Telegram.WebApp;
+        tg.ready();          // сообщаем Telegram, что приложение загружено
+        tg.expand();         // растягиваем на весь экран (без шапки)
 
-        // Сообщаем, что приложение готово к отображению
-        tg.ready();
-
-        // Расширяем на всю высоту (убираем серую полосу сверху)
-        tg.expand();
-
-        // Можно использовать основную кнопку Telegram вместо кастомной, но здесь оставим кастомную
-        // Если нужно отправить данные боту при нажатии на кнопку "ENTER SYSTEM"
+        // Обработка нажатия на кнопку "ENTER SYSTEM"
         document.getElementById('enterSystemBtn').addEventListener('click', () => {
-            // Пример отправки данных боту (закрывает мини-приложение и отправляет строку)
+            // Здесь вы можете описать, что должно произойти при нажатии.
+            // Например, отправить данные боту и закрыть окно:
             // tg.sendData('enter_system');
-            // Если не нужно отправлять, а просто перейти на следующий экран (внутри мини-приложения),
-            // можно пока просто показать уведомление или изменить контент.
-            // Например, можно имитировать переход на экран 2:
-            alert('Переход на экран 2 (заглушка). В реальном приложении здесь будет навигация.');
             
-            // Для отправки данных используйте:
-            // tg.sendData('user_wants_to_enter');
+            // Или просто показать всплывающее сообщение (заглушка):
+            tg.showAlert('Переход на второй экран');
+            
+            // Если нужно использовать главную кнопку Telegram, можно добавить:
+            // tg.MainButton.setText('ДАЛЕЕ');
+            // tg.MainButton.show();
         });
 
-        // Дополнительно: можно использовать главную кнопку Telegram
-        // tg.MainButton.setText('Войти');
-        // tg.MainButton.onClick(() => tg.sendData('enter'));
-        // tg.MainButton.show();
-        // Но в данном дизайне кнопка уже есть, поэтому не будем путать пользователя.
+        // Подстраиваемся под смену темы Telegram (светлая/тёмная)
+        tg.onEvent('themeChanged', function() {
+            document.body.style.background = tg.themeParams.bg_color;
+        });
     </script>
 </body>
 </html>
