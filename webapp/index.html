@@ -51,7 +51,6 @@
       display: none;
     }
 
-    /* ---------- Screen 1 ---------- */
     #screen1 {
       background-image: url("/screen-1");
     }
@@ -104,7 +103,6 @@
       border-radius: 50%;
     }
 
-    /* ---------- Screen 2 ---------- */
     #screen2 {
       background-image: url("/screen-2");
     }
@@ -188,7 +186,6 @@
       border-radius: 50%;
     }
 
-    /* ---------- Screen 3 ---------- */
     #screen3 {
       background-image: url("/screen-3");
     }
@@ -258,7 +255,6 @@
   </style>
 </head>
 <body>
-  <!-- Screen 1 -->
   <div class="screen" id="screen1">
     <button class="tap s1-enter" id="goScreen2"></button>
     <button class="tap s1-home"></button>
@@ -268,7 +264,6 @@
     <button class="tap s1-profile"></button>
   </div>
 
-  <!-- Screen 2 -->
   <div class="screen hidden" id="screen2">
     <button class="tap s2-menu"></button>
     <button class="tap s2-sleep" id="goScreen3"></button>
@@ -283,7 +278,6 @@
     <button class="tap s2-profile"></button>
   </div>
 
-  <!-- Screen 3 -->
   <div class="screen hidden" id="screen3">
     <button class="tap s3-back" id="backToScreen2"></button>
     <button class="tap s3-profile"></button>
@@ -298,8 +292,16 @@
 
   <script>
     if (window.Telegram && window.Telegram.WebApp) {
-      window.Telegram.WebApp.ready();
-      window.Telegram.WebApp.expand();
+      const tg = window.Telegram.WebApp;
+      tg.ready();
+      tg.expand();
+
+      try {
+        tg.setHeaderColor("#020814");
+        tg.setBackgroundColor("#020814");
+      } catch (e) {
+        console.log("Telegram theme set skipped");
+      }
     }
 
     const screen1 = document.getElementById("screen1");
