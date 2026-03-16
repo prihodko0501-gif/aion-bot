@@ -51,7 +51,6 @@
       display: none;
     }
 
-    /* SCREEN 1 */
     #screen1 {
       background-image: url("/screen-1");
     }
@@ -104,7 +103,6 @@
       border-radius: 50%;
     }
 
-    /* SCREEN 2 */
     #screen2 {
       background-image: url("/screen-2");
     }
@@ -188,7 +186,6 @@
       border-radius: 50%;
     }
 
-    /* SCREEN 3 */
     #screen3 {
       background-image: url("/screen-3");
     }
@@ -307,7 +304,6 @@
       }
     }
 
-    // Предзагрузка экранов для более быстрого переключения
     ["/screen-1", "/screen-2", "/screen-3"].forEach((src) => {
       const img = new Image();
       img.src = src;
@@ -327,19 +323,15 @@
       if (n === 3) screen3.classList.remove("hidden");
     }
 
-    // Экран 1 -> Экран 2
     document.getElementById("goScreen2").addEventListener("click", () => showScreen(2));
-
-    // Экран 2 -> Экран 3
     document.getElementById("goScreen3").addEventListener("click", () => showScreen(3));
 
-    // Назад
     document.getElementById("backToScreen2").addEventListener("click", () => showScreen(2));
     document.getElementById("backToScreen2Center").addEventListener("click", () => showScreen(2));
+
     document.getElementById("backToScreen1From2").addEventListener("click", () => showScreen(1));
     document.getElementById("backToScreen1From3").addEventListener("click", () => showScreen(1));
 
-    // Нижняя навигация
     document.getElementById("s1Home").addEventListener("click", () => showScreen(1));
     document.getElementById("s1Center").addEventListener("click", () => showScreen(2));
 
@@ -349,7 +341,6 @@
     document.getElementById("s3History").addEventListener("click", () => showScreen(3));
     document.getElementById("s3Wave").addEventListener("click", () => showScreen(3));
 
-    // Заглушки, чтобы не было ошибок
     [
       "s1History", "s1Wave", "s1Profile",
       "s2Menu", "s2Stress", "s2Recovery", "s2Longevity", "s2History", "s2Wave", "s2Profile",
