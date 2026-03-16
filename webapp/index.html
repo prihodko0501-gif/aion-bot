@@ -52,7 +52,7 @@
       display: none;
     }
 
-    /* SCREEN 1 */
+    /* ЭКРАН 1 — ВХОД */
     #screen1 {
       background-image: url("/screen-1");
     }
@@ -105,7 +105,7 @@
       border-radius: 50%;
     }
 
-    /* SCREEN 2 */
+    /* ЭКРАН 2 — SLEEP MODULE */
     #screen2 {
       background-image: url("/screen-2");
     }
@@ -117,49 +117,26 @@
       height: 5%;
     }
 
-    .s2-sleep {
-      left: 14%;
-      top: 36%;
-      width: 34%;
-      height: 12%;
-      border-radius: 20px;
-    }
-
-    .s2-stress {
-      left: 52%;
-      top: 36%;
-      width: 34%;
-      height: 12%;
-      border-radius: 20px;
-    }
-
-    .s2-recovery {
-      left: 14%;
-      top: 50.5%;
-      width: 34%;
-      height: 12%;
-      border-radius: 20px;
-    }
-
-    .s2-longevity {
-      left: 52%;
-      top: 50.5%;
-      width: 34%;
-      height: 12%;
-      border-radius: 20px;
+    /* Главная кнопка анализа на экране Sleep */
+    .s2-start-analysis {
+      left: 18%;
+      bottom: 11%;
+      width: 64%;
+      height: 6.5%;
+      border-radius: 999px;
     }
 
     .s2-home {
-      left: 16%;
-      bottom: 12%;
+      left: 13%;
+      bottom: 3.2%;
       width: 9%;
       height: 5%;
       border-radius: 50%;
     }
 
     .s2-history {
-      left: 33%;
-      bottom: 12%;
+      left: 31%;
+      bottom: 3.2%;
       width: 9%;
       height: 5%;
       border-radius: 50%;
@@ -167,7 +144,7 @@
 
     .s2-center {
       left: 45%;
-      bottom: 9.5%;
+      bottom: 1%;
       width: 16%;
       height: 8%;
       border-radius: 50%;
@@ -175,21 +152,21 @@
 
     .s2-wave {
       left: 63%;
-      bottom: 12%;
+      bottom: 3.2%;
       width: 9%;
       height: 5%;
       border-radius: 50%;
     }
 
     .s2-profile {
-      left: 79%;
-      bottom: 12%;
+      left: 81%;
+      bottom: 3.2%;
       width: 9%;
       height: 5%;
       border-radius: 50%;
     }
 
-    /* SCREEN 3 */
+    /* ЭКРАН 3 — РЕЗУЛЬТАТ SLEEP */
     #screen3 {
       background-image: url("/screen-3");
     }
@@ -259,8 +236,9 @@
   </style>
 </head>
 <body>
+  <!-- Экран 1 -->
   <div class="screen" id="screen1">
-    <button class="tap s1-enter" id="goScreen2"></button>
+    <button class="tap s1-enter" id="goScreen2" aria-label="Enter System"></button>
     <button class="tap s1-home" id="s1Home"></button>
     <button class="tap s1-history" id="s1History"></button>
     <button class="tap s1-center" id="s1Center"></button>
@@ -268,12 +246,10 @@
     <button class="tap s1-profile" id="s1Profile"></button>
   </div>
 
+  <!-- Экран 2 -->
   <div class="screen hidden" id="screen2">
     <button class="tap s2-menu" id="s2Menu"></button>
-    <button class="tap s2-sleep" id="goScreen3"></button>
-    <button class="tap s2-stress" id="s2Stress"></button>
-    <button class="tap s2-recovery" id="s2Recovery"></button>
-    <button class="tap s2-longevity" id="s2Longevity"></button>
+    <button class="tap s2-start-analysis" id="goScreen3" aria-label="Start Analysis"></button>
 
     <button class="tap s2-home" id="backToScreen1From2"></button>
     <button class="tap s2-history" id="s2History"></button>
@@ -282,10 +258,11 @@
     <button class="tap s2-profile" id="s2Profile"></button>
   </div>
 
+  <!-- Экран 3 -->
   <div class="screen hidden" id="screen3">
     <button class="tap s3-back" id="backToScreen2"></button>
     <button class="tap s3-profile" id="s3ProfileTop"></button>
-    <button class="tap s3-analysis" id="s3Analysis"></button>
+    <button class="tap s3-analysis" id="repeatAnalysis"></button>
 
     <button class="tap s3-home" id="backToScreen1From3"></button>
     <button class="tap s3-history" id="s3History"></button>
@@ -329,13 +306,13 @@
       if (n === 3) screen3.classList.remove("hidden");
     }
 
-    // Основные переходы
+    // Главная логика
     document.getElementById("goScreen2").addEventListener("click", () => showScreen(2));
     document.getElementById("goScreen3").addEventListener("click", () => showScreen(3));
 
-    // Назад
     document.getElementById("backToScreen2").addEventListener("click", () => showScreen(2));
     document.getElementById("backToScreen2Center").addEventListener("click", () => showScreen(2));
+
     document.getElementById("backToScreen1From2").addEventListener("click", () => showScreen(1));
     document.getElementById("backToScreen1From3").addEventListener("click", () => showScreen(1));
 
@@ -344,15 +321,20 @@
     document.getElementById("s1Center").addEventListener("click", () => showScreen(2));
 
     document.getElementById("s2Center").addEventListener("click", () => showScreen(2));
+    document.getElementById("s2Home").addEventListener("click", () => showScreen(1));
 
+    document.getElementById("s3Center").addEventListener("click", () => showScreen(2));
     document.getElementById("s3History").addEventListener("click", () => showScreen(3));
     document.getElementById("s3Wave").addEventListener("click", () => showScreen(3));
+
+    // Повтор анализа на экране результата
+    document.getElementById("repeatAnalysis").addEventListener("click", () => showScreen(3));
 
     // Заглушки
     [
       "s1History", "s1Wave", "s1Profile",
-      "s2Menu", "s2Stress", "s2Recovery", "s2Longevity", "s2History", "s2Wave", "s2Profile",
-      "s3ProfileTop", "s3Analysis", "s3ProfileBottom"
+      "s2Menu", "s2History", "s2Wave", "s2Profile",
+      "s3ProfileTop", "s3ProfileBottom"
     ].forEach((id) => {
       const el = document.getElementById(id);
       if (el) {
