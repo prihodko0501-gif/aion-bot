@@ -33,7 +33,7 @@
       height: 100vh;
       margin: 0 auto;
       overflow: hidden;
-      background: #020814 url("./static/icons/IMG_1510.png") no-repeat center center;
+      background: #020814 url("{{ url_for('webapp.static', filename='icons/IMG_1510.png') }}") no-repeat center center;
       background-size: cover;
     }
 
@@ -130,10 +130,6 @@
 
     const go = (name) => {
       console.log("CLICK:", name);
-
-      // Сюда потом поставим реальные переходы
-      // Пример:
-      // if (name === "enter") window.location.href = "/next";
     };
 
     document.getElementById("menuBtn").addEventListener("click", () => go("menu"));
