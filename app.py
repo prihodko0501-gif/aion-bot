@@ -34,6 +34,11 @@ def screen_3():
     return send_from_directory(ICONS_DIR, "CE9B0085-675C-42C1-98A5-0BF4DD4735EF.png")
 
 
+@app.route("/test-static")
+def test_static():
+    return send_from_directory(ICONS_DIR, "372BD4C9-1164-4136-AF34-97A8E6D5420D.png")
+
+
 @app.route("/static/<path:path>")
 def static_files(path):
     return send_from_directory(STATIC_DIR, path)
