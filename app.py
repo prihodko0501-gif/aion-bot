@@ -21,22 +21,22 @@ def health():
 
 @app.route("/screen-1")
 def screen_1():
-    return send_from_directory(ICONS_DIR, "372BD4C9-1164-4136-AF34-97A8E6D5420D.png")
+    return send_from_directory(ICONS_DIR, "screen-1.webp.webp")
 
 
 @app.route("/screen-2")
 def screen_2():
-    return send_from_directory(ICONS_DIR, "B62761EC-CC31-4EBD-934F-24815970551A.png")
+    return send_from_directory(ICONS_DIR, "screen-2.webp.webp")
 
 
 @app.route("/screen-3")
 def screen_3():
-    return send_from_directory(ICONS_DIR, "CE9B0085-675C-42C1-98A5-0BF4DD4735EF.png")
+    return send_from_directory(ICONS_DIR, "screen-3.webp.webp")
 
 
 @app.route("/test-static")
 def test_static():
-    return send_from_directory(ICONS_DIR, "372BD4C9-1164-4136-AF34-97A8E6D5420D.png")
+    return send_from_directory(ICONS_DIR, "screen-1.webp.webp")
 
 
 @app.route("/static/<path:path>")
