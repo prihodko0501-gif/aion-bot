@@ -15,7 +15,7 @@
     html, body {
       width: 100%;
       height: 100%;
-      background: #000;
+      background: #020814;
       font-family: Arial, sans-serif;
       overflow: hidden;
     }
@@ -24,6 +24,26 @@
       display: flex;
       justify-content: center;
       align-items: stretch;
+    }
+
+    .top-fade {
+      position: fixed;
+      top: 0;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 100%;
+      max-width: 430px;
+      height: 140px;
+      pointer-events: none;
+      z-index: 20;
+      background: linear-gradient(
+        to bottom,
+        rgba(2, 8, 20, 0.98) 0%,
+        rgba(2, 8, 20, 0.92) 28%,
+        rgba(2, 8, 20, 0.70) 58%,
+        rgba(2, 8, 20, 0.25) 82%,
+        rgba(2, 8, 20, 0) 100%
+      );
     }
 
     .screen {
@@ -45,12 +65,14 @@
       border: none;
       outline: none;
       cursor: pointer;
+      z-index: 10;
     }
 
     .hidden {
       display: none;
     }
 
+    /* SCREEN 1 */
     #screen1 {
       background-image: url("/screen-1");
     }
@@ -103,6 +125,7 @@
       border-radius: 50%;
     }
 
+    /* SCREEN 2 */
     #screen2 {
       background-image: url("/screen-2");
     }
@@ -186,6 +209,7 @@
       border-radius: 50%;
     }
 
+    /* SCREEN 3 */
     #screen3 {
       background-image: url("/screen-3");
     }
@@ -255,6 +279,8 @@
   </style>
 </head>
 <body>
+  <div class="top-fade"></div>
+
   <div class="screen" id="screen1">
     <button class="tap s1-enter" id="goScreen2"></button>
     <button class="tap s1-home" id="s1Home"></button>
@@ -299,6 +325,8 @@
       try {
         tg.setHeaderColor("#020814");
         tg.setBackgroundColor("#020814");
+        document.documentElement.style.background = "#020814";
+        document.body.style.background = "#020814";
       } catch (e) {
         console.log("Telegram theme set skipped");
       }
@@ -326,31 +354,4 @@
     document.getElementById("goScreen2").addEventListener("click", () => showScreen(2));
     document.getElementById("goScreen3").addEventListener("click", () => showScreen(3));
 
-    document.getElementById("backToScreen2").addEventListener("click", () => showScreen(2));
-    document.getElementById("backToScreen2Center").addEventListener("click", () => showScreen(2));
-
-    document.getElementById("backToScreen1From2").addEventListener("click", () => showScreen(1));
-    document.getElementById("backToScreen1From3").addEventListener("click", () => showScreen(1));
-
-    document.getElementById("s1Home").addEventListener("click", () => showScreen(1));
-    document.getElementById("s1Center").addEventListener("click", () => showScreen(2));
-
-    document.getElementById("s2Home").addEventListener("click", () => showScreen(1));
-    document.getElementById("s2Center").addEventListener("click", () => showScreen(2));
-
-    document.getElementById("s3History").addEventListener("click", () => showScreen(3));
-    document.getElementById("s3Wave").addEventListener("click", () => showScreen(3));
-
-    [
-      "s1History", "s1Wave", "s1Profile",
-      "s2Menu", "s2Stress", "s2Recovery", "s2Longevity", "s2History", "s2Wave", "s2Profile",
-      "s3ProfileTop", "s3Analysis", "s3ProfileBottom"
-    ].forEach((id) => {
-      const el = document.getElementById(id);
-      if (el) {
-        el.addEventListener("click", () => console.log("click:", id));
-      }
-    });
-  </script>
-</body>
-</html>
+    document.getElementById("backToScreen2").addEventListener("click", () =>
