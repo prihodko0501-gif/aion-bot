@@ -51,6 +51,7 @@
       display: none;
     }
 
+    /* SCREEN 1 */
     #screen1 {
       background-image: url("/screen-1");
     }
@@ -103,6 +104,7 @@
       border-radius: 50%;
     }
 
+    /* SCREEN 2 */
     #screen2 {
       background-image: url("/screen-2");
     }
@@ -186,6 +188,7 @@
       border-radius: 50%;
     }
 
+    /* SCREEN 3 */
     #screen3 {
       background-image: url("/screen-3");
     }
@@ -257,37 +260,37 @@
 <body>
   <div class="screen" id="screen1">
     <button class="tap s1-enter" id="goScreen2"></button>
-    <button class="tap s1-home"></button>
-    <button class="tap s1-history"></button>
-    <button class="tap s1-center"></button>
-    <button class="tap s1-wave"></button>
-    <button class="tap s1-profile"></button>
+    <button class="tap s1-home" id="s1Home"></button>
+    <button class="tap s1-history" id="s1History"></button>
+    <button class="tap s1-center" id="s1Center"></button>
+    <button class="tap s1-wave" id="s1Wave"></button>
+    <button class="tap s1-profile" id="s1Profile"></button>
   </div>
 
   <div class="screen hidden" id="screen2">
-    <button class="tap s2-menu"></button>
+    <button class="tap s2-menu" id="s2Menu"></button>
     <button class="tap s2-sleep" id="goScreen3"></button>
-    <button class="tap s2-stress"></button>
-    <button class="tap s2-recovery"></button>
-    <button class="tap s2-longevity"></button>
+    <button class="tap s2-stress" id="s2Stress"></button>
+    <button class="tap s2-recovery" id="s2Recovery"></button>
+    <button class="tap s2-longevity" id="s2Longevity"></button>
 
     <button class="tap s2-home" id="backToScreen1From2"></button>
-    <button class="tap s2-history"></button>
-    <button class="tap s2-center"></button>
-    <button class="tap s2-wave"></button>
-    <button class="tap s2-profile"></button>
+    <button class="tap s2-history" id="s2History"></button>
+    <button class="tap s2-center" id="s2Center"></button>
+    <button class="tap s2-wave" id="s2Wave"></button>
+    <button class="tap s2-profile" id="s2Profile"></button>
   </div>
 
   <div class="screen hidden" id="screen3">
     <button class="tap s3-back" id="backToScreen2"></button>
-    <button class="tap s3-profile"></button>
-    <button class="tap s3-analysis"></button>
+    <button class="tap s3-profile" id="s3ProfileTop"></button>
+    <button class="tap s3-analysis" id="s3Analysis"></button>
 
     <button class="tap s3-home" id="backToScreen1From3"></button>
-    <button class="tap s3-history"></button>
+    <button class="tap s3-history" id="s3History"></button>
     <button class="tap s3-center" id="backToScreen2Center"></button>
-    <button class="tap s3-wave"></button>
-    <button class="tap s3-profile-bottom"></button>
+    <button class="tap s3-wave" id="s3Wave"></button>
+    <button class="tap s3-profile-bottom" id="s3ProfileBottom"></button>
   </div>
 
   <script>
@@ -304,6 +307,12 @@
       }
     }
 
+    // Предзагрузка экранов для более быстрого переключения
+    ["/screen-1", "/screen-2", "/screen-3"].forEach((src) => {
+      const img = new Image();
+      img.src = src;
+    });
+
     const screen1 = document.getElementById("screen1");
     const screen2 = document.getElementById("screen2");
     const screen3 = document.getElementById("screen3");
@@ -318,14 +327,39 @@
       if (n === 3) screen3.classList.remove("hidden");
     }
 
+    // Экран 1 -> Экран 2
     document.getElementById("goScreen2").addEventListener("click", () => showScreen(2));
+
+    // Экран 2 -> Экран 3
     document.getElementById("goScreen3").addEventListener("click", () => showScreen(3));
 
+    // Назад
     document.getElementById("backToScreen2").addEventListener("click", () => showScreen(2));
     document.getElementById("backToScreen2Center").addEventListener("click", () => showScreen(2));
-
     document.getElementById("backToScreen1From2").addEventListener("click", () => showScreen(1));
     document.getElementById("backToScreen1From3").addEventListener("click", () => showScreen(1));
+
+    // Нижняя навигация
+    document.getElementById("s1Home").addEventListener("click", () => showScreen(1));
+    document.getElementById("s1Center").addEventListener("click", () => showScreen(2));
+
+    document.getElementById("s2Home").addEventListener("click", () => showScreen(1));
+    document.getElementById("s2Center").addEventListener("click", () => showScreen(2));
+
+    document.getElementById("s3History").addEventListener("click", () => showScreen(3));
+    document.getElementById("s3Wave").addEventListener("click", () => showScreen(3));
+
+    // Заглушки, чтобы не было ошибок
+    [
+      "s1History", "s1Wave", "s1Profile",
+      "s2Menu", "s2Stress", "s2Recovery", "s2Longevity", "s2History", "s2Wave", "s2Profile",
+      "s3ProfileTop", "s3Analysis", "s3ProfileBottom"
+    ].forEach((id) => {
+      const el = document.getElementById(id);
+      if (el) {
+        el.addEventListener("click", () => console.log("click:", id));
+      }
+    });
   </script>
 </body>
 </html>
