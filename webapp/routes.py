@@ -7,7 +7,8 @@ from core.biotime import calculate_biotime
 webapp = Blueprint(
     "webapp",
     __name__,
-    static_folder="",
+    static_folder="static",
+    static_url_path="/static",
 )
 
 BASE_DIR = Path(__file__).resolve().parent
@@ -16,7 +17,6 @@ BASE_DIR = Path(__file__).resolve().parent
 # -----------------------------
 # Главная страница Mini App
 # -----------------------------
-
 @webapp.route("/")
 def index():
     return send_from_directory(BASE_DIR, "index.html")
@@ -25,7 +25,6 @@ def index():
 # -----------------------------
 # CSS
 # -----------------------------
-
 @webapp.route("/aion.css")
 def css():
     return send_from_directory(BASE_DIR, "aion.css")
@@ -34,7 +33,6 @@ def css():
 # -----------------------------
 # JS
 # -----------------------------
-
 @webapp.route("/aion.js")
 def js():
     return send_from_directory(BASE_DIR, "aion.js")
@@ -43,13 +41,11 @@ def js():
 # -----------------------------
 # API BioTime
 # -----------------------------
-
 @webapp.route("/api/biotime")
 def api_biotime():
-
     try:
         value = calculate_biotime()
-    except:
+    except Exception:
         value = 0
 
     return jsonify({
@@ -60,10 +56,8 @@ def api_biotime():
 # -----------------------------
 # Проверка сервера
 # -----------------------------
-
 @webapp.route("/api/status")
 def status():
-
     return jsonify({
         "status": "ok",
         "system": "AION",
@@ -74,7 +68,14 @@ def status():
 # -----------------------------
 # Modules page
 # -----------------------------
-
 @webapp.route("/modules")
 def modules():
     return send_from_directory(BASE_DIR, "index.html")
+
+
+# -----------------------------
+# Раздача static файлов
+# -----------------------------
+@webapp.route("/static/<path:filename>")
+def serve_static(filename):
+    return send_from_directory(BASE_DIR / "static", filename)
