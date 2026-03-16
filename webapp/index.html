@@ -26,26 +26,6 @@
       align-items: stretch;
     }
 
-    .top-fade {
-      position: fixed;
-      top: 0;
-      left: 50%;
-      transform: translateX(-50%);
-      width: 100%;
-      max-width: 430px;
-      height: 140px;
-      pointer-events: none;
-      z-index: 20;
-      background: linear-gradient(
-        to bottom,
-        rgba(2, 8, 20, 0.98) 0%,
-        rgba(2, 8, 20, 0.92) 28%,
-        rgba(2, 8, 20, 0.70) 58%,
-        rgba(2, 8, 20, 0.25) 82%,
-        rgba(2, 8, 20, 0) 100%
-      );
-    }
-
     .screen {
       position: relative;
       width: 100%;
@@ -279,8 +259,6 @@
   </style>
 </head>
 <body>
-  <div class="top-fade"></div>
-
   <div class="screen" id="screen1">
     <button class="tap s1-enter" id="goScreen2"></button>
     <button class="tap s1-home" id="s1Home"></button>
@@ -300,58 +278,4 @@
     <button class="tap s2-home" id="backToScreen1From2"></button>
     <button class="tap s2-history" id="s2History"></button>
     <button class="tap s2-center" id="s2Center"></button>
-    <button class="tap s2-wave" id="s2Wave"></button>
-    <button class="tap s2-profile" id="s2Profile"></button>
-  </div>
-
-  <div class="screen hidden" id="screen3">
-    <button class="tap s3-back" id="backToScreen2"></button>
-    <button class="tap s3-profile" id="s3ProfileTop"></button>
-    <button class="tap s3-analysis" id="s3Analysis"></button>
-
-    <button class="tap s3-home" id="backToScreen1From3"></button>
-    <button class="tap s3-history" id="s3History"></button>
-    <button class="tap s3-center" id="backToScreen2Center"></button>
-    <button class="tap s3-wave" id="s3Wave"></button>
-    <button class="tap s3-profile-bottom" id="s3ProfileBottom"></button>
-  </div>
-
-  <script>
-    if (window.Telegram && window.Telegram.WebApp) {
-      const tg = window.Telegram.WebApp;
-      tg.ready();
-      tg.expand();
-
-      try {
-        tg.setHeaderColor("#020814");
-        tg.setBackgroundColor("#020814");
-        document.documentElement.style.background = "#020814";
-        document.body.style.background = "#020814";
-      } catch (e) {
-        console.log("Telegram theme set skipped");
-      }
-    }
-
-    ["/screen-1", "/screen-2", "/screen-3"].forEach((src) => {
-      const img = new Image();
-      img.src = src;
-    });
-
-    const screen1 = document.getElementById("screen1");
-    const screen2 = document.getElementById("screen2");
-    const screen3 = document.getElementById("screen3");
-
-    function showScreen(n) {
-      screen1.classList.add("hidden");
-      screen2.classList.add("hidden");
-      screen3.classList.add("hidden");
-
-      if (n === 1) screen1.classList.remove("hidden");
-      if (n === 2) screen2.classList.remove("hidden");
-      if (n === 3) screen3.classList.remove("hidden");
-    }
-
-    document.getElementById("goScreen2").addEventListener("click", () => showScreen(2));
-    document.getElementById("goScreen3").addEventListener("click", () => showScreen(3));
-
-    document.getElementById("backToScreen2").addEventListener("click", () =>
+    <button class="tap s
