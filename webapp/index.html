@@ -274,4 +274,56 @@
     <button class="tap s2-sleep" id="goScreen3"></button>
     <button class="tap s2-stress"></button>
     <button class="tap s2-recovery"></button>
-    <button class
+    <button class="tap s2-longevity"></button>
+
+    <button class="tap s2-home" id="backToScreen1From2"></button>
+    <button class="tap s2-history"></button>
+    <button class="tap s2-center"></button>
+    <button class="tap s2-wave"></button>
+    <button class="tap s2-profile"></button>
+  </div>
+
+  <!-- Screen 3 -->
+  <div class="screen hidden" id="screen3">
+    <button class="tap s3-back" id="backToScreen2"></button>
+    <button class="tap s3-profile"></button>
+    <button class="tap s3-analysis"></button>
+
+    <button class="tap s3-home" id="backToScreen1From3"></button>
+    <button class="tap s3-history"></button>
+    <button class="tap s3-center" id="backToScreen2Center"></button>
+    <button class="tap s3-wave"></button>
+    <button class="tap s3-profile-bottom"></button>
+  </div>
+
+  <script>
+    if (window.Telegram && window.Telegram.WebApp) {
+      window.Telegram.WebApp.ready();
+      window.Telegram.WebApp.expand();
+    }
+
+    const screen1 = document.getElementById("screen1");
+    const screen2 = document.getElementById("screen2");
+    const screen3 = document.getElementById("screen3");
+
+    function showScreen(n) {
+      screen1.classList.add("hidden");
+      screen2.classList.add("hidden");
+      screen3.classList.add("hidden");
+
+      if (n === 1) screen1.classList.remove("hidden");
+      if (n === 2) screen2.classList.remove("hidden");
+      if (n === 3) screen3.classList.remove("hidden");
+    }
+
+    document.getElementById("goScreen2").addEventListener("click", () => showScreen(2));
+    document.getElementById("goScreen3").addEventListener("click", () => showScreen(3));
+
+    document.getElementById("backToScreen2").addEventListener("click", () => showScreen(2));
+    document.getElementById("backToScreen2Center").addEventListener("click", () => showScreen(2));
+
+    document.getElementById("backToScreen1From2").addEventListener("click", () => showScreen(1));
+    document.getElementById("backToScreen1From3").addEventListener("click", () => showScreen(1));
+  </script>
+</body>
+</html>
