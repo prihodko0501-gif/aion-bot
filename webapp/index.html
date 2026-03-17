@@ -18,7 +18,6 @@
       background: #020814;
       font-family: Arial, sans-serif;
       overflow: hidden;
-      color: #fff;
     }
 
     body {
@@ -47,20 +46,19 @@
       outline: none;
       cursor: pointer;
       z-index: 10;
-      transition: transform 0.08s ease, opacity 0.08s ease, filter 0.08s ease;
+      transition: transform 0.08s ease, opacity 0.08s ease;
     }
 
     .tap:active {
-      transform: scale(0.96);
-      opacity: 0.92;
-      filter: brightness(1.06);
+      transform: scale(0.97);
+      opacity: 0.9;
     }
 
     .hidden {
       display: none;
     }
 
-    /* Экран 1 */
+    /* SCREEN 1 = ENTRY */
     #screen1 {
       background-image: url("/screen-1");
     }
@@ -81,6 +79,14 @@
       border-radius: 50%;
     }
 
+    .s1-history {
+      left: 33%;
+      bottom: 19.2%;
+      width: 9%;
+      height: 5%;
+      border-radius: 50%;
+    }
+
     .s1-center {
       left: 45%;
       bottom: 16.8%;
@@ -89,16 +95,25 @@
       border-radius: 50%;
     }
 
-    /* Экран 2 = Sleep */
-    #screen2 {
-      background-image: url("/screen-2");
+    .s1-wave {
+      left: 63%;
+      bottom: 19.2%;
+      width: 9%;
+      height: 5%;
+      border-radius: 50%;
     }
 
-    .s2-menu {
-      left: 10%;
-      top: 12%;
-      width: 8%;
+    .s1-profile {
+      left: 79%;
+      bottom: 19.2%;
+      width: 9%;
       height: 5%;
+      border-radius: 50%;
+    }
+
+    /* SCREEN 2 = SLEEP */
+    #screen2 {
+      background-image: url("/screen-2");
     }
 
     .s2-start-analysis {
@@ -117,6 +132,14 @@
       border-radius: 50%;
     }
 
+    .s2-history {
+      left: 31%;
+      bottom: 3.2%;
+      width: 9%;
+      height: 5%;
+      border-radius: 50%;
+    }
+
     .s2-center {
       left: 45%;
       bottom: 1%;
@@ -125,7 +148,23 @@
       border-radius: 50%;
     }
 
-    /* Экран 3 = Result */
+    .s2-wave {
+      left: 63%;
+      bottom: 3.2%;
+      width: 9%;
+      height: 5%;
+      border-radius: 50%;
+    }
+
+    .s2-profile {
+      left: 81%;
+      bottom: 3.2%;
+      width: 9%;
+      height: 5%;
+      border-radius: 50%;
+    }
+
+    /* SCREEN 3 = RESULT */
     #screen3 {
       background-image: url("/screen-3");
     }
@@ -137,16 +176,16 @@
       height: 5%;
     }
 
-    .s3-analysis {
-      left: 18%;
-      bottom: 11%;
-      width: 64%;
-      height: 6.5%;
-      border-radius: 999px;
-    }
-
     .s3-home {
       left: 13%;
+      bottom: 3.2%;
+      width: 9%;
+      height: 5%;
+      border-radius: 50%;
+    }
+
+    .s3-history {
+      left: 31%;
       bottom: 3.2%;
       width: 9%;
       height: 5%;
@@ -161,193 +200,51 @@
       border-radius: 50%;
     }
 
-    /* Sleep form overlay */
-    .sleep-form {
-      position: absolute;
-      left: 50%;
-      top: 20%;
-      transform: translateX(-50%);
-      width: 82%;
-      padding: 16px 14px;
-      border-radius: 22px;
-      background: rgba(6, 14, 30, 0.88);
-      backdrop-filter: blur(10px);
-      border: 1px solid rgba(130, 180, 255, 0.18);
-      box-shadow: 0 8px 30px rgba(0, 0, 0, 0.28);
-      z-index: 15;
+    .s3-wave {
+      left: 63%;
+      bottom: 3.2%;
+      width: 9%;
+      height: 5%;
+      border-radius: 50%;
     }
 
-    .sleep-form h3 {
-      font-size: 16px;
-      margin-bottom: 10px;
-      text-align: center;
-      font-weight: 600;
-      letter-spacing: 0.04em;
-    }
-
-    .sleep-form .row {
-      margin-bottom: 10px;
-    }
-
-    .sleep-form label {
-      display: block;
-      font-size: 12px;
-      opacity: 0.9;
-      margin-bottom: 5px;
-    }
-
-    .sleep-form input,
-    .sleep-form select {
-      width: 100%;
-      height: 38px;
-      border-radius: 12px;
-      border: 1px solid rgba(255,255,255,0.12);
-      background: rgba(255,255,255,0.06);
-      color: #fff;
-      padding: 0 12px;
-      font-size: 14px;
-      outline: none;
-    }
-
-    .sleep-form select option {
-      color: #000;
-    }
-
-    .sleep-note {
-      font-size: 11px;
-      text-align: center;
-      opacity: 0.7;
-      margin-top: 6px;
-    }
-
-    /* Result overlay */
-    .result-card {
-      position: absolute;
-      left: 50%;
-      top: 20%;
-      transform: translateX(-50%);
-      width: 82%;
-      padding: 18px 16px;
-      border-radius: 24px;
-      background: rgba(6, 14, 30, 0.78);
-      backdrop-filter: blur(10px);
-      border: 1px solid rgba(130, 180, 255, 0.18);
-      z-index: 15;
-      text-align: center;
-    }
-
-    .result-title {
-      font-size: 14px;
-      letter-spacing: 0.1em;
-      opacity: 0.85;
-      margin-bottom: 8px;
-    }
-
-    .result-score {
-      font-size: 54px;
-      font-weight: 700;
-      line-height: 1;
-      margin-bottom: 8px;
-    }
-
-    .result-status {
-      font-size: 14px;
-      font-weight: 600;
-      margin-bottom: 10px;
-      letter-spacing: 0.08em;
-    }
-
-    .result-summary {
-      font-size: 13px;
-      line-height: 1.4;
-      opacity: 0.92;
-    }
-
-    .result-meta {
-      margin-top: 12px;
-      font-size: 11px;
-      opacity: 0.72;
-    }
-
-    .loading {
-      position: absolute;
-      left: 50%;
-      top: 76%;
-      transform: translateX(-50%);
-      font-size: 12px;
-      z-index: 16;
-      opacity: 0.9;
-      display: none;
-    }
-
-    .loading.show {
-      display: block;
+    .s3-profile {
+      left: 81%;
+      bottom: 3.2%;
+      width: 9%;
+      height: 5%;
+      border-radius: 50%;
     }
   </style>
 </head>
 <body>
-  <!-- SCREEN 1 -->
   <div class="screen" id="screen1">
     <button class="tap s1-enter" id="goScreen2" aria-label="Enter System"></button>
     <button class="tap s1-home" id="s1Home"></button>
+    <button class="tap s1-history" id="s1History"></button>
     <button class="tap s1-center" id="s1Center"></button>
+    <button class="tap s1-wave" id="s1Wave"></button>
+    <button class="tap s1-profile" id="s1Profile"></button>
   </div>
 
-  <!-- SCREEN 2 -->
   <div class="screen hidden" id="screen2">
-    <div class="sleep-form" id="sleepFormBox">
-      <h3>SLEEP INPUT</h3>
-
-      <div class="row">
-        <label for="hours">Часы сна</label>
-        <input id="hours" type="number" step="0.1" min="0" max="24" placeholder="Например 7.5" />
-      </div>
-
-      <div class="row">
-        <label for="quality">Качество сна (1–10)</label>
-        <input id="quality" type="number" min="1" max="10" placeholder="Например 8" />
-      </div>
-
-      <div class="row">
-        <label for="fallAsleep">Засыпание, минут</label>
-        <input id="fallAsleep" type="number" min="0" max="240" placeholder="Например 20" />
-      </div>
-
-      <div class="row">
-        <label for="awakenings">Ночные пробуждения</label>
-        <input id="awakenings" type="number" min="0" max="20" placeholder="Например 1" />
-      </div>
-
-      <div class="row">
-        <label for="morning">Утреннее восстановление (1–10)</label>
-        <input id="morning" type="number" min="1" max="10" placeholder="Например 7" />
-      </div>
-
-      <div class="sleep-note">Заполни данные и нажми START ANALYSIS</div>
-    </div>
-
-    <button class="tap s2-menu" id="s2Menu"></button>
     <button class="tap s2-start-analysis" id="goScreen3" aria-label="Start Analysis"></button>
-    <button class="tap s2-home" id="backToScreen1From2"></button>
-    <button class="tap s2-center" id="s2Center"></button>
 
-    <div class="loading" id="sleepLoading">Analyzing sleep...</div>
+    <button class="tap s2-home" id="backToScreen1From2"></button>
+    <button class="tap s2-history" id="s2History"></button>
+    <button class="tap s2-center" id="s2Center"></button>
+    <button class="tap s2-wave" id="s2Wave"></button>
+    <button class="tap s2-profile" id="s2Profile"></button>
   </div>
 
-  <!-- SCREEN 3 -->
   <div class="screen hidden" id="screen3">
-    <div class="result-card" id="resultCard">
-      <div class="result-title">SLEEP RESULT</div>
-      <div class="result-score" id="resultScore">--</div>
-      <div class="result-status" id="resultStatus">WAITING</div>
-      <div class="result-summary" id="resultSummary">Запусти анализ сна на предыдущем экране.</div>
-      <div class="result-meta" id="resultMeta">AION Sleep Engine MVP</div>
-    </div>
-
     <button class="tap s3-back" id="backToScreen2"></button>
-    <button class="tap s3-analysis" id="repeatAnalysis"></button>
+
     <button class="tap s3-home" id="backToScreen1From3"></button>
+    <button class="tap s3-history" id="s3History"></button>
     <button class="tap s3-center" id="backToScreen2Center"></button>
+    <button class="tap s3-wave" id="s3Wave"></button>
+    <button class="tap s3-profile" id="s3Profile"></button>
   </div>
 
   <script>
@@ -367,22 +264,9 @@
         img.src = src;
       });
 
-      function tapFeedback(type) {
-        try {
-          const h = window.Telegram?.WebApp?.HapticFeedback;
-          if (h && h.impactOccurred) h.impactOccurred(type || "light");
-        } catch (e) {}
-      }
-
       const screen1 = document.getElementById("screen1");
       const screen2 = document.getElementById("screen2");
       const screen3 = document.getElementById("screen3");
-
-      const loadingEl = document.getElementById("sleepLoading");
-      const resultScore = document.getElementById("resultScore");
-      const resultStatus = document.getElementById("resultStatus");
-      const resultSummary = document.getElementById("resultSummary");
-      const resultMeta = document.getElementById("resultMeta");
 
       function showScreen(n) {
         screen1.classList.add("hidden");
@@ -394,92 +278,41 @@
         if (n === 3) screen3.classList.remove("hidden");
       }
 
-      function bindClick(id, fn, haptic) {
+      function bindClick(id, fn) {
         const el = document.getElementById(id);
         if (!el) return;
-        el.addEventListener("click", function () {
-          tapFeedback(haptic || "light");
-          fn();
+        el.addEventListener("click", fn);
+      }
+
+      /* Основные переходы */
+      bindClick("goScreen2", function () { showScreen(2); });
+      bindClick("goScreen3", function () { showScreen(3); });
+
+      /* Назад */
+      bindClick("backToScreen2", function () { showScreen(2); });
+      bindClick("backToScreen2Center", function () { showScreen(2); });
+      bindClick("backToScreen1From2", function () { showScreen(1); });
+      bindClick("backToScreen1From3", function () { showScreen(1); });
+
+      /* Нижняя навигация */
+      bindClick("s1Home", function () { showScreen(1); });
+      bindClick("s1Center", function () { showScreen(2); });
+
+      bindClick("s2Center", function () { showScreen(2); });
+
+      bindClick("s3History", function () { showScreen(3); });
+      bindClick("s3Wave", function () { showScreen(3); });
+
+      /* Заглушки, чтобы ничего не ломалось */
+      [
+        "s1History", "s1Wave", "s1Profile",
+        "s2History", "s2Wave", "s2Profile",
+        "s3Profile"
+      ].forEach(function (id) {
+        bindClick(id, function () {
+          console.log("click:", id);
         });
-      }
-
-      function collectSleepData() {
-        return {
-          hours: parseFloat(document.getElementById("hours").value || 0),
-          quality: parseInt(document.getElementById("quality").value || 0),
-          fall_asleep: parseInt(document.getElementById("fallAsleep").value || 0),
-          awakenings: parseInt(document.getElementById("awakenings").value || 0),
-          morning: parseInt(document.getElementById("morning").value || 0)
-        };
-      }
-
-      function validateSleepData(data) {
-        if (!data.hours || data.hours <= 0) return "Введи часы сна";
-        if (!data.quality || data.quality < 1 || data.quality > 10) return "Качество сна должно быть 1–10";
-        if (data.fall_asleep < 0) return "Проверь засыпание";
-        if (data.awakenings < 0) return "Проверь пробуждения";
-        if (!data.morning || data.morning < 1 || data.morning > 10) return "Утреннее восстановление должно быть 1–10";
-        return null;
-      }
-
-      async function runSleepAnalysis() {
-        const data = collectSleepData();
-        const validationError = validateSleepData(data);
-
-        if (validationError) {
-          alert(validationError);
-          return;
-        }
-
-        loadingEl.classList.add("show");
-
-        try {
-          const response = await fetch("/api/sleep", {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json"
-            },
-            body: JSON.stringify(data)
-          });
-
-          const result = await response.json();
-
-          if (!result.ok) {
-            alert(result.error || "Ошибка анализа");
-            return;
-          }
-
-          const entry = result.entry;
-          const r = entry.result;
-
-          resultScore.textContent = r.score;
-          resultStatus.textContent = r.status;
-          resultSummary.textContent = r.summary;
-          resultMeta.textContent =
-            `Sleep: ${entry.input.hours}h • Quality: ${entry.input.quality}/10 • Morning: ${entry.input.morning}/10`;
-
-          showScreen(3);
-        } catch (e) {
-          alert("Не удалось выполнить анализ сна");
-        } finally {
-          loadingEl.classList.remove("show");
-        }
-      }
-
-      bindClick("goScreen2", function () { showScreen(2); }, "medium");
-      bindClick("goScreen3", function () { runSleepAnalysis(); }, "medium");
-
-      bindClick("backToScreen2", function () { showScreen(2); }, "light");
-      bindClick("backToScreen2Center", function () { showScreen(2); }, "light");
-      bindClick("backToScreen1From2", function () { showScreen(1); }, "light");
-      bindClick("backToScreen1From3", function () { showScreen(1); }, "light");
-
-      bindClick("s1Home", function () { showScreen(1); }, "light");
-      bindClick("s1Center", function () { showScreen(2); }, "light");
-      bindClick("s2Center", function () { showScreen(2); }, "light");
-      bindClick("repeatAnalysis", function () { runSleepAnalysis(); }, "light");
-
-      bindClick("s2Menu", function () { console.log("menu"); }, "light");
+      });
     })();
   </script>
 </body>
