@@ -4,6 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
   <title>AION</title>
+
   <style>
     * {
       box-sizing: border-box;
@@ -46,7 +47,7 @@
       border: none;
       outline: none;
       cursor: pointer;
-      z-index: 20;
+      z-index: 10;
       transition: transform 0.08s ease, opacity 0.08s ease;
     }
 
@@ -88,7 +89,7 @@
       border-radius: 50%;
     }
 
-    /* COMMON BOTTOM NAV */
+    /* BOTTOM NAV */
     .nav-home  { left: 13%; bottom: 3.2%; width: 9%; height: 5%; border-radius: 50%; }
     .nav-clock { left: 31%; bottom: 3.2%; width: 9%; height: 5%; border-radius: 50%; }
     .nav-aion  { left: 45%; bottom: 1%;   width: 16%; height: 8%; border-radius: 50%; }
@@ -176,4 +177,72 @@
           try { tg.setHeaderColor("#020814"); } catch (e) {}
           try { tg.setBackgroundColor("#020814"); } catch (e) {}
         }
-      } catch
+      } catch (e) {}
+
+      ["/screen-1", "/screen-2", "/screen-3"].forEach(function (src) {
+        const img = new Image();
+        img.src = src;
+      });
+
+      const screen1 = document.getElementById("screen1");
+      const screen2 = document.getElementById("screen2");
+      const screen3 = document.getElementById("screen3");
+
+      function showScreen(n) {
+        screen1.classList.add("hidden");
+        screen2.classList.add("hidden");
+        screen3.classList.add("hidden");
+
+        if (n === 1) screen1.classList.remove("hidden");
+        if (n === 2) screen2.classList.remove("hidden");
+        if (n === 3) screen3.classList.remove("hidden");
+      }
+
+      function bindClick(id, fn) {
+        const el = document.getElementById(id);
+        if (!el) return;
+        el.addEventListener("click", fn);
+      }
+
+      /* ОСНОВНОЙ ЦИКЛ */
+      bindClick("goScreen2", function () { showScreen(2); });
+      bindClick("goScreen3", function () { showScreen(3); });
+      bindClick("backToScreen2", function () { showScreen(2); });
+      bindClick("repeatAnalysis", function () { showScreen(3); });
+
+      /* HOME */
+      bindClick("s1Home", function () { showScreen(1); });
+      bindClick("s2Home", function () { showScreen(1); });
+      bindClick("s3Home", function () { showScreen(1); });
+
+      /* AION */
+      bindClick("s1Aion", function () { showScreen(2); });
+      bindClick("s2Aion", function () { showScreen(2); });
+      bindClick("s3Aion", function () { showScreen(2); });
+
+      /* BIO TIME = ПОКА ЗАГЛУШКА */
+      bindClick("bioTimeInfo", function () {
+        alert("BioTime details: пока заглушка");
+      });
+
+      /* PROFILE = ПОКА ЗАГЛУШКА */
+      bindClick("topProfile", function () {
+        alert("Profile: пока заглушка");
+      });
+      bindClick("s1User", function () { alert("Profile: пока заглушка"); });
+      bindClick("s2User", function () { alert("Profile: пока заглушка"); });
+      bindClick("s3User", function () { alert("Profile: пока заглушка"); });
+
+      /* HISTORY = ПОКА ЗАГЛУШКА */
+      bindClick("s1Clock", function () { alert("History: пока заглушка"); });
+      bindClick("s2Clock", function () { alert("History: пока заглушка"); });
+      bindClick("s3Clock", function () { alert("History: пока заглушка"); });
+
+      /* ANALYTICS = ПОКА ЗАГЛУШКА */
+      bindClick("s1Wave", function () { alert("Analytics: пока заглушка"); });
+      bindClick("s2Wave", function () { alert("Analytics: пока заглушка"); });
+      bindClick("s3Wave", function () { alert("Analytics: пока заглушка"); });
+    })();
+  </script>
+</body>
+</html>
