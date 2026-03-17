@@ -46,6 +46,13 @@
       outline: none;
       cursor: pointer;
       z-index: 10;
+      transition: transform 0.08s ease, opacity 0.08s ease, filter 0.08s ease;
+    }
+
+    .tap:active {
+      transform: scale(0.96);
+      opacity: 0.9;
+      filter: brightness(1.06);
     }
 
     .hidden {
@@ -105,7 +112,7 @@
       border-radius: 50%;
     }
 
-    /* ЭКРАН 2 — SLEEP MODULE */
+    /* ЭКРАН 2 — SLEEP */
     #screen2 {
       background-image: url("/screen-2");
     }
@@ -117,7 +124,6 @@
       height: 5%;
     }
 
-    /* Главная кнопка анализа на экране Sleep */
     .s2-start-analysis {
       left: 18%;
       bottom: 11%;
@@ -236,7 +242,6 @@
   </style>
 </head>
 <body>
-  <!-- Экран 1 -->
   <div class="screen" id="screen1">
     <button class="tap s1-enter" id="goScreen2" aria-label="Enter System"></button>
     <button class="tap s1-home" id="s1Home"></button>
@@ -246,7 +251,6 @@
     <button class="tap s1-profile" id="s1Profile"></button>
   </div>
 
-  <!-- Экран 2 -->
   <div class="screen hidden" id="screen2">
     <button class="tap s2-menu" id="s2Menu"></button>
     <button class="tap s2-start-analysis" id="goScreen3" aria-label="Start Analysis"></button>
@@ -258,7 +262,6 @@
     <button class="tap s2-profile" id="s2Profile"></button>
   </div>
 
-  <!-- Экран 3 -->
   <div class="screen hidden" id="screen3">
     <button class="tap s3-back" id="backToScreen2"></button>
     <button class="tap s3-profile" id="s3ProfileTop"></button>
@@ -292,6 +295,20 @@
       img.src = src;
     });
 
+    function tapFeedback(type = "light") {
+      try {
+        if (window.Telegram && window.Telegram.WebApp && window.Telegram.WebApp.HapticFeedback) {
+          window.Telegram.WebApp.HapticFeedback.impactOccurred(type);
+        }
+      } catch (e) {
+        console.log("Haptic feedback not available");
+      }
+    }
+
+    document.querySelectorAll(".tap").forEach((btn) => {
+      btn.addEventListener("click", () => tapFeedback("light"));
+    });
+
     const screen1 = document.getElementById("screen1");
     const screen2 = document.getElementById("screen2");
     const screen3 = document.getElementById("screen3");
@@ -307,8 +324,15 @@
     }
 
     // Главная логика
-    document.getElementById("goScreen2").addEventListener("click", () => showScreen(2));
-    document.getElementById("goScreen3").addEventListener("click", () => showScreen(3));
+    document.getElementById("goScreen2").addEventListener("click", () => {
+      tapFeedback("medium");
+      showScreen(2);
+    });
+
+    document.getElementById("goScreen3").addEventListener("click", () => {
+      tapFeedback("medium");
+      showScreen(3);
+    });
 
     document.getElementById("backToScreen2").addEventListener("click", () => showScreen(2));
     document.getElementById("backToScreen2Center").addEventListener("click", () => showScreen(2));
@@ -321,13 +345,12 @@
     document.getElementById("s1Center").addEventListener("click", () => showScreen(2));
 
     document.getElementById("s2Center").addEventListener("click", () => showScreen(2));
-    document.getElementById("s2Home").addEventListener("click", () => showScreen(1));
 
     document.getElementById("s3Center").addEventListener("click", () => showScreen(2));
     document.getElementById("s3History").addEventListener("click", () => showScreen(3));
     document.getElementById("s3Wave").addEventListener("click", () => showScreen(3));
 
-    // Повтор анализа на экране результата
+    // Повтор анализа
     document.getElementById("repeatAnalysis").addEventListener("click", () => showScreen(3));
 
     // Заглушки
