@@ -18,6 +18,7 @@
       background: #020814;
       font-family: Arial, sans-serif;
       overflow: hidden;
+      color: #fff;
     }
 
     body {
@@ -45,7 +46,7 @@
       border: none;
       outline: none;
       cursor: pointer;
-      z-index: 10;
+      z-index: 20;
       transition: transform 0.08s ease, opacity 0.08s ease;
     }
 
@@ -58,7 +59,48 @@
       display: none;
     }
 
-    /* SCREEN 1 = ENTRY */
+    .panel {
+      position: absolute;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 84%;
+      border-radius: 24px;
+      background: rgba(6, 14, 30, 0.82);
+      backdrop-filter: blur(10px);
+      border: 1px solid rgba(130, 180, 255, 0.16);
+      box-shadow: 0 10px 28px rgba(0,0,0,0.24);
+      z-index: 15;
+    }
+
+    .panel-title {
+      text-align: center;
+      font-size: 15px;
+      letter-spacing: 0.08em;
+      margin-bottom: 12px;
+      opacity: 0.95;
+    }
+
+    .list {
+      display: grid;
+      gap: 10px;
+    }
+
+    .item {
+      border-radius: 16px;
+      padding: 12px 14px;
+      background: rgba(255,255,255,0.05);
+      border: 1px solid rgba(255,255,255,0.08);
+      font-size: 14px;
+      line-height: 1.35;
+    }
+
+    .muted {
+      font-size: 12px;
+      opacity: 0.72;
+      margin-top: 4px;
+    }
+
+    /* Screen 1 */
     #screen1 {
       background-image: url("/screen-1");
     }
@@ -71,47 +113,30 @@
       border-radius: 999px;
     }
 
-    .s1-home {
-      left: 17%;
-      bottom: 19.2%;
-      width: 9%;
-      height: 5%;
-      border-radius: 50%;
+    .s1-biotime {
+      left: 19%;
+      top: 52%;
+      width: 62%;
+      height: 18%;
+      border-radius: 28px;
     }
 
-    .s1-history {
-      left: 33%;
-      bottom: 19.2%;
-      width: 9%;
-      height: 5%;
-      border-radius: 50%;
-    }
-
-    .s1-center {
-      left: 45%;
-      bottom: 16.8%;
-      width: 16%;
+    .s1-top-profile {
+      right: 4%;
+      top: 4%;
+      width: 14%;
       height: 8%;
       border-radius: 50%;
     }
 
-    .s1-wave {
-      left: 63%;
-      bottom: 19.2%;
-      width: 9%;
-      height: 5%;
-      border-radius: 50%;
-    }
+    /* Bottom nav zones, reused */
+    .nav-home  { left: 13%; bottom: 3.2%; width: 9%; height: 5%; border-radius: 50%; }
+    .nav-clock { left: 31%; bottom: 3.2%; width: 9%; height: 5%; border-radius: 50%; }
+    .nav-aion  { left: 45%; bottom: 1%;   width: 16%; height: 8%; border-radius: 50%; }
+    .nav-wave  { left: 63%; bottom: 3.2%; width: 9%; height: 5%; border-radius: 50%; }
+    .nav-user  { left: 81%; bottom: 3.2%; width: 9%; height: 5%; border-radius: 50%; }
 
-    .s1-profile {
-      left: 79%;
-      bottom: 19.2%;
-      width: 9%;
-      height: 5%;
-      border-radius: 50%;
-    }
-
-    /* SCREEN 2 = SLEEP */
+    /* Screen 2 */
     #screen2 {
       background-image: url("/screen-2");
     }
@@ -124,47 +149,7 @@
       border-radius: 999px;
     }
 
-    .s2-home {
-      left: 13%;
-      bottom: 3.2%;
-      width: 9%;
-      height: 5%;
-      border-radius: 50%;
-    }
-
-    .s2-history {
-      left: 31%;
-      bottom: 3.2%;
-      width: 9%;
-      height: 5%;
-      border-radius: 50%;
-    }
-
-    .s2-center {
-      left: 45%;
-      bottom: 1%;
-      width: 16%;
-      height: 8%;
-      border-radius: 50%;
-    }
-
-    .s2-wave {
-      left: 63%;
-      bottom: 3.2%;
-      width: 9%;
-      height: 5%;
-      border-radius: 50%;
-    }
-
-    .s2-profile {
-      left: 81%;
-      bottom: 3.2%;
-      width: 9%;
-      height: 5%;
-      border-radius: 50%;
-    }
-
-    /* SCREEN 3 = RESULT */
+    /* Screen 3 */
     #screen3 {
       background-image: url("/screen-3");
     }
@@ -176,75 +161,217 @@
       height: 5%;
     }
 
-    .s3-home {
-      left: 13%;
-      bottom: 3.2%;
-      width: 9%;
-      height: 5%;
-      border-radius: 50%;
+    .s3-repeat {
+      left: 18%;
+      bottom: 11%;
+      width: 64%;
+      height: 6.5%;
+      border-radius: 999px;
     }
 
-    .s3-history {
-      left: 31%;
-      bottom: 3.2%;
-      width: 9%;
-      height: 5%;
-      border-radius: 50%;
+    /* Screen 4 History */
+    #screen4 {
+      background: radial-gradient(circle at top, rgba(35,78,150,0.35), rgba(2,8,20,1) 42%);
     }
 
-    .s3-center {
-      left: 45%;
-      bottom: 1%;
-      width: 16%;
-      height: 8%;
-      border-radius: 50%;
+    .history-card {
+      top: 13%;
+      padding: 18px 16px;
     }
 
-    .s3-wave {
-      left: 63%;
-      bottom: 3.2%;
-      width: 9%;
-      height: 5%;
-      border-radius: 50%;
+    /* Screen 5 Analytics */
+    #screen5 {
+      background: radial-gradient(circle at top, rgba(25,65,130,0.34), rgba(2,8,20,1) 42%);
     }
 
-    .s3-profile {
-      left: 81%;
-      bottom: 3.2%;
-      width: 9%;
-      height: 5%;
+    .analytics-card {
+      top: 13%;
+      padding: 18px 16px;
+    }
+
+    .bar {
+      height: 10px;
+      border-radius: 999px;
+      background: rgba(255,255,255,0.08);
+      overflow: hidden;
+      margin-top: 6px;
+    }
+
+    .bar > span {
+      display: block;
+      height: 100%;
+      background: linear-gradient(90deg, rgba(86,154,255,0.85), rgba(144,205,255,0.95));
+      border-radius: 999px;
+    }
+
+    /* Screen 6 Profile */
+    #screen6 {
+      background: radial-gradient(circle at top, rgba(30,72,140,0.34), rgba(2,8,20,1) 42%);
+    }
+
+    .profile-card {
+      top: 13%;
+      padding: 18px 16px;
+    }
+
+    .pill {
+      display: inline-block;
+      padding: 6px 10px;
+      border-radius: 999px;
+      background: rgba(255,255,255,0.08);
+      border: 1px solid rgba(255,255,255,0.08);
+      font-size: 12px;
+      margin-right: 6px;
+      margin-bottom: 6px;
+    }
+
+    .top-back {
+      position: absolute;
+      left: 7%;
+      top: 5%;
+      width: 14%;
+      height: 7%;
       border-radius: 50%;
+      z-index: 20;
+      background: transparent;
+      border: none;
     }
   </style>
 </head>
 <body>
+  <!-- SCREEN 1: HOME / ENTRY -->
   <div class="screen" id="screen1">
     <button class="tap s1-enter" id="goScreen2" aria-label="Enter System"></button>
-    <button class="tap s1-home" id="s1Home"></button>
-    <button class="tap s1-history" id="s1History"></button>
-    <button class="tap s1-center" id="s1Center"></button>
-    <button class="tap s1-wave" id="s1Wave"></button>
-    <button class="tap s1-profile" id="s1Profile"></button>
+    <button class="tap s1-biotime" id="goScreen5FromBioTime" aria-label="BioTime Details"></button>
+    <button class="tap s1-top-profile" id="goScreen6FromTop" aria-label="Profile Top"></button>
+
+    <button class="tap nav-home" id="s1Home"></button>
+    <button class="tap nav-clock" id="s1Clock"></button>
+    <button class="tap nav-aion" id="s1Aion"></button>
+    <button class="tap nav-wave" id="s1Wave"></button>
+    <button class="tap nav-user" id="s1User"></button>
   </div>
 
+  <!-- SCREEN 2: MODULES / SLEEP -->
   <div class="screen hidden" id="screen2">
     <button class="tap s2-start-analysis" id="goScreen3" aria-label="Start Analysis"></button>
 
-    <button class="tap s2-home" id="backToScreen1From2"></button>
-    <button class="tap s2-history" id="s2History"></button>
-    <button class="tap s2-center" id="s2Center"></button>
-    <button class="tap s2-wave" id="s2Wave"></button>
-    <button class="tap s2-profile" id="s2Profile"></button>
+    <button class="tap nav-home" id="s2Home"></button>
+    <button class="tap nav-clock" id="s2Clock"></button>
+    <button class="tap nav-aion" id="s2Aion"></button>
+    <button class="tap nav-wave" id="s2Wave"></button>
+    <button class="tap nav-user" id="s2User"></button>
   </div>
 
+  <!-- SCREEN 3: SLEEP RESULT -->
   <div class="screen hidden" id="screen3">
     <button class="tap s3-back" id="backToScreen2"></button>
+    <button class="tap s3-repeat" id="repeatAnalysis"></button>
 
-    <button class="tap s3-home" id="backToScreen1From3"></button>
-    <button class="tap s3-history" id="s3History"></button>
-    <button class="tap s3-center" id="backToScreen2Center"></button>
-    <button class="tap s3-wave" id="s3Wave"></button>
-    <button class="tap s3-profile" id="s3Profile"></button>
+    <button class="tap nav-home" id="s3Home"></button>
+    <button class="tap nav-clock" id="s3Clock"></button>
+    <button class="tap nav-aion" id="s3Aion"></button>
+    <button class="tap nav-wave" id="s3Wave"></button>
+    <button class="tap nav-user" id="s3User"></button>
+  </div>
+
+  <!-- SCREEN 4: HISTORY -->
+  <div class="screen hidden" id="screen4">
+    <button class="top-back" id="backFrom4"></button>
+
+    <div class="panel history-card">
+      <div class="panel-title">HISTORY</div>
+      <div class="list">
+        <div class="item">
+          Sleep score: 92
+          <div class="muted">Сегодня • 7h 25m • Excellent</div>
+        </div>
+        <div class="item">
+          BioTime: 8.4
+          <div class="muted">Сегодня • стабильный ресурс</div>
+        </div>
+        <div class="item">
+          Recovery: 84
+          <div class="muted">Вчера • хорошее восстановление</div>
+        </div>
+        <div class="item">
+          Stress: 38
+          <div class="muted">Вчера • умеренная нагрузка</div>
+        </div>
+      </div>
+    </div>
+
+    <button class="tap nav-home" id="s4Home"></button>
+    <button class="tap nav-clock" id="s4Clock"></button>
+    <button class="tap nav-aion" id="s4Aion"></button>
+    <button class="tap nav-wave" id="s4Wave"></button>
+    <button class="tap nav-user" id="s4User"></button>
+  </div>
+
+  <!-- SCREEN 5: ANALYTICS -->
+  <div class="screen hidden" id="screen5">
+    <button class="top-back" id="backFrom5"></button>
+
+    <div class="panel analytics-card">
+      <div class="panel-title">ANALYTICS</div>
+      <div class="list">
+        <div class="item">
+          BioTime Trend
+          <div class="bar"><span style="width:84%"></span></div>
+          <div class="muted">Текущий ресурс: 8.4 / 10</div>
+        </div>
+        <div class="item">
+          Sleep Stability
+          <div class="bar"><span style="width:92%"></span></div>
+          <div class="muted">Сон стабилен, хорошая динамика</div>
+        </div>
+        <div class="item">
+          Stress Load
+          <div class="bar"><span style="width:38%"></span></div>
+          <div class="muted">Ниже критической зоны</div>
+        </div>
+      </div>
+    </div>
+
+    <button class="tap nav-home" id="s5Home"></button>
+    <button class="tap nav-clock" id="s5Clock"></button>
+    <button class="tap nav-aion" id="s5Aion"></button>
+    <button class="tap nav-wave" id="s5Wave"></button>
+    <button class="tap nav-user" id="s5User"></button>
+  </div>
+
+  <!-- SCREEN 6: PROFILE -->
+  <div class="screen hidden" id="screen6">
+    <button class="top-back" id="backFrom6"></button>
+
+    <div class="panel profile-card">
+      <div class="panel-title">PROFILE</div>
+      <div class="list">
+        <div class="item">
+          Александр
+          <div class="muted">AION user profile</div>
+        </div>
+        <div class="item">
+          Основные параметры
+          <div class="muted">Возраст, режим, протоколы, персональные настройки</div>
+        </div>
+        <div class="item">
+          Текущие секции
+          <div style="margin-top:8px;">
+            <span class="pill">Sleep</span>
+            <span class="pill">History</span>
+            <span class="pill">Analytics</span>
+            <span class="pill">BioTime</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <button class="tap nav-home" id="s6Home"></button>
+    <button class="tap nav-clock" id="s6Clock"></button>
+    <button class="tap nav-aion" id="s6Aion"></button>
+    <button class="tap nav-wave" id="s6Wave"></button>
+    <button class="tap nav-user" id="s6User"></button>
   </div>
 
   <script>
@@ -264,54 +391,53 @@
         img.src = src;
       });
 
-      const screen1 = document.getElementById("screen1");
-      const screen2 = document.getElementById("screen2");
-      const screen3 = document.getElementById("screen3");
+      const screens = {
+        1: document.getElementById("screen1"),
+        2: document.getElementById("screen2"),
+        3: document.getElementById("screen3"),
+        4: document.getElementById("screen4"),
+        5: document.getElementById("screen5"),
+        6: document.getElementById("screen6")
+      };
 
       function showScreen(n) {
-        screen1.classList.add("hidden");
-        screen2.classList.add("hidden");
-        screen3.classList.add("hidden");
-
-        if (n === 1) screen1.classList.remove("hidden");
-        if (n === 2) screen2.classList.remove("hidden");
-        if (n === 3) screen3.classList.remove("hidden");
+        Object.values(screens).forEach(function (s) {
+          s.classList.add("hidden");
+        });
+        screens[n].classList.remove("hidden");
       }
 
-      function bindClick(id, fn) {
+      function bind(id, fn) {
         const el = document.getElementById(id);
         if (!el) return;
         el.addEventListener("click", fn);
       }
 
-      /* Основные переходы */
-      bindClick("goScreen2", function () { showScreen(2); });
-      bindClick("goScreen3", function () { showScreen(3); });
+      // Main flow
+      bind("goScreen2", function () { showScreen(2); });
+      bind("goScreen3", function () { showScreen(3); });
+      bind("repeatAnalysis", function () { showScreen(3); });
+      bind("backToScreen2", function () { showScreen(2); });
 
-      /* Назад */
-      bindClick("backToScreen2", function () { showScreen(2); });
-      bindClick("backToScreen2Center", function () { showScreen(2); });
-      bindClick("backToScreen1From2", function () { showScreen(1); });
-      bindClick("backToScreen1From3", function () { showScreen(1); });
+      // Top actions
+      bind("goScreen6FromTop", function () { showScreen(6); });
+      bind("goScreen5FromBioTime", function () { showScreen(5); });
 
-      /* Нижняя навигация */
-      bindClick("s1Home", function () { showScreen(1); });
-      bindClick("s1Center", function () { showScreen(2); });
+      // Back from utility screens
+      bind("backFrom4", function () { showScreen(1); });
+      bind("backFrom5", function () { showScreen(1); });
+      bind("backFrom6", function () { showScreen(1); });
 
-      bindClick("s2Center", function () { showScreen(2); });
-
-      bindClick("s3History", function () { showScreen(3); });
-      bindClick("s3Wave", function () { showScreen(3); });
-
-      /* Заглушки, чтобы ничего не ломалось */
+      // Bottom nav per card map
       [
-        "s1History", "s1Wave", "s1Profile",
-        "s2History", "s2Wave", "s2Profile",
-        "s3Profile"
-      ].forEach(function (id) {
-        bindClick(id, function () {
-          console.log("click:", id);
-        });
+        ["s1Home",1],["s1Clock",4],["s1Aion",2],["s1Wave",5],["s1User",6],
+        ["s2Home",1],["s2Clock",4],["s2Aion",2],["s2Wave",5],["s2User",6],
+        ["s3Home",1],["s3Clock",4],["s3Aion",2],["s3Wave",5],["s3User",6],
+        ["s4Home",1],["s4Clock",4],["s4Aion",2],["s4Wave",5],["s4User",6],
+        ["s5Home",1],["s5Clock",4],["s5Aion",2],["s5Wave",5],["s5User",6],
+        ["s6Home",1],["s6Clock",4],["s6Aion",2],["s6Wave",5],["s6User",6]
+      ].forEach(function (pair) {
+        bind(pair[0], function () { showScreen(pair[1]); });
       });
     })();
   </script>
