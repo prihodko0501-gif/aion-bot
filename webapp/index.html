@@ -1,404 +1,88 @@
-<!DOCTYPE html>
-<html lang="ru">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-  <title>AION</title>
-  <style>
-    * {
-      box-sizing: border-box;
-      margin: 0;
-      padding: 0;
-      -webkit-tap-highlight-color: transparent;
+<script>
+  if (window.Telegram && window.Telegram.WebApp) {
+    const tg = window.Telegram.WebApp;
+    tg.ready();
+    tg.expand();
+
+    try {
+      tg.setHeaderColor("#020814");
+      tg.setBackgroundColor("#020814");
+      document.documentElement.style.background = "#020814";
+      document.body.style.background = "#020814";
+    } catch (e) {
+      console.log("Telegram theme set skipped");
     }
+  }
 
-    html, body {
-      width: 100%;
-      height: 100%;
-      background: #020814;
-      font-family: Arial, sans-serif;
-      overflow: hidden;
-    }
+  ["/screen-1", "/screen-2", "/screen-3"].forEach((src) => {
+    const img = new Image();
+    img.src = src;
+  });
 
-    body {
-      display: flex;
-      justify-content: center;
-      align-items: stretch;
-    }
-
-    .screen {
-      position: relative;
-      width: 100%;
-      max-width: 430px;
-      height: 100vh;
-      margin: 0 auto;
-      overflow: hidden;
-      background-color: #020814;
-      background-repeat: no-repeat;
-      background-position: center center;
-      background-size: cover;
-    }
-
-    .tap {
-      position: absolute;
-      background: transparent;
-      border: none;
-      outline: none;
-      cursor: pointer;
-      z-index: 10;
-      transition: transform 0.08s ease, opacity 0.08s ease, filter 0.08s ease;
-    }
-
-    .tap:active {
-      transform: scale(0.96);
-      opacity: 0.9;
-      filter: brightness(1.06);
-    }
-
-    .hidden {
-      display: none;
-    }
-
-    /* ЭКРАН 1 — ВХОД */
-    #screen1 {
-      background-image: url("/screen-1");
-    }
-
-    .s1-enter {
-      left: 18%;
-      top: 39%;
-      width: 64%;
-      height: 7%;
-      border-radius: 999px;
-    }
-
-    .s1-home {
-      left: 17%;
-      bottom: 19.2%;
-      width: 9%;
-      height: 5%;
-      border-radius: 50%;
-    }
-
-    .s1-history {
-      left: 33%;
-      bottom: 19.2%;
-      width: 9%;
-      height: 5%;
-      border-radius: 50%;
-    }
-
-    .s1-center {
-      left: 45%;
-      bottom: 16.8%;
-      width: 16%;
-      height: 8%;
-      border-radius: 50%;
-    }
-
-    .s1-wave {
-      left: 63%;
-      bottom: 19.2%;
-      width: 9%;
-      height: 5%;
-      border-radius: 50%;
-    }
-
-    .s1-profile {
-      left: 79%;
-      bottom: 19.2%;
-      width: 9%;
-      height: 5%;
-      border-radius: 50%;
-    }
-
-    /* ЭКРАН 2 — SLEEP */
-    #screen2 {
-      background-image: url("/screen-2");
-    }
-
-    .s2-menu {
-      left: 10%;
-      top: 12%;
-      width: 8%;
-      height: 5%;
-    }
-
-    .s2-start-analysis {
-      left: 18%;
-      bottom: 11%;
-      width: 64%;
-      height: 6.5%;
-      border-radius: 999px;
-    }
-
-    .s2-home {
-      left: 13%;
-      bottom: 3.2%;
-      width: 9%;
-      height: 5%;
-      border-radius: 50%;
-    }
-
-    .s2-history {
-      left: 31%;
-      bottom: 3.2%;
-      width: 9%;
-      height: 5%;
-      border-radius: 50%;
-    }
-
-    .s2-center {
-      left: 45%;
-      bottom: 1%;
-      width: 16%;
-      height: 8%;
-      border-radius: 50%;
-    }
-
-    .s2-wave {
-      left: 63%;
-      bottom: 3.2%;
-      width: 9%;
-      height: 5%;
-      border-radius: 50%;
-    }
-
-    .s2-profile {
-      left: 81%;
-      bottom: 3.2%;
-      width: 9%;
-      height: 5%;
-      border-radius: 50%;
-    }
-
-    /* ЭКРАН 3 — РЕЗУЛЬТАТ SLEEP */
-    #screen3 {
-      background-image: url("/screen-3");
-    }
-
-    .s3-back {
-      left: 9%;
-      top: 11%;
-      width: 18%;
-      height: 5%;
-    }
-
-    .s3-profile {
-      right: 10%;
-      top: 11%;
-      width: 10%;
-      height: 5%;
-      border-radius: 50%;
-    }
-
-    .s3-analysis {
-      left: 18%;
-      bottom: 11%;
-      width: 64%;
-      height: 6.5%;
-      border-radius: 999px;
-    }
-
-    .s3-home {
-      left: 13%;
-      bottom: 3.2%;
-      width: 9%;
-      height: 5%;
-      border-radius: 50%;
-    }
-
-    .s3-history {
-      left: 31%;
-      bottom: 3.2%;
-      width: 9%;
-      height: 5%;
-      border-radius: 50%;
-    }
-
-    .s3-center {
-      left: 45%;
-      bottom: 1%;
-      width: 16%;
-      height: 8%;
-      border-radius: 50%;
-    }
-
-    .s3-wave {
-      left: 63%;
-      bottom: 3.2%;
-      width: 9%;
-      height: 5%;
-      border-radius: 50%;
-    }
-
-    .s3-profile-bottom {
-      left: 81%;
-      bottom: 3.2%;
-      width: 9%;
-      height: 5%;
-      border-radius: 50%;
-    }
-  </style>
-</head>
-<body>
-  <div class="screen" id="screen1">
-    <button class="tap s1-enter" id="goScreen2" aria-label="Enter System"></button>
-    <button class="tap s1-home" id="s1Home"></button>
-    <button class="tap s1-history" id="s1History"></button>
-    <button class="tap s1-center" id="s1Center"></button>
-    <button class="tap s1-wave" id="s1Wave"></button>
-    <button class="tap s1-profile" id="s1Profile"></button>
-  </div>
-
-  <div class="screen hidden" id="screen2">
-    <button class="tap s2-menu" id="s2Menu"></button>
-    <button class="tap s2-start-analysis" id="goScreen3" aria-label="Start Analysis"></button>
-
-    <button class="tap s2-home" id="backToScreen1From2"></button>
-    <button class="tap s2-history" id="s2History"></button>
-    <button class="tap s2-center" id="s2Center"></button>
-    <button class="tap s2-wave" id="s2Wave"></button>
-    <button class="tap s2-profile" id="s2Profile"></button>
-  </div>
-
-  <div class="screen hidden" id="screen3">
-    <button class="tap s3-back" id="backToScreen2"></button>
-    <button class="tap s3-profile" id="s3ProfileTop"></button>
-    <button class="tap s3-analysis" id="repeatAnalysis"></button>
-
-    <button class="tap s3-home" id="backToScreen1From3"></button>
-    <button class="tap s3-history" id="s3History"></button>
-    <button class="tap s3-center" id="backToScreen2Center"></button>
-    <button class="tap s3-wave" id="s3Wave"></button>
-    <button class="tap s3-profile-bottom" id="s3ProfileBottom"></button>
-  </div>
-
-  <script>
-    if (window.Telegram && window.Telegram.WebApp) {
-      const tg = window.Telegram.WebApp;
-      tg.ready();
-      tg.expand();
-
-      try {
-        tg.setHeaderColor("#020814");
-        tg.setBackgroundColor("#020814");
-        document.documentElement.style.background = "#020814";
-        document.body.style.background = "#020814";
-      } catch (e) {
-        console.log("Telegram theme set skipped");
+  function tapFeedback(type = "light") {
+    try {
+      const tg = window.Telegram?.WebApp;
+      if (tg?.HapticFeedback) {
+        tg.HapticFeedback.impactOccurred(type);
+      } else {
+        console.log("HapticFeedback unavailable");
       }
+    } catch (e) {
+      console.log("Haptic error:", e);
     }
+  }
 
-    ["/screen-1", "/screen-2", "/screen-3"].forEach((src) => {
-      const img = new Image();
-      img.src = src;
+  const screen1 = document.getElementById("screen1");
+  const screen2 = document.getElementById("screen2");
+  const screen3 = document.getElementById("screen3");
+
+  function showScreen(n) {
+    screen1.classList.add("hidden");
+    screen2.classList.add("hidden");
+    screen3.classList.add("hidden");
+
+    if (n === 1) screen1.classList.remove("hidden");
+    if (n === 2) screen2.classList.remove("hidden");
+    if (n === 3) screen3.classList.remove("hidden");
+  }
+
+  function bindClick(id, handler, haptic = "light") {
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.addEventListener("click", () => {
+      tapFeedback(haptic);
+      handler();
     });
+  }
 
-    function tapFeedback(type = "light") {
-      try {
-        if (window.Telegram && window.Telegram.WebApp && window.Telegram.WebApp.HapticFeedback) {
-          window.Telegram.WebApp.HapticFeedback.impactOccurred(type);
-        }
-      } catch (e) {
-        console.log("Haptic feedback not available");
-      }
-    }
+  // Главные кнопки
+  bindClick("goScreen2", () => showScreen(2), "heavy");
+  bindClick("goScreen3", () => showScreen(3), "heavy");
+  bindClick("repeatAnalysis", () => showScreen(3), "heavy");
 
-    document.querySelectorAll(".tap").forEach((btn) => {
-      btn.addEventListener("click", () => tapFeedback("light"));
-    });
+  // Назад / home / center
+  bindClick("backToScreen2", () => showScreen(2), "medium");
+  bindClick("backToScreen2Center", () => showScreen(2), "medium");
+  bindClick("backToScreen1From2", () => showScreen(1), "medium");
+  bindClick("backToScreen1From3", () => showScreen(1), "medium");
 
-    const screen1 = document.getElementById("screen1");
-    const screen2 = document.getElementById("screen2");
-    const screen3 = document.getElementById("screen3");
+  bindClick("s1Home", () => showScreen(1), "medium");
+  bindClick("s1Center", () => showScreen(2), "medium");
+  bindClick("s2Center", () => showScreen(2), "medium");
 
-    function showScreen(n) {
-      screen1.classList.add("hidden");
-      screen2.classList.add("hidden");
-      screen3.classList.add("hidden");
+  bindClick("s3History", () => showScreen(3), "light");
+  bindClick("s3Wave", () => showScreen(3), "light");
 
-      if (n === 1) screen1.classList.remove("hidden");
-      if (n === 2) screen2.classList.remove("hidden");
-      if (n === 3) screen3.classList.remove("hidden");
-    }
+  // Заглушки
+  [
+    "s1History", "s1Wave", "s1Profile",
+    "s2Menu", "s2History", "s2Wave", "s2Profile",
+    "s3ProfileTop", "s3ProfileBottom"
+  ].forEach((id) => {
+    bindClick(id, () => console.log("click:", id), "light");
+  });
 
-    const goScreen2 = document.getElementById("goScreen2");
-    if (goScreen2) {
-      goScreen2.addEventListener("click", () => {
-        tapFeedback("medium");
-        showScreen(2);
-      });
-    }
-
-    const goScreen3 = document.getElementById("goScreen3");
-    if (goScreen3) {
-      goScreen3.addEventListener("click", () => {
-        tapFeedback("medium");
-        showScreen(3);
-      });
-    }
-
-    const backToScreen2 = document.getElementById("backToScreen2");
-    if (backToScreen2) {
-      backToScreen2.addEventListener("click", () => showScreen(2));
-    }
-
-    const backToScreen2Center = document.getElementById("backToScreen2Center");
-    if (backToScreen2Center) {
-      backToScreen2Center.addEventListener("click", () => showScreen(2));
-    }
-
-    const backToScreen1From2 = document.getElementById("backToScreen1From2");
-    if (backToScreen1From2) {
-      backToScreen1From2.addEventListener("click", () => showScreen(1));
-    }
-
-    const backToScreen1From3 = document.getElementById("backToScreen1From3");
-    if (backToScreen1From3) {
-      backToScreen1From3.addEventListener("click", () => showScreen(1));
-    }
-
-    const s1Home = document.getElementById("s1Home");
-    if (s1Home) {
-      s1Home.addEventListener("click", () => showScreen(1));
-    }
-
-    const s1Center = document.getElementById("s1Center");
-    if (s1Center) {
-      s1Center.addEventListener("click", () => showScreen(2));
-    }
-
-    const s2Center = document.getElementById("s2Center");
-    if (s2Center) {
-      s2Center.addEventListener("click", () => showScreen(2));
-    }
-
-    const s3History = document.getElementById("s3History");
-    if (s3History) {
-      s3History.addEventListener("click", () => showScreen(3));
-    }
-
-    const s3Wave = document.getElementById("s3Wave");
-    if (s3Wave) {
-      s3Wave.addEventListener("click", () => showScreen(3));
-    }
-
-    const repeatAnalysis = document.getElementById("repeatAnalysis");
-    if (repeatAnalysis) {
-      repeatAnalysis.addEventListener("click", () => showScreen(3));
-    }
-
-    [
-      "s1History", "s1Wave", "s1Profile",
-      "s2Menu", "s2History", "s2Wave", "s2Profile",
-      "s3ProfileTop", "s3ProfileBottom"
-    ].forEach((id) => {
-      const el = document.getElementById(id);
-      if (el) {
-        el.addEventListener("click", () => console.log("click:", id));
-      }
-    });
-  </script>
-</body>
-</html>
+  console.log("Telegram:", !!window.Telegram);
+  console.log("WebApp:", !!window.Telegram?.WebApp);
+  console.log("Haptic:", !!window.Telegram?.WebApp?.HapticFeedback);
+</script>
